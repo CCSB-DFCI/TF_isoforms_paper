@@ -1,0 +1,7 @@
+*.fa
+*.fasta
+*.gtf
+*.gff3
+*.vcf
+*.csv
+*.tsv
