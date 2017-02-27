@@ -1,6 +1,6 @@
 *.fa
 *.fasta
-*.gtf
+gencode.v25.annotation.gtf
 *.gff3
 *.vcf
 *.csv
