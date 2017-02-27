@@ -52,9 +52,10 @@ def reverse_complement(sequence):
 #print reverse_complement(CDS)
 
 #Extract CDS sequences from hg38 and add to data structure
+#MAKE INTO A FUNCTION! INPUT IS THE DICTIONARY
 genome = open("GRCh38.p7.genome.fa").read()
 chrom_header_seq = genome.split(">")[1:26]
-
+#TODO: make a toy of genome chromosome 22, and get 1 forward and 1 reverse from chr 22
 for g,val in d.items():
 	chromosome = val[1]
 	transcripts = val[3]
@@ -67,6 +68,7 @@ for g,val in d.items():
 			for i in chrom_header_seq:
 				if i.split(" ")[0] == chromosome and strand == "+":
 					i = i[7:]
+					# TODO! (change! not always 7. split by \n then get first index out of list)
 					a = i.split("\n")
 					i = "".join(a)
 					val[0] = i[start_coord-1:end_coord]
@@ -77,6 +79,3 @@ for g,val in d.items():
 					val[0] = reverse_complement(i[start_coord-1:end_coord])
 	#NOTE! The way it is set up does not include the stop codon. Is there a way to add +3 to the end_coord only
 	#      for the last CDS?
-
-
-
