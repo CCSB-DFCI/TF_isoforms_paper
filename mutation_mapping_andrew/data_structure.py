@@ -4,6 +4,7 @@ Andrew Goldfarb
 Task: Create a data structure that organizes the "gencode.v25.annotation.gtf" file by genes, transcripts, and CDS.
 """
 
+# Create the data structure and fill it with information from "gencode.v25.annotation.gtf"
 d = {}
 for line in open("gencode.v25.annotation.gtf", "r"):
 	if line[0] != "#":
@@ -61,13 +62,21 @@ for g,val in d.items():
 		strand = val[0]
 		CDSs = val[2]
 		for CDS,val in CDSs.items():
-			start = int(val[1]["abs_start"])
-			end = int(val[1]["abs_end"])
+			start_coord = int(val[1]["abs_start"])
+			end_coord = int(val[1]["abs_end"])
 			for i in chrom_header_seq:
 				if i.split(" ")[0] == chromosome and strand == "+":
 					i = i[7:]
-					val[0] = i[start:end+1]
+					a = i.split("\n")
+					i = "".join(a)
+					val[0] = i[start_coord-1:end_coord]
 				elif i.split(" ")[0] == chromosome and strand == "-":
 					i = i[7:]
-					val[0] = reverse_complement(i[start:end+1])
-print d["ENSG00000188157.13"]
+					a = i.split("\n")
+					i = "".join(a)
+					val[0] = reverse_complement(i[start_coord-1:end_coord])
+	#NOTE! The way it is set up does not include the stop codon. Is there a way to add +3 to the end_coord only
+	#      for the last CDS?
+
+
+
