@@ -3,10 +3,20 @@ Andrew Goldfarb
 02/23/2017
 Task: Create a data structure that organizes the "gencode.v25.annotation.gtf" file by genes, transcripts, and CDS.
 """
+import pickle
+import os
+
+# sublime text editor runs from active directory in finder
+# make working directory one where script is located
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
 
 # Create the data structure and fill it with information from "gencode.v25.annotation.gtf"
 d = {}
-for line in open("gencode.v25.annotation.gtf", "r"):
+# for line in open("./data/gencode.v25.annotation.gtf", "r"):
+for line in open("./toy.gtf"):
+	print line
 	if line[0] != "#":
 		fields = line.strip().split("\t")
 		chrom, annot_source, feature, start, end, dot1, strand, dot2, flag = fields
@@ -53,10 +63,13 @@ def reverse_complement(sequence):
 
 #Extract CDS sequences from hg38 and add to data structure
 #MAKE INTO A FUNCTION! INPUT IS THE DICTIONARY
-genome = open("GRCh38.p7.genome.fa").read()
+print 'reading in geneome'
+genome = open("./data/GRCh38.p7.genome.fa").read()
+print 'done reading in genome'
 chrom_header_seq = genome.split(">")[1:26]
 #TODO: make a toy of genome chromosome 22, and get 1 forward and 1 reverse from chr 22
 for g,val in d.items():
+	print g, val
 	chromosome = val[1]
 	transcripts = val[3]
 	for t,val in transcripts.items():
