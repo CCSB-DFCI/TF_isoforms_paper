@@ -6,7 +6,7 @@ Task: Create a data structure that organizes the "gencode.v25.annotation.gtf" fi
 import pickle
 import os
 import functions
-
+# gloria added comment here 170228
 # sublime text editor runs from active directory in finder
 # make working directory one where script is located
 abspath = os.path.abspath(__file__)
