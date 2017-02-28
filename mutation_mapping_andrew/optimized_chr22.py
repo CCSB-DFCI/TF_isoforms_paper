@@ -74,7 +74,7 @@ if not os.path.exists(genome_pickle):
 else:
 	chr22 = pickle.load(open('genome_string.p'))
 	print "test3"
- 
+ #lkajsdf
 CDS_pickle = 'CDS_string_chr22.p'
 if not os.path.exists(CDS_pickle):
 	for g,val_g in d.items():
