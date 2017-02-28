@@ -4,7 +4,6 @@ Andrew Goldfarb
 Task: Create a data structure that organizes the "gencode.v25.annotation.gtf" file by genes, transcripts, and CDS.
 Optimized for chromosome 22 toy file. 0.5 seconds
 """
-#Feb 28
 import pickle
 import os
 import functions
@@ -19,7 +18,6 @@ d_pickle = 'toy_gtf_dict.p'
 if not os.path.exists(d_pickle):
 	# Create the data structure and fill it with information from "gencode.v25.annotation.gtf"
 	d = {}
-	# for line in open("./data/gencode.v25.annotation.gtf", "r"):
 	for line in open("./data/gencode.v25.annotation.gtf"):
 		if line[0] != "#":
 			fields = line.strip().split("\t")
@@ -84,44 +82,35 @@ if not os.path.exists(CDS_pickle):
 			strand = val_t[0]
 			CDSs = val_t[3]
 			for CDS,val_c in CDSs.items():
-				Chr22 = chr22
 				start_coord = int(val_c[1]["abs_start"])
 				end_coord = int(val_c[1]["abs_end"])
-				# for i in chrom_header_seq:
-				# 	if i.split(" ")[0] == chromosome and strand == "+":
-				# 		i = i.split("\n")[1:]
-				# 		i = "".join(i)
-				# 		val[0] = i[start_coord-1:end_coord]
-				# 	elif i.split(" ")[0] == chromosome and strand == "-":
-				# 		i = i.split("\n")[1:]
-				# 		i = "".join(i)
-				# 		val[0] = functions.reverse_complement(i[start_coord-1:end_coord])
-
-					#TO GET RELATIVE COORDINATES:
-					#start = 0
-					#end = 0
-					#start = end + 1
-					#end = start + len(i) - 1
-				if strand == "+":
-					Chr22 = Chr22.split("\n")[1:]
-					Chr22 = "\n".join(Chr22)
-					a = Chr22.split("\n")
-					Chr22 = "".join(Chr22)
-					val[0] = Chr22[start_coord-1:end_coord]
-					full_CDS = full_CDS + val[0]
-					Chr22 = chr22
-				if strand == "-":
-					Chr22 = Chr22.split("\n")[1:]
-					Chr22 = "\n".join(Chr22)
-					a = Chr22.split("\n")
-					Chr22 = "".join(Chr22)
-					val[0] = functions.reverse_complement(Chr22[start_coord-1:end_coord])
-					full_CDS = val[0] + full_CDS
-					Chr22 = chr22
-			full_CDS = val[1]
+				for i in chrom_header_seq:
+					if i.split(" ")[0] == chromosome and strand == "+":
+						i = i.split("\n")[1:]
+						i = "\n".join(i)
+						a = i.split("\n")
+						i = "".join(a)
+						val_c[0] = i[start_coord-1:end_coord]
+						full_CDS = full_CDS + val_c[0]
+						rel_start = rel_end + 1
+						rel_end = rel_start + len(i[start_coord-1:end_coord]) - 1
+						val_c[2]["rel_start"] = rel_start
+						val_c[2]["rel_end"] = rel_end
+					elif i.split(" ")[0] == chromosome and strand == "-":
+						i = i.split("\n")[1:]
+						i = "\n".join(i)
+						a = i.split("\n")
+						i = "".join(a)
+						val_c[0] = functions.reverse_complement(i[start_coord-1:end_coord])
+						full_CDS = full_CDS + val_c[0]
+						rel_start = rel_end + 1
+						rel_end = rel_start + len(i[start_coord-1:end_coord]) - 1
+						val_c[2]["rel_start"] = rel_start
+						val_c[2]["rel_end"] = rel_end
+				d[g][3][t][1] = full_CDS
 	pickle.dump(d, open('CDS_string.p', 'wb'))
 	print "test4"
 else:
 	d = pickle.load(open('CDS_string.p'))
 	print "test5"
-print d
+#print d
