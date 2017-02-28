@@ -1,10 +1,11 @@
 """
 Andrew Goldfarb
 02/23/2017
-Task: Create a data structure that organizes the "gencode.v25.annotation.gtf" file by genes, transcripts, and CDS.
-Optimized for chromosome 22 toy
+Task: Optimized for chromosome 22 toy. Design is complete here, with all design to fill extract CDS sequence, 
+concatenate the CDS sequences, and get the relative coordinates.
+Next: Reorganize so that it can be done for the entire genome!
 """
-#Andrew's comment
+
 import pickle
 import os
 import functions
@@ -58,12 +59,7 @@ else:
 	d = pickle.load(open('toy_gtf_dict.p'))
 	print "test1"
 
-
-#CDS = "ATGAGCACAGGCCTGCGGTACAAGAGCAAGCTGGCGACCCCAGGTGAGGACAAGCAGGTAGACATTGACAAGCAGTACGTGGGCTTCGCCACACTGCCCAACCAGGTGCACCGCAAGTCGGTGAAGAAAGGCTTTGACTTCACACTCATGGTGGCTGGTGGTGAGTCAGGCCTGGGGAAGTCCACACTGGTCCACAGCCTCTTCCTGACAGACTTGTACAAGGACCGGAAGCTGCTCAGTGCTGAGGGTGAGCGCATCAGCCAGACGGTAGAGATTCTAAAACACACGGTGGACATTGAGGAGAAGGGAGTCAAGCTGAAGCTCACCATCGTGGACACGCCGGGATTCGGGGACGCTGTCAACAACACCGAGTGGTGCTGGAAGCCCATCACCGACTATGTGGACCAGCAGTTTGAGCAGTACTTCCGTGATGAGAGCGGCCTCAACCGAAAGAACATCCAAGACAACCGAGTGCACTGCTGCCTATACTTCATCTCCCCCTTCGGGCATGGGTGGCTGCGGCCAGTGGATGTGGGTTTCATGAAGGCATTGCATGAGAAGGTCAACATCGTGCCTCTCATCGCCAAAGCTGACTGTCTTGTCCCCAGTGAGATCCGGAAGCTGAAGGAGCGGGTGATCCGGGAGGAGATTGACAAGTTTGGGATCCATGTATACCAGTTCCCTGAGTGTGACTCGGACGAGGATGAGGACTTCAAGCAGCAGGACCGGGAACTGAAGGTGGAGAGCGCGCCCTTCGCCGTTATAGGCAGCAACACGGTGGTGGAGGCCAAGGGGCAGCGGGTCCGGGGCCGACTGTACCCCTGGGGGATCGTGGAGGGTGTGGAGAACCAGGCGCATTGCGACTTCGTGAAGCTGCGCAACATGCTCATCCGCACGCATATGCACGACCTCAAGGACGTGACGTGCGACGTGCACTACGAGAACTACCGCGCGCACTGCATCCAGCAGATGACCAGGTGCAAACTGACCCAGGACAGCCGCATGGAGAGCCCCATCCCGATCCTGCCGCTGCCCACCCCGGACGCCGAGACTGAGAAGCTTATCAGGATGAAGGATGAGGAAGTACTGAGGCGCATGCAGGAGATGCTGCAGAGGATGAAGCAGCAGATGCAGGACCAGTGA"
-#print functions.reverse_complement(CDS)
-
 print "test2"
-#Extract CDS sequences from hg38 and add to data structure
 #MAKE INTO A FUNCTION! INPUT IS THE DICTIONARY
 #See which step is taking too long
 
@@ -79,13 +75,14 @@ else:
 	chr22 = pickle.load(open('genome_string.p'))
 	print "test3"
  
-#TODO: change the names of "val" below to make them different!
 CDS_pickle = 'CDS_string_chr22.p'
 if not os.path.exists(CDS_pickle):
 	for g,val_g in d.items():
 		chromosome = val_g[1]
 		transcripts = val_g[3]
 		for t,val_t in transcripts.items():
+			rel_start = 0
+			rel_end = 0
 			full_CDS = ""
 			strand = val_t[0]
 			CDSs = val_t[3]
@@ -108,7 +105,10 @@ if not os.path.exists(CDS_pickle):
 					Chr22 = "".join(a)
 					val_c[0] = Chr22[start_coord-1:end_coord]
 					full_CDS = full_CDS + val_c[0]
-					#print full_CDS
+					rel_start = rel_end + 1
+					rel_end = rel_start + len(Chr22[start_coord-1:end_coord]) - 1
+					val_c[2]["rel_start"] = rel_start
+					val_c[2]["rel_end"] = rel_end
 					Chr22 = chr22
 			#elif chr22.split(" ")[0] == chromosome and strand == "-":
 				if strand == "-":
@@ -118,6 +118,10 @@ if not os.path.exists(CDS_pickle):
 					Chr22 = "".join(a)
 					val_c[0] = functions.reverse_complement(Chr22[start_coord-1:end_coord])
 					full_CDS = full_CDS + val_c[0]
+					rel_start = rel_end + 1
+					rel_end = rel_start + len(Chr22[start_coord-1:end_coord]) - 1
+					val_c[2]["rel_start"] = rel_start
+					val_c[2]["rel_end"] = rel_end
 					Chr22 = chr22
 			d[g][3][t][1] = full_CDS
 	pickle.dump(d, open('CDS_string_chr22.p', 'wb'))
