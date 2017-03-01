@@ -1,6 +1,6 @@
 # **********GS_TODO: convert to function 'filter_for_coding_variants', docstrings
 d = {}
-for line in open("HGMD_allmut.tsv", "r"):
+for line in open("./data/HGMD_allmut.tsv", "r"):
 	fields = line.strip().split("\t")
 	if fields[7] == "NULL" and fields[8] == "NULL" and fields[6] != "NULL":
 		# **********GS_TODO: convert all trailing lines to <80 char with 
