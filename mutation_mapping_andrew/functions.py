@@ -135,5 +135,31 @@ def populate_gene_annot_struc(gencode_file):
 #print populate_gene_annot_struc("chr22_toy.gtf")
 
 
+
+#Function to filter "HGMD_allmut.tsv" file for lines that contain missense/nonsense mutations.
+#Make docstrings!
+def filter_for_coding_variants(mutation_file):
+	lines_w_point_mutations = []
+	for line in open(mutation_file):
+		fields = line.strip().split("\t")
+		if fields[7] == "NULL" and fields[8] == "NULL" and fields[6] != "NULL":
+			lines_w_point_mutations.append(line)
+	return lines_w_point_mutations
+
+#Function to create and populate the data structure containing HGMD mutation information.
+#Make docstrings!
+#Keep lines under 80 characters!!! Use parentheses
+def populate_variant_struc(lines_w_point_mutations):
+	mutations_dict = {}
+	for line in open(lines_w_point_mutations):
+		fields = line.strip().split("\t")
+		disease, gene, chrom, genename, gdbid, omimid, amino, deletion, insertion, codon, codonAff, descr, hgvs, hgvsAll, dbsnp, chromosome, startCoord, endCoord, tag, author, fullname, allname, vol, page, year, pmid, reftag, comments, acc_num, new_date, base = fields
+		ref_nt = hgvs[-3]
+		mut_nt = hgvs[-1]
+		ref_AA = amino.split("-")[0]
+		mut_AA = amino.split("-")[1]
+		mutations_dict[gene + " " + startCoord] = [{"disease": disease, "gene": gene, "chromosome": chromosome, "coordinate":startCoord, "ref_nt": ref_nt, "mut_nt": mut_nt, "ref_AA": ref_AA, "mut_AA": mut_AA}]
+	return mutations_dict
+
 # **********GS_TODO: if time, add tester function, rather than now-commented out lines
 # need to sit and discuss before staring
