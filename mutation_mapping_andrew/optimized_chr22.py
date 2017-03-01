@@ -16,6 +16,8 @@ abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
 
+# **********GS_TODO: convert to function 'populate_gene_annot_struc', add docstrings*
+# *docstrings follow PEP247 format -> https://www.python.org/dev/peps/pep-0257/
 d_pickle = 'toy_gtf_dict.p'
 if not os.path.exists(d_pickle):
 	# Create the data structure and fill it with information from "gencode.v25.annotation.gtf"
@@ -63,6 +65,7 @@ print "test2"
 #MAKE INTO A FUNCTION! INPUT IS THE DICTIONARY
 #See which step is taking too long
 
+# **********GS_TODO: convert to function 'load_reference_genome', docstrings
 genome_pickle = 'genome_string.p'
 if not os.path.exists(genome_pickle):
 	genome = open('GRCh38.p7.genome.fa').read()
@@ -74,7 +77,12 @@ if not os.path.exists(genome_pickle):
 else:
 	chr22 = pickle.load(open('genome_string.p'))
 	print "test3"
- #lkajsdf
+
+# **********GS_TODO: convert to two functions 
+# 'populate_struc_w_extracted_cds'
+# 'populate_cds_relative_coords'
+# What else is going on in this loop that can be broken down into functions?
+# Discuss with me to decide on final function lists.
 CDS_pickle = 'CDS_string_chr22.p'
 if not os.path.exists(CDS_pickle):
 	for g,val_g in d.items():

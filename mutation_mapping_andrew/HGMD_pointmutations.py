@@ -4,6 +4,7 @@ Andrew Goldfarb
 Filters "HGMD_allmut.tsv" to include only missense/nonsense mutations.
 """
 
+# **********GS_TODO: convert to function 'populate_variants_struc', format, docstrings
 HGMD_file = open("HGMD_allmut.tsv", "r")
 
 HGMD_lines = []
