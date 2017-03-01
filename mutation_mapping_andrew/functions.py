@@ -5,6 +5,7 @@ Listing all of the functions that I will use for mutational mapping
 """
 #Function for translating a sequence
 def translate_cds(sequence):
+
 	"""Function: tranlsate a given nucleotide sequence into an amino acid sequence.
 
 	Argument:
@@ -52,6 +53,7 @@ def translate_cds(sequence):
 
 #Function for getting the reverse complement of a sequence
 def reverse_complement(sequence):
+
 	"""Function: generate the reverse complement for a given nucleotide sequence
 
 	Argument:
@@ -81,6 +83,7 @@ def reverse_complement(sequence):
 
 #Function to create and populate the data structure containing gene annotation information.
 def populate_gene_annot_struc(gencode_file):
+
 	"""Function: Create the data structure and fill it with information from "gencode.v25.annotation.gtf"
 
 	Argument:
@@ -136,22 +139,59 @@ def populate_gene_annot_struc(gencode_file):
 
 
 
+
 #Function to filter "HGMD_allmut.tsv" file for lines that contain missense/nonsense mutations.
-#Make docstrings!
 def filter_for_coding_variants(mutation_file):
+
+	"""Function: Filter the HGMD file "HGMD_allmut.tsv" for lines that include data for point/nonsense mutations only.
+
+	Argument:
+	mutation_file -- a file input that contains all mutational information associated with disease
+					Function is specific to HGMD format, such as "HGMD_allmut.tsv"
+
+	Output:
+	lines_w_point_mutations -- a list of the lines from the input file that contain point/nonsense mutation data.
+							Lines that contained mutations that aren't point/nonsense mutations are not included.
+
+	For mutational mapping:
+	The file "HGMD_allmut.tsv" is inputted and read line-by-line. Lines that contain point/nonsense mutations
+	are added to a list. This list is the output."""
+
+
 	lines_w_point_mutations = []
 	for line in open(mutation_file):
 		fields = line.strip().split("\t")
 		if fields[7] == "NULL" and fields[8] == "NULL" and fields[6] != "NULL":
 			lines_w_point_mutations.append(line)
 	return lines_w_point_mutations
+#filter_for_coding_variants("./data/HGMD_allmut.tsv")
+
+
+
 
 #Function to create and populate the data structure containing HGMD mutation information.
-#Make docstrings!
 #Keep lines under 80 characters!!! Use parentheses
 def populate_variant_struc(lines_w_point_mutations):
+
+	"""Function: Create and populate a data structure containing HGMD point mutation information.
+
+	Argument:
+	lines_w_point_mutations -- a list, where each index is a line from "HGMD_allmut.tsv" that has a
+							missense/nonsense mutation. *** This input is the output of the 
+							"filter_for_coding_variants" function!!!
+
+	Output:
+	mutations_dict -- a dictionary, containing the data structure that summarizes HGMD mutation information.
+
+	For mutational mapping:
+	First, the lines from "HGMD_allmut.tsv" containing missense/nonsense mutations are filtered into a list by
+	the "filter_for_coding_variants" function, which outputs a list of these lines. In this function,
+	"populate_variant_struc", the input is this list. The function goes through the list, extracting relevant
+	information and organizing it into a dictionary, the output."""
+
+
 	mutations_dict = {}
-	for line in open(lines_w_point_mutations):
+	for line in lines_w_point_mutations:
 		fields = line.strip().split("\t")
 		disease, gene, chrom, genename, gdbid, omimid, amino, deletion, insertion, codon, codonAff, descr, hgvs, hgvsAll, dbsnp, chromosome, startCoord, endCoord, tag, author, fullname, allname, vol, page, year, pmid, reftag, comments, acc_num, new_date, base = fields
 		ref_nt = hgvs[-3]
@@ -160,6 +200,43 @@ def populate_variant_struc(lines_w_point_mutations):
 		mut_AA = amino.split("-")[1]
 		mutations_dict[gene + " " + startCoord] = [{"disease": disease, "gene": gene, "chromosome": chromosome, "coordinate":startCoord, "ref_nt": ref_nt, "mut_nt": mut_nt, "ref_AA": ref_AA, "mut_AA": mut_AA}]
 	return mutations_dict
+#print populate_variant_struc(filter_for_coding_variants("./data/HGMD_allmut.tsv"))["A2ML1 8851954"]
+
+
+
+#Function: Load genome sequence data into a dictionary: key = "chr#", value = sequence
+def load_reference_genome(genome_file):
+
+	"""Function: Load genome sequence data into a dictionary, where key is "chr#" and
+		value is the sequence.
+
+		Argument:
+		genome_file -- a file input in fasta format that contains the entire sequence of
+					each chromosome. The format for this function is based on "GRCh38.p7.genome.fa".
+
+		Output:
+		genome_dict -- a dictionary that organizes the fasta file, where the key is "chr#" and the
+					value is the sequence for that chromosome.
+
+		For mutational mapping:
+		The input file is the "GRCh38.p7.genome.fa" fasta file. Output is a dictionary containing 
+		the sequence of chromosomes 1-22, X, Y, and M (mitochondrial), so 25 items total. """
+
+
+	genome_dict = {}
+	genome = open(genome_file).read()
+	chrom_header_seq = genome.split(">")[1:26]
+	for i in chrom_header_seq:
+		chrom_key = i.split(" ")[0]
+		i = i.split("\n")[1:]
+		i = "\n".join(i)
+		a = i.split("\n")
+		seq = "".join(a)
+		chrom_seq = seq
+		genome_dict[chrom_key] = chrom_seq
+	return genome_dict
+#print len(load_reference_genome("GRCh38.p7.genome.fa"))
+
 
 # **********GS_TODO: if time, add tester function, rather than now-commented out lines
 # need to sit and discuss before staring
