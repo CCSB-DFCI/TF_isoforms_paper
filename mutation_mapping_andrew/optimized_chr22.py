@@ -66,16 +66,23 @@ print "test2"
 #See which step is taking too long
 
 # **********GS_TODO: convert to function 'load_reference_genome', docstrings
+genome_dict = {}
 genome_pickle = 'genome_string.p'
 if not os.path.exists(genome_pickle):
 	genome = open('GRCh38.p7.genome.fa').read()
 	chrom_header_seq = genome.split(">")[1:26]
 	for i in chrom_header_seq:
-		if "chr22 " in i:
-			chr22 = i
-	pickle.dump(chr22, open('genome_string.p', 'wb'))
+		chrom_key = i.split(" ")[0]
+		i = i.split("\n")[1:0]
+		i = "\n".join(i)
+		a = i.split("\n")
+		seq = "".join(a)
+		chrom_seq = seq
+		genome_dict[chrom_key] = chrom_seq
+	#instead of a list, organize into a dictionary. Key is "chr#", value is chromosome sequence
+	pickle.dump(genome_dict, open('genome_string.p', 'wb'))
 else:
-	chr22 = pickle.load(open('genome_string.p'))
+	genome_dict = pickle.load(open('genome_string.p'))
 	print "test3"
 
 # **********GS_TODO: convert to two functions 

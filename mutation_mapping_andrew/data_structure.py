@@ -14,8 +14,8 @@ abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
 
-# **********GS_TODO: convert to function 'populate_gene_annot_struc', add docstrings*
-# *docstrings follow PEP247 format -> https://www.python.org/dev/peps/pep-0257/
+#**********GS_TODO: convert to function 'populate_gene_annot_struc', add docstrings*
+#*docstrings follow PEP247 format -> https://www.python.org/dev/peps/pep-0257/
 d_pickle = 'toy_gtf_dict.p'
 if not os.path.exists(d_pickle):
 	# Create the data structure and fill it with information from "gencode.v25.annotation.gtf"
@@ -50,7 +50,6 @@ if not os.path.exists(d_pickle):
 				ENSG = words[1][1:-2]
 				if ENSG in d:
 					cdss = d[ENSG][3][ENST][3]
-					#changed the number of indices in 
 					if CDS_index not in cdss:
 						d[ENSG][3][ENST][3][CDS_index] = ["", {"abs_start": start, "abs_end": end}, {}]
 
@@ -64,16 +63,27 @@ print "test2"
 # **********GS_TODO: convert to function 'load_reference_genome', docstrings
 genome_pickle = 'genome_string.p'
 if not os.path.exists(genome_pickle):
+	genome_dict = {}
 	genome = open('GRCh38.p7.genome.fa').read()
 	chrom_header_seq = genome.split(">")[1:26]
-	pickle.dump(chrom_header_seq, open('genome_string.p', 'wb'))
+	for i in chrom_header_seq:
+		chrom_key = i.split(" ")[0]
+		i = i.split("\n")[1:]
+		i = "\n".join(i)
+		a = i.split("\n")
+		seq = "".join(a)
+		chrom_seq = seq
+		genome_dict[chrom_key] = chrom_seq
+		#instead of a list, organize into a dictionary. Key is "chr#", value is chromosome sequence
+	pickle.dump(genome_dict, open('genome_string.p', 'wb'))
 else:
-	chrom_header_seq = pickle.load(open('genome_string.p'))
+	genome_dict = pickle.load(open('genome_string.p'))
 	print "test3"
-
-# **********GS_TODO: convert to two functions 
-# 'populate_struc_w_extracted_cds'
-# 'populate_cds_relative_coords'
+print "test4"
+#**********GS_TODO: convert to two functions 
+#'extract_cds_sequence_from_genome' (chromosome, start_coord, end_coord, chrom_header_seq). Output: CDS sequence
+#'concatenate_cds_set'
+#'compute_relative_coords_for_cds_set'
 CDS_pickle = 'CDS_string.p'
 if not os.path.exists(CDS_pickle):
 	for g,val_g in d.items():
@@ -88,33 +98,26 @@ if not os.path.exists(CDS_pickle):
 			for CDS,val_c in CDSs.items():
 				start_coord = int(val_c[1]["abs_start"])
 				end_coord = int(val_c[1]["abs_end"])
-				for i in chrom_header_seq:
-					if i.split(" ")[0] == chromosome and strand == "+":
-						i = i.split("\n")[1:]
-						i = "\n".join(i)
-						a = i.split("\n")
-						i = "".join(a)
-						val_c[0] = i[start_coord-1:end_coord]
-						full_CDS = full_CDS + val_c[0]
-						rel_start = rel_end + 1
-						rel_end = rel_start + len(i[start_coord-1:end_coord]) - 1
-						val_c[2]["rel_start"] = rel_start
-						val_c[2]["rel_end"] = rel_end
-					elif i.split(" ")[0] == chromosome and strand == "-":
-						i = i.split("\n")[1:]
-						i = "\n".join(i)
-						a = i.split("\n")
-						i = "".join(a)
-						val_c[0] = functions.reverse_complement(i[start_coord-1:end_coord])
-						full_CDS = full_CDS + val_c[0]
-						rel_start = rel_end + 1
-						rel_end = rel_start + len(i[start_coord-1:end_coord]) - 1
-						val_c[2]["rel_start"] = rel_start
-						val_c[2]["rel_end"] = rel_end
+				if chromosome in genome_dict and strand == "+":
+					chrom_sequence = genome_dict[chromosome]
+					val_c[0] = chrom_sequence[start_coord-1:end_coord]
+					full_CDS = full_CDS + val_c[0]
+					rel_start = rel_end + 1
+					rel_end = rel_start + len(chrom_sequence[start_coord-1:end_coord]) - 1
+					val_c[2]["rel_start"] = rel_start
+					val_c[2]["rel_end"] = rel_end
+				if chromosome in genome_dict and strand == "-":
+					chrom_sequence = genome_dict[chromosome]
+					val_c[0] = functions.reverse_complement(chrom_sequence[start_coord-1:end_coord])
+					full_CDS = full_CDS + val_c[0]
+					rel_start = rel_end + 1
+					rel_end = rel_start + len(chrom_sequence[start_coord-1:end_coord]) - 1
+					val_c[2]["rel_start"] = rel_start
+					val_c[2]["rel_end"] = rel_end
 				d[g][3][t][1] = full_CDS
 	pickle.dump(d, open('CDS_string.p', 'wb'))
-	print "test4"
+	print "test5"
 else:
 	d = pickle.load(open('CDS_string.p'))
-	print "test5"
-#print d
+	print "test6"
+#print d["ENSG00000279457.3"]

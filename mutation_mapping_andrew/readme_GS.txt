@@ -19,14 +19,7 @@ reverse_complement
 Modules:
 populate_data
 sequence_funcs
-
-
-
-
-Delete these files:
-'filter_gtf_to_CDS.py'
-'first_draft.py'
-
+manipulate_data
 
 
 Style consistency when incorporating others' code:
