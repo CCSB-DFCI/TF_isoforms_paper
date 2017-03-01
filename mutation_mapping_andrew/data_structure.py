@@ -7,13 +7,15 @@ Optimized for chromosome 22 toy file. 0.5 seconds
 import pickle
 import os
 import functions
-# gloria added comment here 170228
+
 # sublime text editor runs from active directory in finder
 # make working directory one where script is located
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
 
+# **********GS_TODO: convert to function 'populate_gene_annot_struc', add docstrings*
+# *docstrings follow PEP247 format -> https://www.python.org/dev/peps/pep-0257/
 d_pickle = 'toy_gtf_dict.p'
 if not os.path.exists(d_pickle):
 	# Create the data structure and fill it with information from "gencode.v25.annotation.gtf"
@@ -59,8 +61,7 @@ else:
 
 print "test2"
 
-#MAKE INTO A FUNCTION! INPUT IS THE DICTIONARY
-
+# **********GS_TODO: convert to function 'load_reference_genome', docstrings
 genome_pickle = 'genome_string.p'
 if not os.path.exists(genome_pickle):
 	genome = open('GRCh38.p7.genome.fa').read()
@@ -70,6 +71,9 @@ else:
 	chrom_header_seq = pickle.load(open('genome_string.p'))
 	print "test3"
 
+# **********GS_TODO: convert to two functions 
+# 'populate_struc_w_extracted_cds'
+# 'populate_cds_relative_coords'
 CDS_pickle = 'CDS_string.p'
 if not os.path.exists(CDS_pickle):
 	for g,val_g in d.items():
