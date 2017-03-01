@@ -1,9 +1,24 @@
-# **********GS_TODO: function name to translate_cds, unify code sytle, add docstrings, 
-# spacing to discriminate functional blocks
-#Function for translating a concatenated CDS
-def translate(sequence):
+"""
+Andrew Goldfarb
+03/01/2017
+Listing all of the functions that I will use for mutational mapping
+"""
+#Function for translating a sequence
+def translate_cds(sequence):
+	"""Function: tranlsate a given nucleotide sequence into an amino acid sequence.
 
-	GeneticCode_dict = {
+	Argument:
+	sequence -- a nucleotide sequence
+
+	Output:
+	protein -- the translated amino acid sequence of the inputted sequence.
+
+	For mutational mapping:
+	The inputted sequence will be the concatenated CDSs for a given transcript.
+	The output will be the amino acid sequence of that transcript's coding sequence."""
+
+
+	genetic_code_dict = {
 	    "TTT":"F", "TTC":"F", "TTA":"L", "TTG":"L",
 	    "TCT":"S", "TCC":"S", "TCA":"S", "TCG":"S",
 	    "TAT":"Y", "TAC":"Y", "TAA":None, "TAG":None,
@@ -24,27 +39,100 @@ def translate(sequence):
 	protein_seq = []
 	for i in range(0, len(sequence), 3):
 		codon = sequence[i:(i+3)]
-		if GeneticCode_dict.get(codon) != None and codon in GeneticCode_dict:
-			protein_seq.append(GeneticCode_dict.get(codon))
+		if genetic_code_dict.get(codon) != None and codon in genetic_code_dict:
+			protein_seq.append(genetic_code_dict.get(codon))
 			protein = "".join(protein_seq)
 	return protein
 
 #CDS = "ATGAGCACAGGCCTGCGGTACAAGAGCAAGCTGGCGACCCCAGGTGAGGACAAGCAGGTAGACATTGACAAGCAGTACGTGGGCTTCGCCACACTGCCCAACCAGGTGCACCGCAAGTCGGTGAAGAAAGGCTTTGACTTCACACTCATGGTGGCTGGTGGTGAGTCAGGCCTGGGGAAGTCCACACTGGTCCACAGCCTCTTCCTGACAGACTTGTACAAGGACCGGAAGCTGCTCAGTGCTGAGGGTGAGCGCATCAGCCAGACGGTAGAGATTCTAAAACACACGGTGGACATTGAGGAGAAGGGAGTCAAGCTGAAGCTCACCATCGTGGACACGCCGGGATTCGGGGACGCTGTCAACAACACCGAGTGGTGCTGGAAGCCCATCACCGACTATGTGGACCAGCAGTTTGAGCAGTACTTCCGTGATGAGAGCGGCCTCAACCGAAAGAACATCCAAGACAACCGAGTGCACTGCTGCCTATACTTCATCTCCCCCTTCGGGCATGGGTGGCTGCGGCCAGTGGATGTGGGTTTCATGAAGGCATTGCATGAGAAGGTCAACATCGTGCCTCTCATCGCCAAAGCTGACTGTCTTGTCCCCAGTGAGATCCGGAAGCTGAAGGAGCGGGTGATCCGGGAGGAGATTGACAAGTTTGGGATCCATGTATACCAGTTCCCTGAGTGTGACTCGGACGAGGATGAGGACTTCAAGCAGCAGGACCGGGAACTGAAGGTGGAGAGCGCGCCCTTCGCCGTTATAGGCAGCAACACGGTGGTGGAGGCCAAGGGGCAGCGGGTCCGGGGCCGACTGTACCCCTGGGGGATCGTGGAGGGTGTGGAGAACCAGGCGCATTGCGACTTCGTGAAGCTGCGCAACATGCTCATCCGCACGCATATGCACGACCTCAAGGACGTGACGTGCGACGTGCACTACGAGAACTACCGCGCGCACTGCATCCAGCAGATGACCAGGTGCAAACTGACCCAGGACAGCCGCATGGAGAGCCCCATCCCGATCCTGCCGCTGCCCACCCCGGACGCCGAGACTGAGAAGCTTATCAGGATGAAGGATGAGGAAGTACTGAGGCGCATGCAGGAGATGCTGCAGAGGATGAAGCAGCAGATGCAGGACCAGTGA"
-#print translate(CDS)
+#print translate_cds(CDS)
 
 
-# **********GS_TODO: unify code style, add docstrings, spacing clearer
-#Function for getting reverse complement of a sequence
+
+
+#Function for getting the reverse complement of a sequence
 def reverse_complement(sequence):
-    
-    Complements = {"A":"T", "C":"G", "G":"C", "T":"A"}
+	"""Function: generate the reverse complement for a given nucleotide sequence
 
-    reverse_seq = ""
-    for s in reversed(sequence):
-        reverse_seq += Complements.get(s, s)
-    return reverse_seq
+	Argument:
+	sequence -- a nucleotide sequence
+
+	Output:
+	reverse_seq -- the reverse complement of the inputted sequence
+
+	For mutational mapping:
+	The annotated genome "GRCh38.p7.genome.fa" provides only the positive-strand sequence.
+	But CDS sequences that we want to extract are on the negative strand.
+	For negative-stranded CDS's, we use the coordinates to get the positive-stranded complement,
+	then use the reverse_complement function to get the sequence we are interested in."""
+    
+
+	complements = {"A":"T", "C":"G", "G":"C", "T":"A"}
+
+	reverse_seq = ""
+	for s in reversed(sequence):
+		reverse_seq += complements.get(s, s)
+	return reverse_seq
 #CDS = "ATGAGCACAGGCCTGCGGTACAAGAGCAAGCTGGCGACCCCAGGTGAGGACAAGCAGGTAGACATTGACAAGCAGTACGTGGGCTTCGCCACACTGCCCAACCAGGTGCACCGCAAGTCGGTGAAGAAAGGCTTTGACTTCACACTCATGGTGGCTGGTGGTGAGTCAGGCCTGGGGAAGTCCACACTGGTCCACAGCCTCTTCCTGACAGACTTGTACAAGGACCGGAAGCTGCTCAGTGCTGAGGGTGAGCGCATCAGCCAGACGGTAGAGATTCTAAAACACACGGTGGACATTGAGGAGAAGGGAGTCAAGCTGAAGCTCACCATCGTGGACACGCCGGGATTCGGGGACGCTGTCAACAACACCGAGTGGTGCTGGAAGCCCATCACCGACTATGTGGACCAGCAGTTTGAGCAGTACTTCCGTGATGAGAGCGGCCTCAACCGAAAGAACATCCAAGACAACCGAGTGCACTGCTGCCTATACTTCATCTCCCCCTTCGGGCATGGGTGGCTGCGGCCAGTGGATGTGGGTTTCATGAAGGCATTGCATGAGAAGGTCAACATCGTGCCTCTCATCGCCAAAGCTGACTGTCTTGTCCCCAGTGAGATCCGGAAGCTGAAGGAGCGGGTGATCCGGGAGGAGATTGACAAGTTTGGGATCCATGTATACCAGTTCCCTGAGTGTGACTCGGACGAGGATGAGGACTTCAAGCAGCAGGACCGGGAACTGAAGGTGGAGAGCGCGCCCTTCGCCGTTATAGGCAGCAACACGGTGGTGGAGGCCAAGGGGCAGCGGGTCCGGGGCCGACTGTACCCCTGGGGGATCGTGGAGGGTGTGGAGAACCAGGCGCATTGCGACTTCGTGAAGCTGCGCAACATGCTCATCCGCACGCATATGCACGACCTCAAGGACGTGACGTGCGACGTGCACTACGAGAACTACCGCGCGCACTGCATCCAGCAGATGACCAGGTGCAAACTGACCCAGGACAGCCGCATGGAGAGCCCCATCCCGATCCTGCCGCTGCCCACCCCGGACGCCGAGACTGAGAAGCTTATCAGGATGAAGGATGAGGAAGTACTGAGGCGCATGCAGGAGATGCTGCAGAGGATGAAGCAGCAGATGCAGGACCAGTGA"
 #print reverse_complement(CDS)
+
+
+
+
+#Function to create and populate the data structure containing gene annotation information.
+def populate_gene_annot_struc(gencode_file):
+	"""Function: Create the data structure and fill it with information from "gencode.v25.annotation.gtf"
+
+	Argument:
+	gencode_file -- a file input that contains the information needed to populate the data structure.
+					Function is specific for gencode format, such as "gencode.v25.annotation.gtf".
+
+	Output:
+	d -- the data structure populated with information from the input file.
+		Some positions in the data structure are left unpopulated, to be populated by later functions.
+
+	For mutational mapping:
+	The file "gencode.v25.annotation.gtf" is inputted and read line-by-line to populate the data structure
+	with relevant information. Data structure is organized the following way:
+		d{gene:[gene_name, chromosome, {start: # , end: #}, {transcript: [strand, full_CDS_sequence, {start: # , end: #},
+		{CDS: [CDS_sequence, {abs_start: #, abs_end: #}, {rel_start: #, rel_end: #}]}]}]}"""
+
+
+	d = {}
+	for line in open(gencode_file):
+		if line[0] != "#":
+			fields = line.strip().split("\t")
+			chrom, annot_source, feature, start, end, dot1, strand, dot2, flag = fields
+
+			if feature == "gene" and "protein_coding" in flag:
+				words = flag.split(" ")
+				ENSG = words[1][1:-2]
+				gene_name = words[7][1:-2]
+				if ENSG not in d:
+					d[ENSG] = [gene_name, chrom, {"start": start, "end": end}, {}]
+
+			elif feature == "transcript" and "protein_coding" in flag:
+				words = flag.split(" ")
+				ENST = words[3][1:-2]
+				ENSG = words[1][1:-2]
+				if ENSG in d:
+					ensts = d[ENSG][3]
+					if ENST not in ensts:
+						d[ENSG][3][ENST] = [strand, "", {"start": start, "end": end}, {}]
+					else:
+						print "error"
+
+			elif feature == "CDS" and "protein_coding" in flag:
+				words = flag.split(" ")
+				CDS_index = int(words[17][0:-1])
+				ENST = words[3][1:-2]
+				ENSG = words[1][1:-2]
+				if ENSG in d:
+					cdss = d[ENSG][3][ENST][3]
+					if CDS_index not in cdss:
+						d[ENSG][3][ENST][3][CDS_index] = ["", {"abs_start": start, "abs_end": end}, {}]
+	return d
+#print populate_gene_annot_struc("chr22_toy.gtf")
 
 
 # **********GS_TODO: if time, add tester function, rather than now-commented out lines
