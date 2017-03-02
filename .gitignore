@@ -1,9 +1,14 @@
+# directory of large data files
+data 
+
+# ignore these other data files
+gencode.v25.annotation.gtf
 *.fa
 *.fasta
-gencode.v25.annotation.gtf
 *.gff3
 *.vcf
 *.csv
 *.tsv
-data
 
+.DS_Store
+*.pyc
