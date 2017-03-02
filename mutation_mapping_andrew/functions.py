@@ -4,6 +4,7 @@ Andrew Goldfarb
 Listing all of the functions that I will use for mutational mapping
 """
 #Function for translating a sequence
+#Keep lines under 80 characters!!! Use parentheses
 def translate_cds(sequence):
 
 	"""Function: tranlsate a given nucleotide sequence into an amino acid sequence.
@@ -52,6 +53,7 @@ def translate_cds(sequence):
 
 
 #Function for getting the reverse complement of a sequence
+#Keep lines under 80 characters!!! Use parentheses
 def reverse_complement(sequence):
 
 	"""Function: generate the reverse complement for a given nucleotide sequence
@@ -64,7 +66,7 @@ def reverse_complement(sequence):
 
 	For mutational mapping:
 	The annotated genome "GRCh38.p7.genome.fa" provides only the positive-strand sequence.
-	But CDS sequences that we want to extract are on the negative strand.
+	But some CDS sequences that we want to extract are on the negative strand.
 	For negative-stranded CDS's, we use the coordinates to get the positive-stranded complement,
 	then use the reverse_complement function to get the sequence we are interested in."""
     
@@ -164,7 +166,7 @@ def filter_for_coding_variants(mutation_file):
 		if fields[7] == "NULL" and fields[8] == "NULL" and fields[6] != "NULL":
 			lines_w_point_mutations.append(line)
 	return lines_w_point_mutations
-#filter_for_coding_variants("./data/HGMD_allmut.tsv")
+#print len(filter_for_coding_variants("./data/HGMD_allmut.tsv"))
 
 
 
@@ -185,7 +187,7 @@ def populate_variant_struc(lines_w_point_mutations):
 
 	For mutational mapping:
 	First, the lines from "HGMD_allmut.tsv" containing missense/nonsense mutations are filtered into a list by
-	the "filter_for_coding_variants" function, which outputs a list of these lines. In this function,
+	the "filter_for_coding_variants" function, which outputs a list of these lines. In the current function,
 	"populate_variant_struc", the input is this list. The function goes through the list, extracting relevant
 	information and organizing it into a dictionary, the output."""
 
@@ -236,6 +238,48 @@ def load_reference_genome(genome_file):
 		genome_dict[chrom_key] = chrom_seq
 	return genome_dict
 #print len(load_reference_genome("GRCh38.p7.genome.fa"))
+
+
+
+
+
+def extract_cds_sequence_from_genome(chromosome, start_coord, end_coord, genome_dict):
+
+	# start_coord = int(val_c[1]["abs_start"])
+	# end_coord = int(val_c[1]["abs_end"])
+	# if chromosome in genome_dict and strand == "+":
+	# 	chrom_sequence = genome_dict[chromosome]
+	# 	val_c[0] = chrom_sequence[start_coord-1:end_coord]
+	# if chromosome in genome_dict and strand == "-":
+	# 	chrom_sequence = genome_dict[chromosome]
+	# 	val_c[0] = functions.reverse_complement(chrom_sequence[start_coord-1:end_coord])
+def populate_struc_w_extracted_cds():
+
+
+
+def concatenate_cds_set():
+
+	#full_CDS = full_CDS + val_c[0]
+
+
+def compute_relative_coords_for_cds_set():
+
+	# rel_start = rel_end + 1
+	# rel_end = rel_start + len(chrom_sequence[start_coord-1:end_coord]) - 1
+
+def populate_cds_relative_coords():
+
+	# val_c[2]["rel_start"] = rel_start
+	# val_c[2]["rel_end"] = rel_end
+
+
+
+def populate_concatenated_cds_set():
+
+	#d[g][3][t][1] = full_CDS
+
+
+
 
 
 # **********GS_TODO: if time, add tester function, rather than now-commented out lines
