@@ -81,7 +81,7 @@ else:
 	print "test3"
 print "test4"
 #**********GS_TODO: convert to two functions 
-#'extract_cds_sequence_from_genome' (chromosome, start_coord, end_coord, chrom_header_seq). Output: CDS sequence
+#'extract_cds_sequence_from_genome' (chromosome, start_coord, end_coord, genome_dict). Output: CDS sequence
 #'concatenate_cds_set'
 #'compute_relative_coords_for_cds_set'
 CDS_pickle = 'CDS_string.p'
