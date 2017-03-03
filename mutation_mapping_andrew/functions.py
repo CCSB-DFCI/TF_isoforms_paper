@@ -77,8 +77,16 @@ def reverse_complement(sequence):
 	for s in reversed(sequence):
 		reverse_seq += complements.get(s, s)
 	return reverse_seq
+
+def complement(sequence):
+	complements = {"A":"T", "C":"G", "G":"C", "T":"A"}
+
+	complement_seq = ""
+	for s in sequence:
+		 complement_seq += complements.get(s, s)
+	return complement_seq
 #CDS = "ATGAGCACAGGCCTGCGGTACAAGAGCAAGCTGGCGACCCCAGGTGAGGACAAGCAGGTAGACATTGACAAGCAGTACGTGGGCTTCGCCACACTGCCCAACCAGGTGCACCGCAAGTCGGTGAAGAAAGGCTTTGACTTCACACTCATGGTGGCTGGTGGTGAGTCAGGCCTGGGGAAGTCCACACTGGTCCACAGCCTCTTCCTGACAGACTTGTACAAGGACCGGAAGCTGCTCAGTGCTGAGGGTGAGCGCATCAGCCAGACGGTAGAGATTCTAAAACACACGGTGGACATTGAGGAGAAGGGAGTCAAGCTGAAGCTCACCATCGTGGACACGCCGGGATTCGGGGACGCTGTCAACAACACCGAGTGGTGCTGGAAGCCCATCACCGACTATGTGGACCAGCAGTTTGAGCAGTACTTCCGTGATGAGAGCGGCCTCAACCGAAAGAACATCCAAGACAACCGAGTGCACTGCTGCCTATACTTCATCTCCCCCTTCGGGCATGGGTGGCTGCGGCCAGTGGATGTGGGTTTCATGAAGGCATTGCATGAGAAGGTCAACATCGTGCCTCTCATCGCCAAAGCTGACTGTCTTGTCCCCAGTGAGATCCGGAAGCTGAAGGAGCGGGTGATCCGGGAGGAGATTGACAAGTTTGGGATCCATGTATACCAGTTCCCTGAGTGTGACTCGGACGAGGATGAGGACTTCAAGCAGCAGGACCGGGAACTGAAGGTGGAGAGCGCGCCCTTCGCCGTTATAGGCAGCAACACGGTGGTGGAGGCCAAGGGGCAGCGGGTCCGGGGCCGACTGTACCCCTGGGGGATCGTGGAGGGTGTGGAGAACCAGGCGCATTGCGACTTCGTGAAGCTGCGCAACATGCTCATCCGCACGCATATGCACGACCTCAAGGACGTGACGTGCGACGTGCACTACGAGAACTACCGCGCGCACTGCATCCAGCAGATGACCAGGTGCAAACTGACCCAGGACAGCCGCATGGAGAGCCCCATCCCGATCCTGCCGCTGCCCACCCCGGACGCCGAGACTGAGAAGCTTATCAGGATGAAGGATGAGGAAGTACTGAGGCGCATGCAGGAGATGCTGCAGAGGATGAAGCAGCAGATGCAGGACCAGTGA"
-#print reverse_complement(CDS)
+#print complement(CDS)
 
 
 
@@ -123,7 +131,7 @@ def populate_gene_annot_struc(gencode_file):
 				if ENSG in d:
 					ensts = d[ENSG][3]
 					if ENST not in ensts:
-						d[ENSG][3][ENST] = [strand, "", {"start": start, "end": end}, {}]
+						d[ENSG][3][ENST] = [strand, {"start": start, "end": end}, {}]
 					else:
 						print "error"
 
@@ -133,9 +141,9 @@ def populate_gene_annot_struc(gencode_file):
 				ENST = words[3][1:-2]
 				ENSG = words[1][1:-2]
 				if ENSG in d:
-					cdss = d[ENSG][3][ENST][3]
+					cdss = d[ENSG][3][ENST][2]
 					if CDS_index not in cdss:
-						d[ENSG][3][ENST][3][CDS_index] = ["", {"abs_start": start, "abs_end": end}, {}]
+						d[ENSG][3][ENST][2][CDS_index] = ["", {"abs_start": start, "abs_end": end}]
 	return d
 #print populate_gene_annot_struc("chr22_toy.gtf")
 
@@ -200,13 +208,18 @@ def populate_variant_struc(lines_w_point_mutations):
 		mut_nt = hgvs[-1]
 		ref_AA = amino.split("-")[0]
 		mut_AA = amino.split("-")[1]
-		mutations_dict[gene + " " + startCoord] = [{"disease": disease, "gene": gene, "chromosome": chromosome, "coordinate":startCoord, "ref_nt": ref_nt, "mut_nt": mut_nt, "ref_AA": ref_AA, "mut_AA": mut_AA}]
+		mutations_dict[gene + " " + startCoord] = {"disease": disease, "gene": gene, "chromosome": chromosome, "coordinate":startCoord, "ref_nt": ref_nt, "mut_nt": mut_nt, "ref_AA": ref_AA, "mut_AA": mut_AA}
 	return mutations_dict
 #print populate_variant_struc(filter_for_coding_variants("./data/HGMD_allmut.tsv"))["A2ML1 8851954"]
 
-
-
+def create_mutation_dictionary(mutation_file):
+	return populate_variant_struc(filter_for_coding_variants(mutation_file))
+#print create_mutation_dictionary("./data/HGMD_allmut.tsv")["A2ML1 8851954"]
+#Example:  [{'ref_AA': 'Arg', 'coordinate': '8851954', 'mut_AA': 'Leu', 'ref_nt': 'G', 'gene': 'A2ML1', 'disease': 'Noonan-like syndrome', 'chromosome': '12', 'mut_nt': 'T'}]
 #Function: Load genome sequence data into a dictionary: key = "chr#", value = sequence
+
+
+
 def load_reference_genome(genome_file):
 
 	"""Function: Load genome sequence data into a dictionary, where key is "chr#" and
@@ -241,46 +254,43 @@ def load_reference_genome(genome_file):
 
 
 
-
-
 def extract_cds_sequence_from_genome(chromosome, start_coord, end_coord, genome_dict):
 
-	# start_coord = int(val_c[1]["abs_start"])
-	# end_coord = int(val_c[1]["abs_end"])
-	# if chromosome in genome_dict and strand == "+":
-	# 	chrom_sequence = genome_dict[chromosome]
-	# 	val_c[0] = chrom_sequence[start_coord-1:end_coord]
-	# if chromosome in genome_dict and strand == "-":
-	# 	chrom_sequence = genome_dict[chromosome]
-	# 	val_c[0] = functions.reverse_complement(chrom_sequence[start_coord-1:end_coord])
-def populate_struc_w_extracted_cds():
+	chrom_sequence = genome_dict[chromosome]
+	extracted_sequence = chrom_sequence[start_coord-1:end_coord]
+	return extracted_sequence
+
+# #NOTE! In main loop, if strand is negative, do reverse complement of output of above function.
 
 
 
-def concatenate_cds_set():
+# def populate_struc_w_extracted_cds(chrom_sequence, start_coord, end_coord):	
+# #This doesn't have to be a function. Put in main loop!
 
-	#full_CDS = full_CDS + val_c[0]
+# def concatenate_cds_set():
 
-
-def compute_relative_coords_for_cds_set():
-
-	# rel_start = rel_end + 1
-	# rel_end = rel_start + len(chrom_sequence[start_coord-1:end_coord]) - 1
-
-def populate_cds_relative_coords():
-
-	# val_c[2]["rel_start"] = rel_start
-	# val_c[2]["rel_end"] = rel_end
+# 	#full_CDS = full_CDS + val_c[0]
 
 
+# def compute_relative_coords_for_cds_set():
 
-def populate_concatenated_cds_set():
+# 	# rel_start = rel_end + 1
+# 	# rel_end = rel_start + len(chrom_sequence[start_coord-1:end_coord]) - 1
 
-	#d[g][3][t][1] = full_CDS
+# def populate_cds_relative_coords():
+
+# 	# val_c[2]["rel_start"] = rel_start
+# 	# val_c[2]["rel_end"] = rel_end
 
 
 
+# def populate_concatenated_cds_set():
+
+# 	#d[g][3][t][1] = full_CDS
 
 
-# **********GS_TODO: if time, add tester function, rather than now-commented out lines
-# need to sit and discuss before staring
+
+
+
+# # **********GS_TODO: if time, add tester function, rather than now-commented out lines
+# # need to sit and discuss before staring
