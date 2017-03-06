@@ -19,6 +19,7 @@ def translate_cds(sequence):
 	The inputted sequence will be the concatenated CDSs for a given transcript.
 	The output will be the amino acid sequence of that transcript's coding sequence."""
 
+	global protein
 
 	genetic_code_dict = {
 	    "TTT":"F", "TTC":"F", "TTA":"L", "TTG":"L",
@@ -267,10 +268,13 @@ def extract_cds_sequence_from_genome(chromosome, start_coord, end_coord, genome_
 # def populate_struc_w_extracted_cds(chrom_sequence, start_coord, end_coord):	
 # #This doesn't have to be a function. Put in main loop!
 
-# def concatenate_cds_set():
+def concatenate_cds_set(CDS_seq):
 
-# 	#full_CDS = full_CDS + val_c[0]
+	full_CDS = full_CDS + CDS_seq
 
+def populate_concatenated_cds_set(full_CDS):
+
+	d[g][3][t][1] = full_CDS
 
 # def compute_relative_coords_for_cds_set():
 
@@ -284,9 +288,7 @@ def extract_cds_sequence_from_genome(chromosome, start_coord, end_coord, genome_
 
 
 
-# def populate_concatenated_cds_set():
 
-# 	#d[g][3][t][1] = full_CDS
 
 
 
