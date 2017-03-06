@@ -16,132 +16,133 @@ abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
 
-# **********GS_TODO: convert to function 'populate_gene_annot_struc', add docstrings*
-# *docstrings follow PEP247 format -> https://www.python.org/dev/peps/pep-0257/
+#Create the data structure and fill it with information from "gencode.v25.annotation.gtf"
 d_pickle = 'toy_gtf_dict.p'
 if not os.path.exists(d_pickle):
-	# Create the data structure and fill it with information from "gencode.v25.annotation.gtf"
-	d = {}
-	# for line in open("./data/gencode.v25.annotation.gtf", "r"):
-	for line in open("chr22_toy.gtf"):
-		if line[0] != "#":
-			fields = line.strip().split("\t")
-			chrom, annot_source, feature, start, end, dot1, strand, dot2, flag = fields
-
-			if feature == "gene" and "protein_coding" in flag:
-				words = flag.split(" ")
-				ENSG = words[1][1:-2]
-				gene_name = words[7][1:-2]
-				if ENSG not in d:
-					d[ENSG] = [gene_name, chrom, {"start": start, "end": end}, {}]
-
-			elif feature == "transcript" and "protein_coding" in flag:
-				words = flag.split(" ")
-				ENST = words[3][1:-2]
-				ENSG = words[1][1:-2]
-				if ENSG in d:
-					ensts = d[ENSG][3]
-					if ENST not in ensts:
-						d[ENSG][3][ENST] = [strand, "", {"start": start, "end": end}, {}]
-					else:
-						print "error"
-
-			elif feature == "CDS" and "protein_coding" in flag:
-				words = flag.split(" ")
-				CDS_index = int(words[17][0:-1])
-				ENST = words[3][1:-2]
-				ENSG = words[1][1:-2]
-				if ENSG in d:
-					cdss = d[ENSG][3][ENST][3]
-					if CDS_index not in cdss:
-						d[ENSG][3][ENST][3][CDS_index] = ["", {"abs_start": start, "abs_end": end}, {}]
-
+	d = functions.populate_gene_annot_struc("chr22_toy.gtf")
 	pickle.dump(d, open('toy_gtf_dict.p', 'wb'))
 else:
 	d = pickle.load(open('toy_gtf_dict.p'))
 	print "test1"
-
 print "test2"
-#MAKE INTO A FUNCTION! INPUT IS THE DICTIONARY
-#See which step is taking too long
 
-# **********GS_TODO: convert to function 'load_reference_genome', docstrings
-genome_dict = {}
+# Create a dictionary, "genome_dict," where key is "chr#" and value is the sequence for that chromosome.
 genome_pickle = 'genome_string.p'
 if not os.path.exists(genome_pickle):
-	genome = open('GRCh38.p7.genome.fa').read()
-	chrom_header_seq = genome.split(">")[1:26]
-	for i in chrom_header_seq:
-		chrom_key = i.split(" ")[0]
-		i = i.split("\n")[1:0]
-		i = "\n".join(i)
-		a = i.split("\n")
-		seq = "".join(a)
-		chrom_seq = seq
-		genome_dict[chrom_key] = chrom_seq
-	#instead of a list, organize into a dictionary. Key is "chr#", value is chromosome sequence
+	genome_dict = functions.load_reference_genome("GRCh38.p7.genome.fa")
 	pickle.dump(genome_dict, open('genome_string.p', 'wb'))
 else:
 	genome_dict = pickle.load(open('genome_string.p'))
 	print "test3"
+print "test4"
 
-# **********GS_TODO: convert to two functions 
-# 'populate_struc_w_extracted_cds'
-# 'populate_cds_relative_coords'
-# What else is going on in this loop that can be broken down into functions?
-# Discuss with me to decide on final function lists.
-CDS_pickle = 'CDS_string_chr22.p'
+
+# #**********GS_TODO: convert to two functions 
+# #'extract_cds_sequence_from_genome' (chromosome, start_coord, end_coord, genome_dict). Output: CDS sequence
+# #'concatenate_cds_set'
+# #'compute_relative_coords_for_cds_set'
+CDS_pickle = 'CDS_string.p'
 if not os.path.exists(CDS_pickle):
 	for g,val_g in d.items():
-		chromosome = val_g[1]
-		transcripts = val_g[3]
+		chromosome = d[g][1]
+		transcripts = d[g][3]
 		for t,val_t in transcripts.items():
-			rel_start = 0
-			rel_end = 0
-			full_CDS = ""
-			strand = val_t[0]
-			CDSs = val_t[3]
+			#rel_start = 0
+			#rel_end = 0
+			#full_CDS = ""
+			strand = d[g][3][t][0]
+			CDSs = d[g][3][t][2]
 			for CDS,val_c in CDSs.items():
-				Chr22 = chr22
-				start_coord = int(val_c[1]["abs_start"])
-				end_coord = int(val_c[1]["abs_end"])
-				#for i in chrom_header_seq:
-					#if i.split(" ")[0] == chromosome and strand == "+":
-						#i = i[7:]
-						## TODO! (change! not always 7. split by \n then get first index out of list)
-						#a = i.split("\n")
-						#i = "".join(a)
-						#val[0] = i[start_coord-1:end_coord]
-			#if chr22.split(" ")[0] == chromosome and strand == "+":
-				if strand == "+":
-					Chr22 = Chr22.split("\n")[1:]
-					Chr22 = "\n".join(Chr22)
-					a = Chr22.split("\n")
-					Chr22 = "".join(a)
-					val_c[0] = Chr22[start_coord-1:end_coord]
-					full_CDS = full_CDS + val_c[0]
-					rel_start = rel_end + 1
-					rel_end = rel_start + len(Chr22[start_coord-1:end_coord]) - 1
-					val_c[2]["rel_start"] = rel_start
-					val_c[2]["rel_end"] = rel_end
-					Chr22 = chr22
-			#elif chr22.split(" ")[0] == chromosome and strand == "-":
-				if strand == "-":
-					Chr22 = Chr22.split("\n")[1:]
-					Chr22 = "\n".join(Chr22)
-					a = Chr22.split("\n")
-					Chr22 = "".join(a)
-					val_c[0] = functions.reverse_complement(Chr22[start_coord-1:end_coord])
-					full_CDS = full_CDS + val_c[0]
-					rel_start = rel_end + 1
-					rel_end = rel_start + len(Chr22[start_coord-1:end_coord]) - 1
-					val_c[2]["rel_start"] = rel_start
-					val_c[2]["rel_end"] = rel_end
-					Chr22 = chr22
-			d[g][3][t][1] = full_CDS
-	pickle.dump(d, open('CDS_string_chr22.p', 'wb'))
-	print "test4"
-else:
-	d = pickle.load(open('CDS_string_chr22.p'))
+				start_coord = int(d[g][3][t][2][CDS][1]["abs_start"])
+				end_coord = int(d[g][3][t][2][CDS][1]["abs_end"])
+				#if chromosome in genome_dict and strand == "+":
+				d[g][3][t][2][CDS][0] = functions.extract_cds_sequence_from_genome(chromosome, start_coord, end_coord, genome_dict)
+
+					#chrom_sequence = genome_dict[chromosome]
+					#d[g][3][t][3][CDS][0] = chrom_sequence[start_coord-1:end_coord]
+					#full_CDS = full_CDS + d[g][3][t][3][CDS][0]
+					#rel_start = rel_end + 1
+					#rel_end = rel_start + len(chrom_sequence[start_coord-1:end_coord]) - 1
+					#d[g][3][t][3][CDS][2]["rel_start"] = rel_start
+					#d[g][3][t][3][CDS][2]["rel_end"] = rel_end
+				# if chromosome in genome_dict and strand == "-":
+				# 	chrom_sequence = genome_dict[chromosome]
+				# 	d[g][3][t][3][CDS][0] = functions.reverse_complement(chrom_sequence[start_coord-1:end_coord])
+				# 	full_CDS = full_CDS + d[g][3][t][3][CDS][0]
+				# 	rel_start = rel_end + 1
+				# 	rel_end = rel_start + len(chrom_sequence[start_coord-1:end_coord]) - 1
+				# 	d[g][3][t][3][CDS][2]["rel_start"] = rel_start
+				# 	d[g][3][t][3][CDS][2]["rel_end"] = rel_end
+				#d[g][3][t][1] = full_CDS
+	pickle.dump(d, open('CDS_string.p', 'wb'))
 	print "test5"
-print d
+else:
+	d = pickle.load(open('CDS_string.p'))
+	print "test6"
+#print d
+#{'ENSG00000100162.14': ['CENPM', 'chr22', {'start': '41938721', 'end': '41947164'}, {'ENST00000215980.9': ['-', {'start': '41938721', 'end': '41947164'}, {1: ['CAAGATGGTGGCCGTGTTCAGGCCGGGCAGCTTGTCCAGGGGCCTCAACACCGACAT', {'abs_end': '41947076', 'abs_start': '41947020'}], 2: ['ACCTTCAGCTCGGAGGCGCAGTCCTCTTTGAGCATCGAGTCCGCCAGCTGCTGCAGAAGAGCATCCTCCGTGCCCACCAG', {'abs_end': '41946496', 'abs_start': '41946417'}], 3: ['CTGTATTTGCTGTGAAGATTAACCACAAACACGATCAGGTCAATTCGGGGCCGATTCACACTGGAGGGCAAAGGGAGGGACTTTGCCAAGTGG', {'abs_end': '41946005', 'abs_start': '41945913'}], 4: ['CACCTGTGGCGAGGAAACACACCTTCCCCAAGAAGAAGCTGGCATCCACATGGCGCAGGGACTCCTCTGTGTTCTGGAGA', {'abs_end': '41945304', 'abs_start': '41945225'}], 5: ['CTCCAGGTCACAGTAGAGCAGGGGGCTTTGATAGGTGTGGGCCAGCTTCACCACGGTGTGCCGGTGAATGCTGCAGTGGCTCTCCCGCCCAG', {'abs_end': '41943701', 'abs_start': '41943610'}], 6: ['CAGGTCCTCCAGGGAGGGGCCCTCAGAGCTTCTCAGCAGGGACAGCAGGTTCAGAGCTGAGACACCGGGCACGTGGCCAGCACAGATCTGCAGCACGCGCACCAGGCGCTGCGCCATGGTGGCCCTAAAGCCTTCCAC', {'abs_end': '41939196', 'abs_start': '41939059'}]}]}], 'ENSG00000183066.14': ['WBP2NL', 'chr22', {'start': '41998725', 'end': '42058456'}, {'ENST00000412113.5': ['+', {'start': '41998725', 'end': '42032769'}, {1: ['ATGGCGGTGAATCAGAGCCACACCGAGAACCGCCGCGGAGCCCTCATCCCTAACGGTGAAAG', {'abs_end': '41998880', 'abs_start': '41998819'}], 2: ['TCTCTTGAAGCGGTCTCCGAATGTGGAGCTCTCCTTCCCACAGCGATCAGAAGGCTCAAATGTCTTTAGTGGTAGAAAGACAGGAACATTGTTTCTCACTTCATACCGG', {'abs_end': '42019419', 'abs_start': '42019311'}], 3: ['GTGATTTTCATAACTTCATGCTCCATCAGTGATCCCATGTTGTCTTTTATGATGCCATTTGATCTGATGACGAACCTCACTGTTGAACAACCAGTATTTGCTGCAAACTTCATTAAGGGAACTATTCAGGCAGCTCCATATG', {'abs_end': '42019803', 'abs_start': '42019662'}], 4: ['GTGGCTGGGAAGGACAAGCTACTTTTAAATTAGTCTTCAGAAATGGAGATGCCATTGAATTTGCCCAGTTGATGGTGAAAGCTGCCTCTGCTG', {'abs_end': '42020096', 'abs_start': '42020004'}], 5: ['TTATTGTCTATGGAGCCCCACCTGCAGGATATGGAGCCCCACCTCCCGGATACGGAGCCCCACCTGCAGGATATGGAGCCCAACCCGTAGGAAATGAAGGCCCGCCTGTGGGATACAGAGCCTCACCTGTGCGATATGGAGCCCCACCTCTTGGATACGGAGCCCCACCTGCAGGATATGGAGCCCCACCTCTAGGATATGGAGCCCCACCTCTTGGATATGGAACCCCACCTCTCGGATATGGAGCCCCACCTCTCGGATATGGAGCCCCACCTGCAGGAAATGAAGGCCCGCCTGCGGGATACAGAGCCTCACCTGCTGGATCAGGAGCCAGGCCTCAGGAATCTACAGCAGCCCAGGCTCCTGAAAACGAGGCTTCTCTTCCCTCTGCCTCCTCTTCTCAGGTCCATTCT', {'abs_end': '42027178', 'abs_start': '42026766'}]}]}]}
+
+#Create a dictionary, mutations_dict, that contains the mutation information from "HGMD_allmut.tsv".
+mutation_pickle = 'mutation_dict.p'
+if not os.path.exists(mutation_pickle):
+	mutation_dict = functions.create_mutation_dictionary("./data/HGMD_allmut.tsv")
+	pickle.dump(mutation_dict, open('mutation_dict.p', 'wb'))
+	print "test7"
+else:
+	mutation_dict = pickle.load(open('mutation_dict.p'))
+	print "test8"
+#print mutation_dict["A2M 9072739"]
+#{'ref_nt': 'C', 'disease': 'Autism', 'ref_AA': 'Arg', 'coordinate': '9072739', 'mut_AA': 'Cys', 'gene': 'A2M', 'mut_nt': 'T', 'chromosome': '12'}
+
+
+for m,val_m in mutation_dict.items():
+	for g,val_g in d.items():
+		if mutation_dict[m]["chromosome"] == d[g][1][3:] and int(mutation_dict[m]["coordinate"]) in range(int(d[g][2]["start"]), int(d[g][2]["end"])):
+		#>= int(d[g][2]["start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][2]["end"]):
+			transcripts = d[g][3]
+			for t,val_t in transcripts.items():
+				strand = d[g][3][t][0]
+				CDSs = d[g][3][t][2]
+				full_CDS = ""
+				rel_start = 0
+				rel_end = 0
+				if int(mutation_dict[m]["coordinate"]) in range(int(d[g][3][t][1]["start"]), int(d[g][3][t][1]["end"])):
+				#>= int(d[g][3][t][1]["start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][3][t][1]["end"]):
+					for CDS,val_c in CDSs.items():
+						if strand == "+":
+							if int(mutation_dict[m]["coordinate"]) not in range(int(d[g][3][t][2][CDS][1]["abs_start"]), int(d[g][3][t][2][CDS][1]["abs_end"])):
+								full_CDS = full_CDS + d[g][3][t][2][CDS][0]
+								rel_start = rel_end + 1
+								rel_end = rel_start + len(d[g][3][t][2][CDS][0]) - 1
+							else:
+							#int(mutation_dict[m]["coordinate"]) >= int(d[g][3][t][2][CDS][1]["abs_start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][3][t][2][CDS][1]["abs_end"]):
+								raw_cds_seq = list(d[g][3][t][2][CDS][0])
+								difference = int(int(mutation_dict[m]["coordinate"]) - int(d[g][3][t][2][CDS][1]["abs_start"]))
+								if raw_cds_seq[difference] == mutation_dict[m]["ref_nt"]:
+									raw_cds_seq[difference] = mutation_dict[m]["mut_nt"]
+									mutated_cds_seq = "".join(raw_cds_seq)
+									full_CDS = full_CDS + mutated_cds_seq
+									rel_start = rel_end + 1
+									rel_end = rel_start + len(d[g][3][t][2][CDS][0]) - 1
+									mutation_rel_position = (range(rel_start, rel_end))[difference]
+						if strand == "-":
+							if int(mutation_dict[m]["coordinate"]) not in range(int(d[g][3][t][2][CDS][1]["abs_start"]), int(d[g][3][t][2][CDS][1]["abs_end"])):
+								full_CDS = full_CDS + functions.reverse_complement(d[g][3][t][2][CDS][0])
+								rel_start = rel_end + 1
+								rel_end = rel_start + len(d[g][3][t][2][CDS][0]) - 1
+							else:
+								raw_cds_seq = list(d[g][3][t][2][CDS][0])
+								difference = int(int(mutation_dict[m]["coordinate"]) - int(d[g][3][t][2][CDS][1]["abs_start"]))
+								if raw_cds_seq[difference] == functions.reverse_complement(mutation_dict[m]["ref_nt"]):
+									raw_cds_seq[difference] = functions.complement(mutation_dict[m]["mut_nt"])
+									mutated_cds_seq = "".join(raw_cds_seq)
+									full_CDS = full_CDS + functions.reverse_complement(mutated_cds_seq)
+									rel_start = rel_end + 1
+									rel_end = rel_start + len(d[g][3][t][2][CDS][0]) - 1
+									mutation_rel_position = (range(rel_start, rel_end))[difference]
+				protein = functions.translate_cds(full_CDS)
+				check_file = open("table.txt", "w")
+				check_file.write(mutation_dict[m]["disease"] + "\t" + mutation_dict[m]["gene"] + "\t" + mutation_dict[m]["chromosome"] + "\t" + mutation_dict[m]["coordinate"] + "\t" + mutation_dict[m]["ref_nt"] + "\t" + mutation_dict[m]["mut_nt"] + "\t" + g + "\t" + t + "\t" + strand + "\t" + mutation_rel_position + "\t" + full_CDS + "\t" + protein + "\n")
+
+
+							
