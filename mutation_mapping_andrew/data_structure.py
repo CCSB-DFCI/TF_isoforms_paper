@@ -35,43 +35,19 @@ else:
 print "test4"
 
 
-# #**********GS_TODO: convert to two functions 
-# #'extract_cds_sequence_from_genome' (chromosome, start_coord, end_coord, genome_dict). Output: CDS sequence
-# #'concatenate_cds_set'
-# #'compute_relative_coords_for_cds_set'
+#Fill data structure with extracted "raw" CDS sequences
 CDS_pickle = 'CDS_string.p'
 if not os.path.exists(CDS_pickle):
 	for g,val_g in d.items():
 		chromosome = d[g][1]
 		transcripts = d[g][3]
 		for t,val_t in transcripts.items():
-			#rel_start = 0
-			#rel_end = 0
-			#full_CDS = ""
 			strand = d[g][3][t][0]
 			CDSs = d[g][3][t][2]
 			for CDS,val_c in CDSs.items():
 				start_coord = int(d[g][3][t][2][CDS][1]["abs_start"])
 				end_coord = int(d[g][3][t][2][CDS][1]["abs_end"])
-				#if chromosome in genome_dict and strand == "+":
 				d[g][3][t][2][CDS][0] = functions.extract_cds_sequence_from_genome(chromosome, start_coord, end_coord, genome_dict)
-
-					#chrom_sequence = genome_dict[chromosome]
-					#d[g][3][t][3][CDS][0] = chrom_sequence[start_coord-1:end_coord]
-					#full_CDS = full_CDS + d[g][3][t][3][CDS][0]
-					#rel_start = rel_end + 1
-					#rel_end = rel_start + len(chrom_sequence[start_coord-1:end_coord]) - 1
-					#d[g][3][t][3][CDS][2]["rel_start"] = rel_start
-					#d[g][3][t][3][CDS][2]["rel_end"] = rel_end
-				# if chromosome in genome_dict and strand == "-":
-				# 	chrom_sequence = genome_dict[chromosome]
-				# 	d[g][3][t][3][CDS][0] = functions.reverse_complement(chrom_sequence[start_coord-1:end_coord])
-				# 	full_CDS = full_CDS + d[g][3][t][3][CDS][0]
-				# 	rel_start = rel_end + 1
-				# 	rel_end = rel_start + len(chrom_sequence[start_coord-1:end_coord]) - 1
-				# 	d[g][3][t][3][CDS][2]["rel_start"] = rel_start
-				# 	d[g][3][t][3][CDS][2]["rel_end"] = rel_end
-				#d[g][3][t][1] = full_CDS
 	pickle.dump(d, open('CDS_string.p', 'wb'))
 	print "test5"
 else:
@@ -90,31 +66,59 @@ else:
 	print "test8"
 
 
-
+#Write a file that contains information for mapping mutations
+check_file = open("table.txt", "w")
 for m,val_m in mutation_dict.items():
 	for g,val_g in d.items():
-		if mutation_dict[m]["chromosome"] == d[g][1][3:] and mutation_dict[m]["coordinate"] >= d[g][2]["start"] and mutation_dict[m]["coordinate"] <= d[g][2]["end"]:
+		if mutation_dict[m]["chromosome"] == d[g][1][3:] and int(mutation_dict[m]["coordinate"]) in range(int(d[g][2]["start"]), int(d[g][2]["end"])):
+		#>= int(d[g][2]["start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][2]["end"]):
 			transcripts = d[g][3]
 			for t,val_t in transcripts.items():
-				if mutation_dict[m]["coordinate"] >= d[g][3][t][1]["start"] and mutation_dict[m]["coordinate"] <= d[g][3][t][1]["end"]:
+				if int(mutation_dict[m]["coordinate"]) in range(int(d[g][3][t][1]["start"]), int(d[g][3][t][1]["end"])):
 					strand = d[g][3][t][0]
 					CDSs = d[g][3][t][2]
+					full_CDS = ""
+					rel_start = 0
+					rel_end = 0
+				#>= int(d[g][3][t][1]["start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][3][t][1]["end"]):
 					for CDS,val_c in CDSs.items():
-						if mutation_dict[m]["coordinate"] >= d[g][3][t][2][CDS][1]["abs_start"] and mutation_dict[m]["coordinate"] <= d[g][3][t][2][CDS][1]["abs_end"]:
-							raw_cds_seq = list(d[g][3][t][2][CDS][0])
-							difference = int(int(mutation_dict[m]["coordinate"]) - int(d[g][3][t][2][CDS][1]["abs_start"]))
-							#Is there a better strategy to get the position of the mutation?
-							#IndexError: list index out of range
-							print difference
-							if raw_cds_seq[difference] == mutation_dict[m]["ref_nt"] and strand == "+":
-								raw_cds_seq[difference] = mutation_dict[m]["mut_nt"]
-								mutated_cds_seq = "".join(raw_cds_seq)
-							if raw_cds_seq[difference] == mutation_dict[m]["ref_nt"] and strand == "-":
-								raw_cds_seq[difference] = functions.complement(mutation_dict[m]["mut_nt"])
-								mutated_cds_seq = "".join(raw_cds_seq)
-								mutated_cds_seq = functions.reverse_complement(mutated_cds_seq)
-
-
-
+						if strand == "+":
+							if int(mutation_dict[m]["coordinate"]) not in range(int(d[g][3][t][2][CDS][1]["abs_start"]), int(d[g][3][t][2][CDS][1]["abs_end"])):
+								full_CDS = full_CDS + d[g][3][t][2][CDS][0]
+								rel_start = rel_end + 1
+								rel_end = rel_start + len(d[g][3][t][2][CDS][0]) - 1
+							else:
+							#int(mutation_dict[m]["coordinate"]) >= int(d[g][3][t][2][CDS][1]["abs_start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][3][t][2][CDS][1]["abs_end"]):
+								raw_cds_seq = list(d[g][3][t][2][CDS][0])
+								difference = int(int(mutation_dict[m]["coordinate"]) - int(d[g][3][t][2][CDS][1]["abs_start"]))
+								if raw_cds_seq[difference] == mutation_dict[m]["ref_nt"]:
+									raw_cds_seq[difference] = mutation_dict[m]["mut_nt"]
+									mutated_cds_seq = "".join(raw_cds_seq)
+									full_CDS = full_CDS + mutated_cds_seq
+									rel_start = rel_end + 1
+									rel_end = rel_start + len(d[g][3][t][2][CDS][0]) - 1
+									mutation_rel_position = (range(rel_start, rel_end))[difference]
+						if strand == "-":
+							if int(mutation_dict[m]["coordinate"]) not in range(int(d[g][3][t][2][CDS][1]["abs_start"]), int(d[g][3][t][2][CDS][1]["abs_end"])):
+								full_CDS = full_CDS + functions.reverse_complement(d[g][3][t][2][CDS][0])
+								rel_start = rel_end + 1
+								rel_end = rel_start + len(d[g][3][t][2][CDS][0]) - 1
+							else:
+								raw_cds_seq = list(d[g][3][t][2][CDS][0])
+								difference = int(int(mutation_dict[m]["coordinate"]) - int(d[g][3][t][2][CDS][1]["abs_start"]))
+								if raw_cds_seq[difference] == functions.reverse_complement(mutation_dict[m]["ref_nt"]):
+									raw_cds_seq[difference] = functions.complement(mutation_dict[m]["mut_nt"])
+									mutated_cds_seq = "".join(functions.reverse_complement(raw_cds_seq))
+									full_CDS = full_CDS + mutated_cds_seq
+									rel_start = rel_end + 1
+									rel_end = rel_start + len(mutated_cds_seq) - 1
+									mutation_rel_position = (range(rel_start, rel_end))[-(difference +1)]
+									#relative position not right for "-" strands
+					translated = functions.translate_cds(full_CDS)
+					#I want to bold mutation in full_CDS --> full_CDS[mutation_rel_position]
+					check_file.write(mutation_dict[m]["disease"] + "\t" + mutation_dict[m]["gene"] + "\t" + str(mutation_dict[m]["chromosome"]) + "\t" + str(mutation_dict[m]["coordinate"]) + "\t" + mutation_dict[m]["ref_nt"] + "\t" + mutation_dict[m]["mut_nt"] + "\t" + g + "\t" + t + "\t" + strand + "\t" + str(mutation_rel_position) + "\t" + full_CDS + "\t" + translated + "\n")
+					#Problem! Printing one at a time. I want them all printed into the same table
+					#Problem! Sometimes prints information without full CDS nt sequence, but has amino acid sequence!
+					#When it works how I want, rewrite into functions
 
 
