@@ -72,7 +72,7 @@ def reverse_complement(sequence):
 	then use the reverse_complement function to get the sequence we are interested in."""
     
 
-	complements = {"A":"T", "C":"G", "G":"C", "T":"A"}
+	complements = {"A":"T", "C":"G", "G":"C", "T":"A", "a":"t", "c":"g", "g":"c", "t":"a"}
 
 	reverse_seq = ""
 	for s in reversed(sequence):
@@ -80,8 +80,7 @@ def reverse_complement(sequence):
 	return reverse_seq
 
 def complement(sequence):
-	complements = {"A":"T", "C":"G", "G":"C", "T":"A"}
-
+	complements = {"A":"T", "C":"G", "G":"C", "T":"A", "a":"t", "c":"g", "g":"c", "t":"a"}
 	complement_seq = ""
 	for s in sequence:
 		 complement_seq += complements.get(s, s)
