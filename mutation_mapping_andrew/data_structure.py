@@ -66,8 +66,8 @@ else:
 
 
 #Write a file that contains information for mapping mutations
-check_file = open("table.txt", "w")
-check_file.write("disease" + "\t" + "hg_gene_name" + "\t" + "gc25_gene_name" + "\t" + "ENSG" + "\t" + "chromosome" + "\t" + "coordinate" + "\t" + "strand" + "\t" + "ENST" + "\t" + "gc25_ref_nt" + "\t" + "hg_ref_nt" + "\t" + "hg_alt_nt" + "\t" + "hg_ref_aa" + "\t" + "hg_alt_aa" + "\t" + "nt_mut_relative_position" + "\t" + "aa_mut_relative_position" + "\t" + "cds_seq_alt" + "\t" + "prot_seq_alt" + "\n")
+check_file = open("Table.txt", "w")
+check_file.write("disease" + "\t" + "hg_gene_name" + "\t" + "gc25_gene_name" + "\t" + "ENSG" + "\t" + "chromosome" + "\t" + "coordinate" + "\t" + "strand" + "\t" + "ENST" + "\t" + "gc25_ref_nt" + "\t" + "hg_ref_nt" + "\t" + "hg_alt_nt" + "\t" + "gc25_ref_aa" + "\t" + "hg_ref_aa" + "\t" + "gc25_alt_aa" + "\t" + "hg_alt_aa" + "\t" + "nt_mut_relative_position" + "\t" + "aa_mut_relative_position" + "\t" + "cds_seq_alt" + "\t" + "prot_seq_alt" + "\n")
 for m,val_m in mutation_dict.items():
 	for g,val_g in d.items():
 		if mutation_dict[m]["chromosome"] == d[g][1][3:] and int(mutation_dict[m]["coordinate"]) >= int(d[g][2]["start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][2]["end"]):
@@ -78,7 +78,8 @@ for m,val_m in mutation_dict.items():
 					for CDS, val_c in CDSs.items():
 						if int(mutation_dict[m]["coordinate"]) >= int(d[g][3][t][2][CDS][1]["abs_start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][3][t][2][CDS][1]["abs_end"]):
 							strand = d[g][3][t][0]
-							full_CDS = ""
+							ref_full_CDS = ""
+							alt_full_CDS = ""
 							rel_start = 0
 							rel_end = 0
 							for CDS, val_c in CDSs.items():
@@ -86,47 +87,55 @@ for m,val_m in mutation_dict.items():
 									if int(mutation_dict[m]["coordinate"]) >= int(d[g][3][t][2][CDS][1]["abs_start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][3][t][2][CDS][1]["abs_end"]):
 										raw_cds_seq = list(d[g][3][t][2][CDS][0])
 										difference = int(int(mutation_dict[m]["coordinate"]) - int(d[g][3][t][2][CDS][1]["abs_start"]))
+
 										gencode_ref_nt = raw_cds_seq[difference]
-										if raw_cds_seq[difference] == mutation_dict[m]["ref_nt"]:
-											raw_cds_seq[difference] = mutation_dict[m]["mut_nt"].lower()
-											mutated_cds_seq = "".join(raw_cds_seq)
-											full_CDS = full_CDS + mutated_cds_seq
-											rel_start = rel_end + 1
-											rel_end = rel_start + len(mutated_cds_seq) - 1
-											mutation_rel_position = (range(rel_start, rel_end+1))[difference]
+										ref_cds_seq = "".join(raw_cds_seq)
+										ref_full_CDS = ref_full_CDS + ref_cds_seq
+
+										raw_cds_seq[difference] = mutation_dict[m]["mut_nt"].lower()
+										mutated_cds_seq = "".join(raw_cds_seq)
+										alt_full_CDS = alt_full_CDS + mutated_cds_seq
+										
+										rel_start = rel_end + 1
+										rel_end = rel_start + len(mutated_cds_seq) - 1
+										mutation_rel_position = (range(rel_start, rel_end+1))[difference]
 									else:
-										full_CDS = full_CDS + d[g][3][t][2][CDS][0]
+										ref_full_CDS = ref_full_CDS + d[g][3][t][2][CDS][0]
+										alt_full_CDS = alt_full_CDS + d[g][3][t][2][CDS][0]
 										rel_start = rel_end + 1
 										rel_end = rel_start + len(d[g][3][t][2][CDS][0]) - 1
 								if strand == "-":
 									if int(mutation_dict[m]["coordinate"]) >= int(d[g][3][t][2][CDS][1]["abs_start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][3][t][2][CDS][1]["abs_end"]):
 										raw_cds_seq = list(d[g][3][t][2][CDS][0])
 										difference = int(int(mutation_dict[m]["coordinate"]) - int(d[g][3][t][2][CDS][1]["abs_start"]))
-										gencode_ref_nt = functions.complement(raw_cds_seq[difference])
-										if raw_cds_seq[difference] == functions.reverse_complement(mutation_dict[m]["ref_nt"]):
-											raw_cds_seq[difference] = functions.complement(mutation_dict[m]["mut_nt"]).lower()
-											mutated_cds_seq = "".join(functions.reverse_complement(raw_cds_seq))
-											full_CDS = full_CDS + mutated_cds_seq
-											rel_start = rel_end + 1
-											rel_end = rel_start + len(mutated_cds_seq) - 1
-											mutation_rel_position = (range(rel_start, rel_end+1))[-(difference+1)]
+
+										gencode_ref_nt = functions.complement(raw_cds_seq[difference])	
+										ref_cds_seq = "".join(functions.reverse_complement(raw_cds_seq))
+										ref_full_CDS = ref_full_CDS + ref_cds_seq
+
+										raw_cds_seq[difference] = functions.complement(mutation_dict[m]["mut_nt"]).lower()
+										mutated_cds_seq = "".join(functions.reverse_complement(raw_cds_seq))
+										alt_full_CDS = alt_full_CDS + mutated_cds_seq
+
+										rel_start = rel_end + 1
+										rel_end = rel_start + len(mutated_cds_seq) - 1
+										mutation_rel_position = (range(rel_start, rel_end+1))[-(difference+1)]
 									else:
-										full_CDS = full_CDS + functions.reverse_complement(d[g][3][t][2][CDS][0])
+										ref_full_CDS = ref_full_CDS + functions.reverse_complement(d[g][3][t][2][CDS][0])
+										alt_full_CDS = alt_full_CDS + functions.reverse_complement(d[g][3][t][2][CDS][0])
 										rel_start = rel_end + 1
 										rel_end = rel_start + len(d[g][3][t][2][CDS][0]) - 1
 
-							translated = list(functions.translate_cds(full_CDS.upper()))
-							mut_AA_rel_position = int((mutation_rel_position-1)/3) + 1
-							if (mut_AA_rel_position -1) >= 0 and (mut_AA_rel_position -1) < len(translated) and full_CDS[:3] == "ATG":
-							#This prevents "out of range" errors for the protein sequences that begin with "X"
-							# in "gencode.v25.pc_translations.fa"
-							# Does this lose information? Are there transcripts that have start codons other than ATG?
-								translated[mut_AA_rel_position-1] = translated[mut_AA_rel_position-1].lower()
-								translated = "".join(translated) 
+							ref_translated = list(functions.translate_cds(ref_full_CDS.upper()))
+							alt_translated = list(functions.translate_cds(alt_full_CDS.upper()))
+							AA_rel_position = int((mutation_rel_position-1)/3) + 1
+							if (AA_rel_position -1) >= 0 and (AA_rel_position -1) < len(alt_translated):
+								gencode_ref_AA = ref_translated[AA_rel_position-1]
+								gencode_alt_AA = alt_translated[AA_rel_position-1]
+								alt_translated[AA_rel_position-1] = alt_translated[AA_rel_position-1].lower()
+								alt_translated = "".join(alt_translated) 
 
-
-								check_file.write(mutation_dict[m]["disease"] + "\t" + mutation_dict[m]["gene"] + "\t" + d[g][0] + "\t" + g + "\t" + str(mutation_dict[m]["chromosome"])  + "\t" + str(mutation_dict[m]["coordinate"]) + "\t" + strand  + "\t" + t  + "\t" + gencode_ref_nt + "\t" + mutation_dict[m]["ref_nt"] + "\t" + mutation_dict[m]["mut_nt"] + "\t" + mutation_dict[m]["ref_AA"] + "\t" + mutation_dict[m]["mut_AA"] + "\t" + str(mutation_rel_position) + "\t" + str(mut_AA_rel_position) + "\t" + full_CDS + "\t" + translated + "\n")
-
+								check_file.write(mutation_dict[m]["disease"] + "\t" + mutation_dict[m]["gene"] + "\t" + d[g][0] + "\t" + g + "\t" + str(mutation_dict[m]["chromosome"])  + "\t" + str(mutation_dict[m]["coordinate"]) + "\t" + strand  + "\t" + t  + "\t" + gencode_ref_nt + "\t" + mutation_dict[m]["ref_nt"] + "\t" + mutation_dict[m]["mut_nt"] + "\t" + gencode_ref_AA + "\t" + mutation_dict[m]["ref_AA"] + "\t" + gencode_alt_AA + "\t" + mutation_dict[m]["mut_AA"] + "\t" + str(mutation_rel_position) + "\t" + str(AA_rel_position) + "\t" + alt_full_CDS + "\t" + alt_translated + "\n")
 							
 							#When it works how I want, rewrite into functions
 							
