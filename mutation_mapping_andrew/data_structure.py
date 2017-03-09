@@ -115,17 +115,17 @@ for m,val_m in mutation_dict.items():
 										rel_start = rel_end + 1
 										rel_end = rel_start + len(d[g][3][t][2][CDS][0]) - 1
 
-							translated = list(functions.translate_cds(full_CDS))
+							translated = list(functions.translate_cds(full_CDS.upper()))
 							mut_AA_rel_position = int((mutation_rel_position-1)/3) + 1
-							translated[mut_AA_rel_position-1] = translated[mut_AA_rel_position-1].lower()
-							prot_seq = "".join(translated)
-							#PROBLEM! I want to make the mutant amino acid position lowercase. But instead, I'm accidently
-							# removing the mutated amino acid, and making the next amino acid position lowercase.
-							# Figure it out, or ask Gloria.
+							if (mut_AA_rel_position -1) >= 0 and (mut_AA_rel_position -1) < len(translated) and full_CDS[:3] == "ATG":
+							#This prevents "out of range" errors for the protein sequences that begin with "X"
+							# in "gencode.v25.pc_translations.fa"
+							# Does this lose information? Are there transcripts that have start codons other than ATG?
+								translated[mut_AA_rel_position-1] = translated[mut_AA_rel_position-1].lower()
+								translated = "".join(translated) 
 
 
-							check_file.write(mutation_dict[m]["disease"] + "\t" + mutation_dict[m]["gene"] + "\t" + d[g][0] + "\t" + g + "\t" + str(mutation_dict[m]["chromosome"])  + "\t" + str(mutation_dict[m]["coordinate"]) + "\t" + strand  + "\t" + t  + "\t" + gencode_ref_nt + "\t" + mutation_dict[m]["ref_nt"] + "\t" + mutation_dict[m]["mut_nt"] + "\t" + mutation_dict[m]["ref_AA"] + "\t" + mutation_dict[m]["mut_AA"] + "\t" + str(mutation_rel_position) + "\t" + str(mut_AA_rel_position) + "\t" + full_CDS + "\t" + prot_seq + "\n")
-							
+								check_file.write(mutation_dict[m]["disease"] + "\t" + mutation_dict[m]["gene"] + "\t" + d[g][0] + "\t" + g + "\t" + str(mutation_dict[m]["chromosome"])  + "\t" + str(mutation_dict[m]["coordinate"]) + "\t" + strand  + "\t" + t  + "\t" + gencode_ref_nt + "\t" + mutation_dict[m]["ref_nt"] + "\t" + mutation_dict[m]["mut_nt"] + "\t" + mutation_dict[m]["ref_AA"] + "\t" + mutation_dict[m]["mut_AA"] + "\t" + str(mutation_rel_position) + "\t" + str(mut_AA_rel_position) + "\t" + full_CDS + "\t" + translated + "\n")
 
 							
 							#When it works how I want, rewrite into functions
