@@ -210,8 +210,8 @@ def populate_variant_struc(lines_w_point_mutations):
 		disease, gene, chrom, genename, gdbid, omimid, amino, deletion, insertion, codon, codonAff, descr, hgvs, hgvsAll, dbsnp, chromosome, startCoord, endCoord, tag, author, fullname, allname, vol, page, year, pmid, reftag, comments, acc_num, new_date, base = fields
 		ref_nt = hgvs[-3]
 		mut_nt = hgvs[-1]
-		ref_AA = amino.split("-")[0]
-		mut_AA = amino.split("-")[1]
+		ref_AA = hgvsAll.split(" ")[-1][0]
+		mut_AA = hgvsAll.split(" ")[-1][-1]
 		mutations_dict[gene + " " + startCoord] = {"disease": disease, "gene": gene, "chromosome": chromosome, "coordinate":startCoord, "ref_nt": ref_nt, "mut_nt": mut_nt, "ref_AA": ref_AA, "mut_AA": mut_AA}
 	return mutations_dict
 #print populate_variant_struc(filter_for_coding_variants("./data/HGMD_allmut.tsv"))["A2ML1 8851954"]
@@ -263,21 +263,43 @@ def extract_cds_sequence_from_genome(chromosome, start_coord, end_coord, genome_
 	chrom_sequence = genome_dict[chromosome]
 	extracted_sequence = chrom_sequence[start_coord-1:end_coord]
 	return extracted_sequence
-
 # #NOTE! In main loop, if strand is negative, do reverse complement of output of above function.
 
 
+def create_table(table_name):
+	table_file = open(table_name, "w")
+	table_file.write("disease" + "\t" + "hg_gene_name" + "\t" + "gc25_gene_name" + "\t" + "ENSG" + "\t" + "chromosome" + "\t" + "coordinate" + "\t" + "strand" + "\t" + "ENST" + "\t" + "gc25_ref_nt" + "\t" + "hg_ref_nt" + "\t" + "hg_alt_nt" + "\t" + "gc25_ref_aa" + "\t" + "hg_ref_aa" + "\t" + "gc25_alt_aa" + "\t" + "hg_alt_aa" + "\t" + "nt_mut_relative_position" + "\t" + "aa_mut_relative_position" + "\t" + "cds_seq_alt" + "\t" + "prot_seq_alt" + "\n")
+	return table_file
+#create_table("check.txt")
 
-# def populate_struc_w_extracted_cds(chrom_sequence, start_coord, end_coord):	
-# #This doesn't have to be a function. Put in main loop!
+def concatenate(full_seq, seq_to_be_added):
+	full_seq = full_seq + seq_to_be_added
+	return full_seq
 
-def concatenate_cds_set(CDS_seq):
+def rel_start_func(rel_start, rel_end):
+	rel_start = rel_end + 1
+	return rel_start
 
-	full_CDS = full_CDS + CDS_seq
+def rel_end_func(rel_start, rel_end, string):
+	rel_end = rel_start + len(string) - 1
+	return rel_end
 
-def populate_concatenated_cds_set(full_CDS):
+def mutation_rel_position(rel_start, rel_end, string, difference):
+	rel_start = rel_start_func(rel_start, rel_end)
+	rel_end = rel_end_func(rel_start, rel_end, string)
+	mutation_rel_position = (range(rel_start, rel_end+1))[difference]
+	return mutation_rel_position
 
-	d[g][3][t][1] = full_CDS
+
+
+
+# def concatenate_cds_set(CDS_seq):
+
+# 	full_CDS = full_CDS + CDS_seq
+
+# def populate_concatenated_cds_set(full_CDS):
+
+# 	d[g][3][t][1] = full_CDS
 
 # def compute_relative_coords_for_cds_set():
 
