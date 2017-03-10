@@ -284,12 +284,22 @@ def rel_end_func(rel_start, rel_end, string):
 	rel_end = rel_start + len(string) - 1
 	return rel_end
 
-def mutation_rel_position(rel_start, rel_end, string, difference):
-	rel_start = rel_start_func(rel_start, rel_end)
-	rel_end = rel_end_func(rel_start, rel_end, string)
+def mutation_rel_position(rel_start, rel_end, difference):
 	mutation_rel_position = (range(rel_start, rel_end+1))[difference]
 	return mutation_rel_position
 
+def get_gc_ref_nt(raw_cds, mutation_coord, CDS_start):
+	raw_cds_seq = list(raw_cds)
+	difference = int(int(mutation_coord) - int(CDS_start))
+	gencode_ref_nt = raw_cds_seq[difference]
+	return gencode_ref_nt
+#gencode_ref_nt = functions.get_gc_ref_nt(d[g][3][t][2][CDS][0], mutation_dict[m]["coordinate"], d[g][3][t][2][CDS][1]["abs_start"])
+
+def replace_ref_nt_w_alt_nt(raw_cds_seq, difference, alt_nt):
+	raw_cds_seq[difference] = alt_nt.lower()
+	mutated_cds_seq = "".join(raw_cds_seq)
+	return mutated_cds_seq
+#mutated_cds_seq = functions.replace_ref_net_w_alt_nt(d[g][3][t][2][CDS][0], mutation_dict[m]["coordinate"], d[g][3][t][2][CDS][1]["abs_start"], mutation_dict[m]["mut_nt"])
 
 
 
