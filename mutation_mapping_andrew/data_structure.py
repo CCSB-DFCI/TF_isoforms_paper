@@ -67,6 +67,7 @@ else:
 
 #Write a file that contains information for mapping mutations
 table_file = functions.create_table("table.txt")
+for m,val_m in mutation_dict.items():
 	for g,val_g in d.items():
 		if mutation_dict[m]["chromosome"] == d[g][1][3:] and int(mutation_dict[m]["coordinate"]) >= int(d[g][2]["start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][2]["end"]):
 			transcripts = d[g][3]
@@ -85,16 +86,17 @@ table_file = functions.create_table("table.txt")
 									if int(mutation_dict[m]["coordinate"]) >= int(d[g][3][t][2][CDS][1]["abs_start"]) and int(mutation_dict[m]["coordinate"]) <= int(d[g][3][t][2][CDS][1]["abs_end"]):
 										raw_cds_seq = list(d[g][3][t][2][CDS][0])
 										difference = int(int(mutation_dict[m]["coordinate"]) - int(d[g][3][t][2][CDS][1]["abs_start"]))
-
+										
 										gencode_ref_nt = raw_cds_seq[difference]
 										ref_full_CDS = functions.concatenate(ref_full_CDS, d[g][3][t][2][CDS][0])
 
-										raw_cds_seq[difference] = mutation_dict[m]["mut_nt"].lower()
-										mutated_cds_seq = "".join(raw_cds_seq)
+										mutated_cds_seq = functions.replace_ref_nt_w_alt_nt(raw_cds_seq, difference, mutation_dict[m]["mut_nt"])
 										alt_full_CDS = functions.concatenate(alt_full_CDS, mutated_cds_seq)
-
-										mutation_rel_position = functions.mutation_rel_position(rel_start, rel_end, mutated_cds_seq, difference)
-
+										
+										rel_start = functions.rel_start_func(rel_start, rel_end)
+										rel_end = functions.rel_end_func(rel_start, rel_end, d[g][3][t][2][CDS][0])
+										mutation_rel_position = functions.mutation_rel_position(rel_start, rel_end, difference)
+										
 									else:
 										ref_full_CDS = functions.concatenate(ref_full_CDS, d[g][3][t][2][CDS][0])
 										alt_full_CDS = functions.concatenate(alt_full_CDS, d[g][3][t][2][CDS][0])
@@ -109,13 +111,13 @@ table_file = functions.create_table("table.txt")
 										gencode_ref_nt = functions.complement(raw_cds_seq[difference])
 										ref_full_CDS = functions.concatenate(ref_full_CDS, functions.reverse_complement(d[g][3][t][2][CDS][0]))
 
-
-										raw_cds_seq[difference] = functions.complement(mutation_dict[m]["mut_nt"]).lower()
-										mutated_cds_seq = "".join(functions.reverse_complement(raw_cds_seq))
+										mutated_cds_seq = functions.reverse_complement(functions.replace_ref_nt_w_alt_nt(raw_cds_seq, difference, functions.complement(mutation_dict[m]["mut_nt"])))
 										alt_full_CDS = functions.concatenate(alt_full_CDS, mutated_cds_seq)
 
-										mutation_rel_position = functions.mutation_rel_position(rel_start, rel_end, mutated_cds_seq, -(difference+1))
-
+										rel_start = functions.rel_start_func(rel_start, rel_end)
+										rel_end = functions.rel_end_func(rel_start, rel_end, d[g][3][t][2][CDS][0])
+										mutation_rel_position = functions.mutation_rel_position(rel_start, rel_end, (-(difference+1)))
+										
 									else:
 										ref_full_CDS = functions.concatenate(ref_full_CDS, functions.reverse_complement(d[g][3][t][2][CDS][0]))
 										alt_full_CDS = functions.concatenate(alt_full_CDS, functions.reverse_complement(d[g][3][t][2][CDS][0]))
