@@ -3,6 +3,7 @@ data
 
 # ignore these other data files
 gencode.v25.annotation.gtf
+!tfiso2k_starlong.gtf
 *.fa
 *.fasta
 *.gff3
