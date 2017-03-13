@@ -96,7 +96,7 @@ for m,val_m in mutation_dict.items():
 										rel_start = functions.rel_start_func(rel_start, rel_end)
 										rel_end = functions.rel_end_func(rel_start, rel_end, d[g][3][t][2][CDS][0])
 										mutation_rel_position = functions.mutation_rel_position(rel_start, rel_end, difference)
-										
+										#MY CONFUSION IS PUTTING FUNCTIONS INSIDE FUNCTIONS. I USUALLY GET ERRORS
 									else:
 										ref_full_CDS = functions.concatenate(ref_full_CDS, d[g][3][t][2][CDS][0])
 										alt_full_CDS = functions.concatenate(alt_full_CDS, d[g][3][t][2][CDS][0])
@@ -117,7 +117,7 @@ for m,val_m in mutation_dict.items():
 										rel_start = functions.rel_start_func(rel_start, rel_end)
 										rel_end = functions.rel_end_func(rel_start, rel_end, d[g][3][t][2][CDS][0])
 										mutation_rel_position = functions.mutation_rel_position(rel_start, rel_end, (-(difference+1)))
-										
+
 									else:
 										ref_full_CDS = functions.concatenate(ref_full_CDS, functions.reverse_complement(d[g][3][t][2][CDS][0]))
 										alt_full_CDS = functions.concatenate(alt_full_CDS, functions.reverse_complement(d[g][3][t][2][CDS][0]))
