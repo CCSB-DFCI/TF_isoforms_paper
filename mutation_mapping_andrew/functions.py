@@ -287,6 +287,12 @@ def rel_end_func(rel_start, rel_end, string):
 def mutation_rel_position(rel_start, rel_end, difference):
 	mutation_rel_position = (range(rel_start, rel_end+1))[difference]
 	return mutation_rel_position
+	
+def replace_ref_nt_w_alt_nt(raw_cds_seq, difference, alt_nt):
+	raw_cds_seq[difference] = alt_nt.lower()
+	mutated_cds_seq = "".join(raw_cds_seq)
+	return mutated_cds_seq
+#mutated_cds_seq = functions.replace_ref_net_w_alt_nt(d[g][3][t][2][CDS][0], mutation_dict[m]["coordinate"], d[g][3][t][2][CDS][1]["abs_start"], mutation_dict[m]["mut_nt"])
 
 def get_gc_ref_nt(raw_cds, mutation_coord, CDS_start):
 	raw_cds_seq = list(raw_cds)
@@ -295,50 +301,6 @@ def get_gc_ref_nt(raw_cds, mutation_coord, CDS_start):
 	return gencode_ref_nt
 #gencode_ref_nt = functions.get_gc_ref_nt(d[g][3][t][2][CDS][0], mutation_dict[m]["coordinate"], d[g][3][t][2][CDS][1]["abs_start"])
 
-def replace_ref_nt_w_alt_nt(raw_cds_seq, difference, alt_nt):
-	raw_cds_seq[difference] = alt_nt.lower()
-	mutated_cds_seq = "".join(raw_cds_seq)
-	return mutated_cds_seq
-#mutated_cds_seq = functions.replace_ref_net_w_alt_nt(d[g][3][t][2][CDS][0], mutation_dict[m]["coordinate"], d[g][3][t][2][CDS][1]["abs_start"], mutation_dict[m]["mut_nt"])
-
-
-
-# def concatenate_cds_set(CDS_seq):
-
-# 	full_CDS = full_CDS + CDS_seq
-
-# def populate_concatenated_cds_set(full_CDS):
-
-# 	d[g][3][t][1] = full_CDS
-
-# def compute_relative_coords_for_cds_set():
-
-# 	# rel_start = rel_end + 1
-# 	# rel_end = rel_start + len(chrom_sequence[start_coord-1:end_coord]) - 1
-
-# def populate_cds_relative_coords():
-
-# 	# val_c[2]["rel_start"] = rel_start
-# 	# val_c[2]["rel_end"] = rel_end
-
-
-# CDS = "ATGAGCACAgGCCTGCGGTACAAGAGCAAGCTGGCGACCCCAGGTGAGGACAAGCAGGTAGACATTGACAAGCAGTACGTGGGCTTCGCCACACTGCCCAACCAGGTGCACCGCAAGTCGGTGAAGAAAGGCTTTGACTTCACACTCATGGTGGCTGGTGGTGAGTCAGGCCTGGGGAAGTCCACACTGGTCCACAGCCTCTTCCTGACAGACTTGTACAAGGACCGGAAGCTGCTCAGTGCTGAGGGTGAGCGCATCAGCCAGACGGTAGAGATTCTAAAACACACGGTGGACATTGAGGAGAAGGGAGTCAAGCTGAAGCTCACCATCGTGGACACGCCGGGATTCGGGGACGCTGTCAACAACACCGAGTGGTGCTGGAAGCCCATCACCGACTATGTGGACCAGCAGTTTGAGCAGTACTTCCGTGATGAGAGCGGCCTCAACCGAAAGAACATCCAAGACAACCGAGTGCACTGCTGCCTATACTTCATCTCCCCCTTCGGGCATGGGTGGCTGCGGCCAGTGGATGTGGGTTTCATGAAGGCATTGCATGAGAAGGTCAACATCGTGCCTCTCATCGCCAAAGCTGACTGTCTTGTCCCCAGTGAGATCCGGAAGCTGAAGGAGCGGGTGATCCGGGAGGAGATTGACAAGTTTGGGATCCATGTATACCAGTTCCCTGAGTGTGACTCGGACGAGGATGAGGACTTCAAGCAGCAGGACCGGGAACTGAAGGTGGAGAGCGCGCCCTTCGCCGTTATAGGCAGCAACACGGTGGTGGAGGCCAAGGGGCAGCGGGTCCGGGGCCGACTGTACCCCTGGGGGATCGTGGAGGGTGTGGAGAACCAGGCGCATTGCGACTTCGTGAAGCTGCGCAACATGCTCATCCGCACGCATATGCACGACCTCAAGGACGTGACGTGCGACGTGCACTACGAGAACTACCGCGCGCACTGCATCCAGCAGATGACCAGGTGCAAACTGACCCAGGACAGCCGCATGGAGAGCCCCATCCCGATCCTGCCGCTGCCCACCCCGGACGCCGAGACTGAGAAGCTTATCAGGATGAAGGATGAGGAAGTACTGAGGCGCATGCAGGAGATGCTGCAGAGGATGAAGCAGCAGATGCAGGACCAGTGA"
-
-# translated = list(translate_cds(CDS.upper()))
-# print translated
-# print len(translated)
-# #Assume mutation relative position is 10
-# mut_AA_rel_position = int((10-1)/3) + 1
-# print mut_AA_rel_position
-# translated[mut_AA_rel_position-1] = translated[mut_AA_rel_position-1].lower()
-# print translated
-# print len(translated)
-# translated = "".join(translated)
-# print translated
-# print len(translated)
-# #mut_AA_rel_position = int((mutation_rel_position-1)/3) + 1
-# #translated[mut_AA_rel_position-1] = translated[mut_AA_rel_position-1].lower()
-# #prot_seq = "".join(translated)
 
 
 
