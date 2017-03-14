@@ -185,6 +185,29 @@ def filter_for_coding_variants(mutation_file):
 	return lines_w_point_mutations
 
 
+def convert_3AA_to_1AA(amino_acid):
+
+	"""Function: To convert an amino acid in the three-character notation to that in the one-character notation.
+
+	Argument:
+	amino_acid -- an amino acid in the three-character notation
+
+	Output:
+	amino_acid -- an amino acid in the one-character notation
+
+	For mutational mapping:
+	The file "HGMD_allmut.tsv" defines proteins in terms of their three-character amino acid notation, but I 
+	want it in their one-character amino acid notation."""
+	
+	amino_acids = ({"Ala":"A", "Arg":"R", "Asn":"N", "Asp":"D", "Cys":"C", "Glu":"E", "Gln":"Q", 
+		"Gly":"G", "His":"H", "Ile":"I", "Leu":"L", "Lys":"K", "Met":"M", "Phe":"F", "Pro":"P", 
+		"Ser":"S", "Thr":"T", "Trp":"W", "Tyr":"Y", "Val":"V", "erm":"*"})
+	#"erm" refers to "Term" for stop codon. "erm" because taking the last three indicies from descr in "HGMD_allmut.tsv"
+	if amino_acid in amino_acids:
+		amino_acid = amino_acids[amino_acid]
+	return amino_acid
+
+
 
 def populate_variant_struc(lines_w_point_mutations):
 
@@ -213,8 +236,11 @@ def populate_variant_struc(lines_w_point_mutations):
 			year, pmid, reftag, comments, acc_num, new_date, base) = fields
 		ref_nt = hgvs[-3]
 		mut_nt = hgvs[-1]
-		ref_AA = hgvsAll.split(" ")[-1][0]
-		mut_AA = hgvsAll.split(" ")[-1][-1]
+		#ref_AA = hgvsAll.split(" ")[-1][0]
+		#mut_AA = hgvsAll.split(" ")[-1][-1]
+		ref_AA = convert_3AA_to_1AA(descr[:3])
+		mut_AA = convert_3AA_to_1AA(descr[-3:])
+		#MAY HAVE TO CHANGE TO THESE BECAUSE NOT ALL "hgvsAll" ARE IN THE ASSUMED FORMAT!
 		mutations_dict[gene + " " + startCoord] = ({"disease": disease, "gene": gene, "chromosome": chromosome, 
 			"coordinate":startCoord, "ref_nt": ref_nt, "mut_nt": mut_nt, "ref_AA": ref_AA, "mut_AA": mut_AA})
 	return mutations_dict
