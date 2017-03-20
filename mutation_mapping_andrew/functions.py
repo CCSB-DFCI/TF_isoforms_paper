@@ -156,6 +156,7 @@ def populate_gene_annot_struc(gencode_file):
 					cdss = d[ENSG][3][ENST][2]
 					if CDS_index not in cdss:
 						d[ENSG][3][ENST][2][CDS_index] = ["", {"abs_start": start, "abs_end": end}]
+
 	return d
 
 
@@ -354,9 +355,10 @@ def create_table(table_name):
 
 	table_file = open(table_name, "w")
 	table_file.write(("disease" + "\t" + "hg_gene_name" + "\t" + "gc25_gene_name" + "\t" + "ENSG" + "\t" + 
-		"chromosome" + "\t" + "coordinate" + "\t" + "strand" + "\t" + "ENST" + "\t" + "gc25_ref_nt" + "\t" + 
-		"hg_ref_nt" + "\t" + "hg_alt_nt" + "\t" + "gc25_ref_aa" + "\t" + "hg_ref_aa" + "\t" + "gc25_alt_aa" + 
-		"\t" + "hg_alt_aa" + "\t" + "nt_mut_relative_position" + "\t" + "aa_mut_relative_position" + "\t" + 
+		"chromosome" + "\t" + "coordinate" + "\t" + "CDS_start_coord" + "\t" + "CDS_end_coord" + "\t" + "strand" + 
+		"\t" + "ENST" + "\t" + "gc25_ref_nt" + "\t" + "hg_ref_nt" + "\t" + "hg_alt_nt" + "\t" + "gc25_ref_aa" + 
+		"\t" + "hg_ref_aa" + "\t" + "gc25_alt_aa" + "\t" + "hg_alt_aa" + "\t" + "nt_mut_relative_position" + "\t" 
+		+ "aa_mut_relative_position" + "\t" + "CDS_seq" + "\t" +
 		"cds_seq_alt" + "\t" + "prot_seq_alt" + "\n"))
 	return table_file
 
