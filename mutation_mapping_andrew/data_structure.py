@@ -68,6 +68,7 @@ else:
 
 #Write a file that contains information for mapping mutations
 table_file = functions.create_table("table.txt")
+count = 0
 for m,val_m in mutation_dict.items():
 	for g,val_g in d.items():
 		if (mutation_dict[m]["chromosome"] == d[g][1][3:] and int(mutation_dict[m]["coordinate"]) >= 
@@ -89,6 +90,11 @@ for m,val_m in mutation_dict.items():
 								if strand == "+":
 									if (int(mutation_dict[m]["coordinate"]) >= int(d[g][3][t][2][CDS][1]["abs_start"]) and 
 										int(mutation_dict[m]["coordinate"]) <= int(d[g][3][t][2][CDS][1]["abs_end"])):
+										
+										CDS_seq = d[g][3][t][2][CDS][0]
+										CDS_start = d[g][3][t][2][CDS][1]["abs_start"]
+										CDS_end = d[g][3][t][2][CDS][1]["abs_end"]
+
 										raw_cds_seq = list(d[g][3][t][2][CDS][0])
 										difference = (int(int(mutation_dict[m]["coordinate"]) - 
 											int(d[g][3][t][2][CDS][1]["abs_start"])))
@@ -113,6 +119,11 @@ for m,val_m in mutation_dict.items():
 								if strand == "-":
 									if (int(mutation_dict[m]["coordinate"]) >= int(d[g][3][t][2][CDS][1]["abs_start"]) and 
 										int(mutation_dict[m]["coordinate"]) <= int(d[g][3][t][2][CDS][1]["abs_end"])):
+										
+										CDS_seq = functions.reverse_complement(d[g][3][t][2][CDS][0])
+										CDS_start = d[g][3][t][2][CDS][1]["abs_start"]
+										CDS_end = d[g][3][t][2][CDS][1]["abs_end"]
+
 										raw_cds_seq = list(d[g][3][t][2][CDS][0])
 										difference = (int(int(mutation_dict[m]["coordinate"]) - 
 											int(d[g][3][t][2][CDS][1]["abs_start"])))
@@ -145,12 +156,14 @@ for m,val_m in mutation_dict.items():
 
 								table_file.write((mutation_dict[m]["disease"] + "\t" + mutation_dict[m]["gene"] + "\t" + 
 									d[g][0] + "\t" + g + "\t" + str(mutation_dict[m]["chromosome"])  + "\t" + 
-									str(mutation_dict[m]["coordinate"]) + "\t" + strand  + "\t" + t  + "\t" + 
-									gencode_ref_nt + "\t" + mutation_dict[m]["ref_nt"] + "\t" + mutation_dict[m]["mut_nt"] + 
-									"\t" + gencode_ref_AA + "\t" + mutation_dict[m]["ref_AA"] + "\t" + gencode_alt_AA + "\t" + 
-									mutation_dict[m]["mut_AA"] + "\t" + str(mutation_rel_position) + "\t" + str(AA_rel_position) + 
-									"\t" + alt_full_CDS + "\t" + alt_translated + "\n"))
-							
+									str(mutation_dict[m]["coordinate"]) + "\t" + CDS_start + "\t" + CDS_end + "\t" + strand  
+									+ "\t" + t  + "\t" + gencode_ref_nt + "\t" + mutation_dict[m]["ref_nt"] + "\t" + 
+									mutation_dict[m]["mut_nt"] + "\t" + gencode_ref_AA + "\t" + mutation_dict[m]["ref_AA"] + 
+									"\t" + gencode_alt_AA + "\t" + mutation_dict[m]["mut_AA"] + "\t" + str(mutation_rel_position) 
+									+ "\t" + str(AA_rel_position) + "\t" + CDS_seq + "\t" + alt_full_CDS + "\t" + alt_translated + "\n"))
+								count = count + 1
+								if count%100 == 0:
+									print count
 
 
 
