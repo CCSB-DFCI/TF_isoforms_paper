@@ -1,5 +1,6 @@
 # directory of large data files
-data 
+data
+figures
 
 # ignore these other data files
 gencode.v25.annotation.gtf
@@ -13,4 +14,5 @@ gencode.v25.annotation.gtf
 *.tsv
 
 .DS_Store
+.vscode/
 *.pyc
