@@ -3,6 +3,7 @@ import pandas as pd
 
 import ccsblib
 
+# test change
 
 def load_valid_isoform_clones():
     """The subset of TF isoform clones that map to GenCode?????
@@ -20,22 +21,22 @@ def load_valid_isoform_clones():
 
 def load_tf_isoform_screen_results():
     """There were two screens performed:
-    
+
     The cloned TF isoforms as AD-fusions against DB-fusions of:
     (1) ORFeome 9.1
     (2) Subset of TFs and co-factors
-    
+
     Returns:
         pandas.DataFrame: for each pair, was it found in the first and second screens
-        
+
     """
     qry = """SELECT ad_orf_id,
                     db_orf_id,
-                    pool_name 
+                    pool_name
                FROM swimseq_run.INGS_IST a,
-                    swimseq_run.NGS_POOL b 
-              WHERE a.pool_id = b.pool_id 
-                AND a.pool_id in (787, 788)  
+                    swimseq_run.NGS_POOL b
+              WHERE a.pool_id = b.pool_id
+                AND a.pool_id in (787, 788)
                 AND ist_score>=0.2;"""
     df = pd.read_sql(qry, ccsblib.paros_connection())
     df = (pd.get_dummies(df, columns=['pool_name']).groupby(['ad_orf_id', 'db_orf_id']).sum() > 0).reset_index()
@@ -50,7 +51,7 @@ def load_isoform_and_paralog_y2h_data():
     """
     - NS: sequencing failed
     - NC: no call
-    
+
     """
     valid_clones = load_valid_isoform_clones()
     qry_a = """select a.category,
@@ -60,17 +61,17 @@ def load_isoform_and_paralog_y2h_data():
                       a.db_orf_id,
                       c.symbol AS db_gene_symbol,
                       a.final_score AS score
-                 FROM tf_screen.tf_isoform_final AS a 
-                 LEFT JOIN tf_screen.iso6k_sequences AS b 
-                   ON a.ad_orf_id = b.orf_id 
-                 LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c 
+                 FROM tf_screen.tf_isoform_final AS a
+                 LEFT JOIN tf_screen.iso6k_sequences AS b
+                   ON a.ad_orf_id = b.orf_id
+                 LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c
                    ON a.db_orf_id = c.orf_id;"""
     df_a = pd.read_sql(qry_a, ccsblib.paros_connection())
     df_a = df_a.loc[df_a['ad_clone_acc'].isin(valid_clones['clone_acc']), :]
-    
+
     # remove duplicate ORF for gene DDX39B, where sequencing mostly failed
     df_a = df_a.loc[df_a['db_orf_id'] != 3677, :]
-    
+
     df_a['category'] = df_a['category'].map({'ppi': 'tf_isoform_ppis',
                                              'ng_stem_cell_factor': 'tf_isoform_ppis',
                                              'rrs': 'rrs_isoforms',
@@ -82,10 +83,10 @@ def load_isoform_and_paralog_y2h_data():
                       a.db_orf_id,
                       c.symbol AS db_gene_symbol,
                       a.final_score AS score
-                 FROM tf_screen.paralog_final AS a 
-                 LEFT JOIN tf_screen.iso6k_sequences AS b 
-                   ON a.ad_orf_id = b.orf_id 
-                 LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c 
+                 FROM tf_screen.paralog_final AS a
+                 LEFT JOIN tf_screen.iso6k_sequences AS b
+                   ON a.ad_orf_id = b.orf_id
+                 LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c
                    ON a.db_orf_id = c.orf_id;"""
     df_b = pd.read_sql(qry_b, ccsblib.paros_connection())
     df_b = df_b.loc[df_b['ad_clone_acc'].isin(valid_clones), :]
@@ -100,7 +101,7 @@ def load_isoform_and_paralog_y2h_data():
     # drop interaction partner ORFs whose sequence does not map to an ensembl gene
     df = df.dropna(subset=['db_gene_symbol'])
     """
-    # Need to map the screen data to the gene level first 
+    # Need to map the screen data to the gene level first
     screen = load_tf_isoform_screen_results()
     pd.merge(y2h,
             screen,
@@ -112,7 +113,7 @@ def load_isoform_and_paralog_y2h_data():
 
 def load_y1h_pdi_data():
     df = pd.read_csv('data/a2_juan_pdi_w_unique_isoacc.tsv', sep='\t')
-    df = (pd.concat([df.loc[:, ['tf', 'unique_acc']], 
+    df = (pd.concat([df.loc[:, ['tf', 'unique_acc']],
                      pd.get_dummies(df['bait'])],
                     axis=1)
             .groupby(['tf', 'unique_acc']).sum() > 0).reset_index()
@@ -124,8 +125,8 @@ def load_y1h_pdi_data():
 
 def load_m1h_activation_data():
     """
-    
-    
+
+
     """
     df = pd.read_csv('data/a_m1h_final_table.tsv', sep='\t')
     df = df.rename(columns={'pos_acc': 'clone_acc'})
