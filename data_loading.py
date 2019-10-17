@@ -11,11 +11,11 @@ def load_valid_isoform_clones():
         set(str): clone accession IDs
 
     """
-    return set(pd.read_sql("""SELECT unique_acc
-                                FROM tf_screen.iso6k_annotation;""",
-                           ccsblib.paros_connection())
-                           ['unique_acc']
-                           .values)
+    return pd.read_sql("""SELECT symbol as gene,
+                                 unique_acc as clone_acc
+                            FROM tf_screen.iso6k_annotation
+                           ORDER BY gene, clone_acc;""",
+                       ccsblib.paros_connection())
 
 
 def load_tf_isoform_screen_results():
@@ -66,7 +66,7 @@ def load_isoform_and_paralog_y2h_data():
                  LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c 
                    ON a.db_orf_id = c.orf_id;"""
     df_a = pd.read_sql(qry_a, ccsblib.paros_connection())
-    df_a = df_a.loc[df_a['ad_clone_acc'].isin(valid_clones), :]
+    df_a = df_a.loc[df_a['ad_clone_acc'].isin(valid_clones['clone_acc']), :]
     
     # remove duplicate ORF for gene DDX39B, where sequencing mostly failed
     df_a = df_a.loc[df_a['db_orf_id'] != 3677, :]
