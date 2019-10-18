@@ -3,10 +3,11 @@ import pandas as pd
 
 import ccsblib
 
-# test change
 
 def load_valid_isoform_clones():
-    """The subset of TF isoform clones that map to GenCode?????
+    """The subset of TF isoform clones that have passed the stringent
+       annotation process (at-length AA match to GENCODE, or approved by
+       Gloria/GENCODE team).
 
     Returns:
         set(str): clone accession IDs
@@ -50,7 +51,8 @@ def load_tf_isoform_screen_results():
 def load_isoform_and_paralog_y2h_data():
     """
     - NS: sequencing failed
-    - NC: no call
+    - NC: no call (e.g., mis-spotting)
+    - AA: autoactivator
 
     """
     valid_clones = load_valid_isoform_clones()
