@@ -137,3 +137,36 @@ def load_m1h_activation_data():
             df[column] = np.log2(df[column])
     df = df.sort_values(['gene', 'clone_acc'])
     return df
+
+
+def load_rna_expression_data():
+    """
+    Isoform clone expression across HPA tissues.
+    """
+    df = pd.read_table('data/tf_iso_expression/a_kallisto_hpa_tpms_prot_seq_grouped_w_lambert.tsv')
+    df = df.loc[df.target_id.str.contains('/'), :]
+    idxs = [x for x in df.columns if not x.startswith('ERR')]
+    df = df.set_index(idxs)
+    df2 = df.stack().reset_index()
+    df2[['err', 'ers']] = df2.level_5.str.split('|', expand=True)
+
+    # sample manifest
+    dfm = pd.read_table('data/tf_iso_expression/b_sample_manifest_E-MTAB-2836.sdrf.txt')
+    dfm = dfm[['Comment[ENA_RUN]', 'Source Name']]
+    dfm.columns = ['err', 'tiss']
+    dfm['tiss'] = dfm['tiss'].apply(lambda x: x.split('_')[0])
+
+    # add tissue type to the expression matrix
+    df3 = df2.merge(dfm, how='left', on='err')
+
+    df3 = df3[['gene', 'target_id', 0, 'tiss']]
+    df3.columns = ['gene', 'isoform', 'tpm', 'tiss']
+    df4 = df3.groupby(['gene', 'isoform', 'tiss']).agg({'tpm': ['mean', 'std']}).reset_index()
+    df4.columns = df4.columns.get_level_values(0)
+    df4.columns = ['gene', 'isoform', 'tiss', 'tpm', 'tpm_stdev']
+    df4 = df4[['gene', 'isoform', 'tiss', 'tpm', 'tpm_stdev']]
+    df4['isoacc'] = df4['isoform'].str.split('_').str.get(0)
+    df4 = df4[['gene', 'isoacc', 'tiss', 'tpm', 'tpm_stdev']]
+    # write out table
+    # df4.to_csv('expression_table_tfisoclones.tsv', sep='\t', index=False)
+    return df4
