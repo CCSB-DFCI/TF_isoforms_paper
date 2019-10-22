@@ -75,9 +75,11 @@ def render_iso_image(orfs_to_plot, ax=None, mode='all', dname='output_isoimages'
                 ax.add_patch(mpatches.Rectangle([x, y], blength, bheight, lw=1, ec='k', fc='w', zorder=1.5, joinstyle='round')) # base layer so 'alpha' diff for 3 diff frm isn't show-through
                 ax.add_patch(mpatches.Rectangle([x, y], blength, bheight, lw=1, ec='k', fc=col, zorder=2, joinstyle='round', alpha=0.2))
             # add subtle splice (delta) amounts, if option turned on
-            delta_start, delta_end = retrieve_subtle_splice_amounts(exon.cds)
-            if delta_start: ax.text(x, y+height*2, delta_start, va='bottom', ha='left', size='x-small')
-            if delta_end: ax.text(x+blength, y+height*2, delta_end, va='bottom', ha='right', size='x-small')
+            # first, make sure the exon contains a (coding) cds object
+            if exon.cds:
+                delta_start, delta_end = retrieve_subtle_splice_amounts(exon.cds)
+                if delta_start: ax.text(x, y+height*2, delta_start, va='bottom', ha='left', size='x-small')
+                if delta_end: ax.text(x+blength, y+height*2, delta_end, va='bottom', ha='right', size='x-small')
             # render cds blocks, if exists
             # TODO - 191015 debug, issue plotting CDS and exon blips
             # if exon.cds:
@@ -389,7 +391,6 @@ def retrieve_subtle_splice_amounts(exon_cds):
     """Return text label for subtle splice gaps (deltas)."""
     delta_label_start = None
     delta_label_end = None
-    # TODO - debug, because with new isoacc, doesn't work anymore
     if exon_cds.start_subtle_splice:
         delta_label_start = str(exon_cds.start_subtle_splice) + 'nt'
     if exon_cds.end_subtle_splice:
