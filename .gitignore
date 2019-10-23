@@ -16,3 +16,4 @@ gencode.v25.annotation.gtf
 .DS_Store
 .vscode/
 *.pyc
+.ipynb_checkpoints
