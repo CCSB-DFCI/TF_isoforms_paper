@@ -1,6 +1,10 @@
 # directory of large data files
 data
 figures
+misc
+
+# ignore gloria's auxiliary analysis folder for now
+analysis2
 
 # ignore these other data files
 gencode.v25.annotation.gtf
@@ -12,6 +16,7 @@ gencode.v25.annotation.gtf
 *.vcf
 *.csv
 *.tsv
+#.txt
 
 .DS_Store
 .vscode/
