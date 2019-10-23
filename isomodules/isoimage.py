@@ -81,11 +81,10 @@ def render_iso_image(orfs_to_plot, ax=None, mode='all', dname='output_isoimages'
                 if delta_start: ax.text(x, y+height*2, delta_start, va='bottom', ha='left', size='x-small')
                 if delta_end: ax.text(x+blength, y+height*2, delta_end, va='bottom', ha='right', size='x-small')
             # render cds blocks, if exists
-            # TODO - 191015 debug, issue plotting CDS and exon blips
-            # if exon.cds:
-            #     x, y, blength, bheight = get_exon_plot_coordinates(exon.cds, comp, height, line, cds=True)
-            #     ax.add_patch(mpatches.Rectangle([x, y], blength, bheight, lw=1, ec='k', fc='w', zorder=3, joinstyle='round')) # base layer so 'alpha' diff for 3 diff frm isn't show-through
-            #     ax.add_patch(mpatches.Rectangle([x, y], blength, bheight, lw=1, ec='k', fc=col, zorder=4, joinstyle='round', alpha=alpha_val))
+            if exon.cds:
+                x, y, blength, bheight = get_exon_plot_coordinates(exon.cds, comp, height, line, cds=True)
+                ax.add_patch(mpatches.Rectangle([x, y], blength, bheight, lw=1, ec='k', fc='w', zorder=3, joinstyle='round')) # base layer so 'alpha' diff for 3 diff frm isn't show-through
+                ax.add_patch(mpatches.Rectangle([x, y], blength, bheight, lw=1, ec='k', fc=col, zorder=4, joinstyle='round', alpha=alpha_val))
             max_x = update_figure_range(max_x, (x+blength))
             # render features (domains or isrs)
             # TODO - debug, now that I redesigned features, exon doesn't have 'maps'
@@ -110,9 +109,14 @@ def render_iso_image(orfs_to_plot, ax=None, mode='all', dname='output_isoimages'
     # set figsize so proportions are equal between many/few isoform images
     max_y = line - spacing
     max_x = max_x + abs(sp[0]) # adjust for sp[0] plotted
-    #fig.set_size_inches(max_x*1.7, abs(max_y)*1.7)
+    # fig.set_size_inches(max_x*1.7, abs(max_y)*1.7)
     #plt.savefig('./{}/{}.pdf'.format(dname, repr_orf.gene.name), bbox_inches='tight')
 
+    # use this to set size of the axis - before I set size to figure
+    # but now (191022), Luke draws image on ax object
+    # this function requires dimensions in inches, and I compute optimal dim.
+    # in points TODO - convert points to inches
+    # set_size_of_ax(50, 50)
 
 
 def grab_gen_objs_from_orfs(orfs):
@@ -261,11 +265,9 @@ def find_and_set_subtle_splicing_status(orfs_to_plot, threshold=15):
     If cds.*_has_subtle_splice is 0, then there is no subtle splice.
     Note - if negative strand, start/end are reversed
     """
-    # TODO - this was cdss below, but chnaged to exons 191015 to make subtle splice work
-    exons = conso_exons_and_cdss_across_orfs_to_list(orfs_to_plot, cds_only=False)
-    coords = cds_ranges_to_set(exons)
-    # TODO - 191015 I changed the plotting from cds to exon, restructure code
-    for cds in exons:
+    cdss = conso_exons_and_cdss_across_orfs_to_list(orfs_to_plot, cds_only=True)
+    coords = cds_ranges_to_set(cdss)
+    for cds in cdss:
         # determine if there is a delta between start and start of other cds
         # if so, set pop-up attr 'start_subtle_splice'
         st_delta = 0 # init. to nothing, set to smallest delta when comparing cds start to all other coords in orf group
@@ -341,19 +343,34 @@ def update_figure_range(max_x, intron_end):
         max_x = intron_end
     return max_x
 
+def set_size_of_ax(w,h, ax=None):
+    """ w, h: width, height in inches """
+    if not ax: ax=plt.gca()
+    l = ax.figure.subplotpars.left
+    r = ax.figure.subplotpars.right
+    t = ax.figure.subplotpars.top
+    b = ax.figure.subplotpars.bottom
+    figw = float(w)/(r-l)
+    figh = float(h)/(t-b)
+    ax.figure.set_size_inches(figw, figh)
 
-def get_exon_plot_coordinates(exon, comp, height, line, cds=False):
+
+def get_exon_plot_coordinates(block, comp, height, line, cds=False):
     # derive the exon coordinates
+    # block - exon or cds
     # cds - plotting cds
+    # set thickness of blocks based on if it is a CDS or exon
     if not cds:
         n = 1
+        block_length = block.len
     else:
         n = 2
-    x = exon.rel_start/float(comp)
+        block_length = len(block.exon.aa_seq)
+    x = block.rel_start/float(comp)
     y = line
     if cds:
         y -= height/2.0
-    blength = exon.len/float(comp) # block length
+    blength = block_length/float(comp) # block length
     bheight = height * n # block height
     return x, y, blength, bheight
 

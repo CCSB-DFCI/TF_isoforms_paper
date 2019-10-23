@@ -592,7 +592,7 @@ class Exon(Biomolecule):
     @property
     def aa_seq(self):
         """nt-precision aa sequence. Note - three aa for codon."""
-        return ''.join(pos.res.aa for pos in self.chain)
+        return ''.join(pos.res.aa for pos in self.chain if pos.is_coding)
 
     @property
     def frm_seq(self):
@@ -938,6 +938,7 @@ class TranscribedPosition(Position):
         self.exon_idx = exon_idx  # 1-based index in exon
         self.frm = frm  # relative to ORF (ATG start), the frame of translation
         self.res = None  # link to residue obj
+        self.is_coding = False  # turned to True if pos_obj linked to res_obj
         Position.__init__(self, coord, nt, exon, orf)
 
     @property
@@ -1078,9 +1079,13 @@ class Residue(Biomolecule):
 
     def link_pos_to_this_res_obj(self):
         # link pos to residue
+        # turn on pos.is_coding flag to True
         self.p1.res = self
+        self.p1.is_coding = True
         self.p2.res = self
+        self.p2.is_coding = True
         self.p3.res = self
+        self.p3.is_coding = True
 
 
 # in isoalign, need empty res and cds objects
