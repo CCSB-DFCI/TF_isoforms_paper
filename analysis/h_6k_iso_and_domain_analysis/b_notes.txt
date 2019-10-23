@@ -1,0 +1,10 @@
+Need to update the functions that load orf sequences and make gene objects to accept the old accession info.
+
+That is, if b_* needs to be rerun.
+
+
+How DBDs were mapped to 6K:
+
+Started with Sachi HMMER alignment of DBDs to GENCODE. Took the DBD-ORF alignment for the APPRIS ORF.
+
+Then, tranferred the DBD-appris_orf mapping to all the 6K ORF mappings.

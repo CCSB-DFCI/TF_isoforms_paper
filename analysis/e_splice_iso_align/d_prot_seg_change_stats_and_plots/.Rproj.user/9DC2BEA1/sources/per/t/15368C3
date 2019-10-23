@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1560718164856.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "15368C3",
+    "lastKnownWriteTime" : 0,
+    "last_content_update" : 1560718164856,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "FD1D0FA4",
+        "caption" : "dfc",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=dfc&cache_key=FD1D0FA4",
+        "displayedObservations" : "2328",
+        "environment" : "",
+        "object" : "dfc",
+        "preview" : "0",
+        "totalObservations" : "2328",
+        "variables" : "12"
+    },
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

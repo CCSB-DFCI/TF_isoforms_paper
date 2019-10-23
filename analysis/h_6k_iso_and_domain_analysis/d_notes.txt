@@ -1,0 +1,7 @@
+190814
+
+We received the final list of TF isoforms to include in the manuscript.
+
+Need to redo the M1H tables, including the domain mapping.
+
+Here re-running code to take in domain mapping (re-mapped, see source folder) and call domains affected.

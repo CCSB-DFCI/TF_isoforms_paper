@@ -1,0 +1,5 @@
+Made iso-obj and populated alns for lambert 1700 TFs.
+
+B/c takes a long time to make these objects, using the c_* script to output protein-segment comparison statistics for plotting.
+
+Analysis and plotting is in d_*.

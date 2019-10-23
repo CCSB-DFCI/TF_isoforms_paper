@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1560737486912.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "4FE77DB3",
+    "lastKnownWriteTime" : 6,
+    "last_content_update" : 1560737486912,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "9FCF444",
+        "caption" : "dfh",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=dfh&cache_key=9FCF444",
+        "displayedObservations" : "1648",
+        "environment" : "",
+        "object" : "dfh",
+        "preview" : "0",
+        "totalObservations" : "1648",
+        "variables" : "17"
+    },
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

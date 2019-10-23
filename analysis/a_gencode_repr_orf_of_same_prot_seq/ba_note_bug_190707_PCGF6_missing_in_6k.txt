@@ -1,0 +1,5 @@
+Found that PCGF6 is not listed as a TF under 'gloria', but it is present in the 6K collection (listed as a a gene).
+
+I went in and manually fixed this in the file b_*
+
+See 190702_6K_clones_curate*

@@ -1,0 +1,7 @@
+Notes on the manual annoation.
+
+There were 37 genes for which the original name was not found in gencode30.
+
+Going back to the source lists, I retrieved the ENSG for each genename, searched the internet, and copy/pasted the new genename.
+
+In following script, c_*, checked and all manually added genenames *are* present in gencode30.

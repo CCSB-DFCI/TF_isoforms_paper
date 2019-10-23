@@ -1,0 +1,3 @@
+1700 lambert TFs loaded up into gen_objs in c_*
+
+Outputing the results here f_*
