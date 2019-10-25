@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import ccsblib
+from Bio.Seq import Seq
 
 
 
@@ -142,34 +143,49 @@ def load_m1h_activation_data():
 def load_rna_expression_data():
     """
     Isoform clone expression across HPA tissues.
+    Returns two tables - TF isoform clones, and PPI partners
     """
+    # load all expression data
     df = pd.read_table('../../data/tf_iso_expression/a_kallisto_hpa_tpms_prot_seq_grouped_w_lambert.tsv')
-    df = df.loc[df.target_id.str.contains('/'), :]
-    idxs = [x for x in df.columns if not x.startswith('ERR')]
-    df = df.set_index(idxs)
-    df2 = df.stack().reset_index()
-    df2[['err', 'ers']] = df2.level_5.str.split('|', expand=True)
 
-    # sample manifest
-    dfm = pd.read_table('../../data/tf_iso_expression/b_sample_manifest_E-MTAB-2836.sdrf.txt')
-    dfm = dfm[['Comment[ENA_RUN]', 'Source Name']]
-    dfm.columns = ['err', 'tiss']
-    dfm['tiss'] = dfm['tiss'].apply(lambda x: x.split('_')[0])
+    # subset to tfs in isoform collection
+    df_tfs = df.loc[df.target_id.str.contains('/'), :] # filter for tfs in clone collection
 
-    # add tissue type to the expression matrix
-    df3 = df2.merge(dfm, how='left', on='err')
+    # subset to partners
+    y2h = load_isoform_and_paralog_y2h_data()
+    ptrs = set(y2h.db_gene_symbol)
+    df_ptrs = df.loc[df['gene'].isin(ptrs),:]
 
-    df3 = df3[['gene', 'target_id', 0, 'tiss']]
-    df3.columns = ['gene', 'isoform', 'tpm', 'tiss']
-    df4 = df3.groupby(['gene', 'isoform', 'tiss']).agg({'tpm': ['mean', 'std']}).reset_index()
-    df4.columns = df4.columns.get_level_values(0)
-    df4.columns = ['gene', 'isoform', 'tiss', 'tpm', 'tpm_stdev']
-    df4 = df4[['gene', 'isoform', 'tiss', 'tpm', 'tpm_stdev']]
-    df4['isoacc'] = df4['isoform'].str.split('_').str.get(0)
-    df4 = df4[['gene', 'isoacc', 'tiss', 'tpm', 'tpm_stdev']]
-    # write out table
-    # df4.to_csv('expression_table_tfisoclones.tsv', sep='\t', index=False)
-    return df4
+    dfs = []
+    for df in [df_tfs, df_ptrs]:
+        # wrangle table
+        idxs = [x for x in df.columns if not x.startswith('ERR')]
+        df = df.set_index(idxs)
+        df2 = df.stack().reset_index()
+        df2[['err', 'ers']] = df2.level_5.str.split('|', expand=True)
+
+        # sample manifest
+        dfm = pd.read_table('../../data/tf_iso_expression/b_sample_manifest_E-MTAB-2836.sdrf.txt')
+        dfm = dfm[['Comment[ENA_RUN]', 'Source Name']]
+        dfm.columns = ['err', 'tiss']
+        dfm['tiss'] = dfm['tiss'].apply(lambda x: x.split('_')[0])
+
+        # add tissue type to the expression matrix
+        df3 = df2.merge(dfm, how='left', on='err')
+
+        # wrangle to final expression table
+        df3 = df3[['gene', 'target_id', 0, 'tiss']]
+        df3.columns = ['gene', 'isoform', 'tpm', 'tiss']
+        df4 = df3.groupby(['gene', 'isoform', 'tiss']).agg({'tpm': ['mean', 'std']}).reset_index()
+        df4.columns = df4.columns.get_level_values(0)
+        df4.columns = ['gene', 'isoform', 'tiss', 'tpm', 'tpm_stdev']
+        df4 = df4[['gene', 'isoform', 'tiss', 'tpm', 'tpm_stdev']]
+        df4['isoacc'] = df4['isoform'].str.split('_').str.get(0)
+        df4 = df4[['gene', 'isoacc', 'tiss', 'tpm', 'tpm_stdev']]
+
+        dfs.append(df4)
+    return dfs[0], dfs[1]
+
 
 
 def load_seq_comparison_data():
@@ -183,3 +199,50 @@ def load_seq_comparison_data():
     df = df[['pair', 'AAseq_identity%']]
     df.columns = ['pair', 'aa_seq_perc_ident']
     return df
+
+
+def load_iso_lengths_data():
+    """
+    AA lengths of the isoform clones.
+    """
+    qry = 'select unique_acc, cds from tf_screen.iso6k_sequences'
+    df = pd.read_sql(qry, ccsblib.paros_connection())
+    df['aa_seq'] = df['cds'].apply(lambda x: str(Seq(x).translate(to_stop=True)))
+    df['aa_len']  = df['aa_seq'].map(len)
+    df = df[['unique_acc', 'aa_len']]
+    df.columns = ['isoacc', 'aa_len']
+    return df
+
+
+def load_exp_correlation_data():
+    """
+    TF isoform to partner expression correlation across 32 tissue HPA data.
+    """
+    tfs, ptrs = load_rna_expression_data() # only loads data for tf isoform clones
+    tfs = tfs.drop(columns=['tpm_stdev'])
+    ptrs = ptrs.drop(columns=['isoacc', 'tpm_stdev'])
+
+    # wrangle the partners expression data
+    ptrs = ptrs.groupby(['gene', 'tiss']).sum()
+    ptrs = ptrs.unstack(level='gene').reset_index()
+    ptrs.columns = ptrs.columns.get_level_values(1)
+    ptrs = ptrs.rename(columns={'':'tiss'})
+
+    # wrangle the tfs expression data
+    tfs = tfs.groupby(['isoacc', 'tiss']).sum()
+    tfs = tfs.unstack(level='isoacc').reset_index()
+    tfs.columns = tfs.columns.get_level_values(1)
+    tfs = tfs.rename(columns={'':'tiss'})
+
+    # combine tf and ptr expression values
+    exp = tfs.merge(ptrs, how='left')
+
+    # make correlation matrix
+    cor = exp.corr()
+    cor = cor.unstack().reset_index() # flatten corr. matrix
+    cor.columns = ['tf', 'partner', 'corr']
+
+    # filter for tf isoform to partner pairs only
+    cor2 = cor.loc[cor['tf'].str.contains('\|') & ~cor['partner'].str.contains('\|'), :]
+
+    return cor2
