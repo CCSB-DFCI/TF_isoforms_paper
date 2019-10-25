@@ -181,5 +181,10 @@ def load_seq_comparison_data():
     df = pd.read_table('../../data/tf_AA_seq_identities/a_2019-09-10_AA_seq_identity_Isoform_series_for_all_6Kpairs_unique_acc.txt')
     df['pair'] = df.apply(lambda x: '_'.join(sorted([x.iso1, x.iso2])), axis=1)
     df = df[['pair', 'AAseq_identity%']]
-    df.columns = ['pair', 'aa_seq_perc_ident']
-    return df
+    df.columns = ['pair', 'aa_seq_pct_id']
+    if df['pair'].duplicated().any():
+        raise UserWarning('Unexpected duplicates')
+    df = df.set_index('pair')
+    if (df['aa_seq_pct_id'] < 0).any() or (df['aa_seq_pct_id'] > 100).any():
+        raise UserWarning('Percent values outside 0-100')
+    return df['aa_seq_pct_id']
