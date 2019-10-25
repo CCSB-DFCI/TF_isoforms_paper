@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-
 import ccsblib
+
 
 
 def load_valid_isoform_clones():
@@ -114,12 +114,12 @@ def load_isoform_and_paralog_y2h_data():
 
 
 def load_y1h_pdi_data():
-    df = pd.read_csv('data/a2_juan_pdi_w_unique_isoacc.tsv', sep='\t')
+    df = pd.read_csv('../../data/a2_juan_pdi_w_unique_isoacc.tsv', sep='\t')
     df = (pd.concat([df.loc[:, ['tf', 'unique_acc']],
                      pd.get_dummies(df['bait'])],
                     axis=1)
             .groupby(['tf', 'unique_acc']).sum() > 0).reset_index()
-    zeros = pd.read_csv('data/a2_juan_isoforms_wo_pdi.tsv', sep='\t')
+    zeros = pd.read_csv('../../data/a2_juan_isoforms_wo_pdi.tsv', sep='\t')
     df = pd.concat([df, zeros], axis=0, sort=False).reset_index(drop=True).fillna(False)
     df = df.sort_values(['tf', 'unique_acc'])
     return df
@@ -130,7 +130,7 @@ def load_m1h_activation_data():
 
 
     """
-    df = pd.read_csv('data/a_m1h_final_table.tsv', sep='\t')
+    df = pd.read_csv('../../data/a_m1h_final_table.tsv', sep='\t')
     df = df.rename(columns={'pos_acc': 'clone_acc'})
     for column in df.columns:
         if column.startswith('M1H_rep'):
@@ -143,7 +143,7 @@ def load_rna_expression_data():
     """
     Isoform clone expression across HPA tissues.
     """
-    df = pd.read_table('data/tf_iso_expression/a_kallisto_hpa_tpms_prot_seq_grouped_w_lambert.tsv')
+    df = pd.read_table('../../data/tf_iso_expression/a_kallisto_hpa_tpms_prot_seq_grouped_w_lambert.tsv')
     df = df.loc[df.target_id.str.contains('/'), :]
     idxs = [x for x in df.columns if not x.startswith('ERR')]
     df = df.set_index(idxs)
@@ -151,7 +151,7 @@ def load_rna_expression_data():
     df2[['err', 'ers']] = df2.level_5.str.split('|', expand=True)
 
     # sample manifest
-    dfm = pd.read_table('data/tf_iso_expression/b_sample_manifest_E-MTAB-2836.sdrf.txt')
+    dfm = pd.read_table('../../data/tf_iso_expression/b_sample_manifest_E-MTAB-2836.sdrf.txt')
     dfm = dfm[['Comment[ENA_RUN]', 'Source Name']]
     dfm.columns = ['err', 'tiss']
     dfm['tiss'] = dfm['tiss'].apply(lambda x: x.split('_')[0])
@@ -170,3 +170,16 @@ def load_rna_expression_data():
     # write out table
     # df4.to_csv('expression_table_tfisoclones.tsv', sep='\t', index=False)
     return df4
+
+
+def load_seq_comparison_data():
+    """
+    Pairwise sequence comparisons of AA.
+    Needleman algorithm, global alignment.
+    Note - I checked and there are no duplicate rows.
+    """
+    df = pd.read_table('../../data/tf_AA_seq_identities/a_2019-09-10_AA_seq_identity_Isoform_series_for_all_6Kpairs_unique_acc.txt')
+    df['pair'] = df.apply(lambda x: '_'.join(sorted([x.iso1, x.iso2])), axis=1)
+    df = df[['pair', 'AAseq_identity%']]
+    df.columns = ['pair', 'aa_seq_perc_ident']
+    return df
