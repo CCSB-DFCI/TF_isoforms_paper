@@ -2,6 +2,7 @@
 data
 figures
 misc
+tmp
 
 # ignore gloria's auxiliary analysis folder for now
 analysis2
