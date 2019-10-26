@@ -73,7 +73,7 @@ def pairs_of_isoforms_comparison_table(isoforms, y2h, y1h, m1h):
 
     if (iso_pairs['clone_acc_a'] >= iso_pairs['clone_acc_b']).any():
         raise UserWarning('Expected clone IDs to be ordered')
-    aa_ident = load_seq_comparison_data()
+    aa_ident = pd.Series(load_seq_comparison_data())
     iso_pairs['aa_seq_pct_id'] = (iso_pairs['clone_acc_a'] + '_' + iso_pairs['clone_acc_b']).map(aa_ident)
 
     return iso_pairs
@@ -98,10 +98,10 @@ def ppi_metric(row, data, function):
     else:
         return np.nan
 
-    
+
 def pdi_metric(row, data, function):
     df = data.loc[(data['unique_acc'] == row['clone_acc_a']) |
-                  (data['unique_acc'] == row['clone_acc_b']), 
+                  (data['unique_acc'] == row['clone_acc_b']),
                   data.columns[2:]].copy()
     if df.shape[0] < 2:
         return np.nan
@@ -124,7 +124,7 @@ def simpsons_index(a, b):
     else:
         return len(a.intersection(b)) / float(min_size)
 
-    
+
 def number_tested_partners(a, b):
     """Comes up with nan when it should be 0?"""
     return len(a.union(b))
