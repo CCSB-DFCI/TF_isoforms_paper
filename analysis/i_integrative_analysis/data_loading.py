@@ -48,7 +48,7 @@ def load_tf_isoform_screen_results():
     return df
 
 
-def load_isoform_and_paralog_y2h_data():
+def load_isoform_and_paralog_y2h_data(add_missing_data=False):
     """
     - NS: sequencing failed
     - NC: no call (e.g., mis-spotting)
@@ -102,10 +102,27 @@ def load_isoform_and_paralog_y2h_data():
     df = df.drop_duplicates(['category', 'ad_orf_id', 'db_orf_id'])
     # drop interaction partner ORFs whose sequence does not map to an ensembl gene
     df = df.dropna(subset=['db_gene_symbol'])
+
+    if add_missing_data:
+        isoforms = load_valid_isoform_clones()
+        all_possible_ints = (pd.merge(df.loc[df['category'] == 'tf_isoform_ppis',
+                                              ['ad_gene_symbol', 'db_gene_symbol', 'category']]
+                                         .drop_duplicates(),
+                                    isoforms,
+                                    left_on='ad_gene_symbol',
+                                    right_on='gene')
+                                .drop(columns='gene')
+                                .rename(columns={'clone_acc': 'ad_clone_acc'}))
+        df = pd.merge(df,
+                      all_possible_ints,
+                      on=['ad_gene_symbol', 'db_gene_symbol', 'ad_clone_acc', 'category'],
+                      how='outer')
+        df['score'] = df['score'].fillna('NA')
+
     """
     # Need to map the screen data to the gene level first
     screen = load_tf_isoform_screen_results()
-    pd.merge(y2h,
+    pd.merge(df,
             screen,
             how='left',
             on=['ad_orf_id', 'db_orf_id']).sort_values(['ad_gene_symbol', 'db_gene_symbol'])
@@ -113,7 +130,7 @@ def load_isoform_and_paralog_y2h_data():
     return df
 
 
-def load_y1h_pdi_data():
+def load_y1h_pdi_data(add_missing_data=False):
     df = pd.read_csv('../../data/a2_juan_pdi_w_unique_isoacc.tsv', sep='\t')
     df = (pd.concat([df.loc[:, ['tf', 'unique_acc']],
                      pd.get_dummies(df['bait'])],
@@ -121,11 +138,17 @@ def load_y1h_pdi_data():
             .groupby(['tf', 'unique_acc']).sum() > 0).reset_index()
     zeros = pd.read_csv('../../data/a2_juan_isoforms_wo_pdi.tsv', sep='\t')
     df = pd.concat([df, zeros], axis=0, sort=False).reset_index(drop=True).fillna(False)
+    if add_missing_data:
+        isoforms = load_valid_isoform_clones()
+        df = (pd.merge(df, 
+               isoforms.rename(columns={'gene': 'tf', 'clone_acc': 'unique_acc'}),
+               on=['tf', 'unique_acc'],
+               how='outer'))
     df = df.sort_values(['tf', 'unique_acc'])
     return df
 
 
-def load_m1h_activation_data():
+def load_m1h_activation_data(add_missing_data=False):
     """
 
 
@@ -135,6 +158,9 @@ def load_m1h_activation_data():
     for column in df.columns:
         if column.startswith('M1H_rep'):
             df[column] = np.log2(df[column])
+    if add_missing_data:
+        isoforms = load_valid_isoform_clones()
+        df = pd.merge(df, isoforms, on=['gene', 'clone_acc'], how='outer')
     df = df.sort_values(['gene', 'clone_acc'])
     return df
 
