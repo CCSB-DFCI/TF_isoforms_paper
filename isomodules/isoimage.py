@@ -10,6 +10,11 @@ import matplotlib.lines as mlines
 import matplotlib.patches as mpatches
 
 
+def isoform_display_name(s):
+       """Convert clone accession ID to display friendly format"""
+       return s.split('|')[0] + '-' + s.split('|')[1].split('/')[0]
+
+
 def render_iso_image(orfs_to_plot, ax=None, mode='all', dname='output_isoimages',
                      intron_spacing=30, comp=300, spacing=0.5,
                      height=0.1, sp=[-1.5], show_abs_frm=False, rel_frm=False,
@@ -50,9 +55,7 @@ def render_iso_image(orfs_to_plot, ax=None, mode='all', dname='output_isoimages'
 
     # plot gene info and header lines
     repr_orf = get_repr_orf(orfs_to_plot)
-    ax.text(sp[0], line, repr_orf.gene, fontweight='bold', va='top') # write-out gene descr.
     line -= spacing/2.0
-    ax.text(sp[0], line, 'GC-isoname') # write-out column name
     header_line = line # save y-axis position of header, to go back and write partners
     line -= spacing/2.0
 
@@ -61,7 +64,7 @@ def render_iso_image(orfs_to_plot, ax=None, mode='all', dname='output_isoimages'
         orf_name = retrieve_orf_name(orf)
         orfid = retrieve_orfid_if_exists(orf)
         label = orf_name
-        ax.text(sp[0], line, label, va='bottom') # write-out orfname
+        ax.text(sp[0], line, isoform_display_name(label), va='center') # write-out orfname
         intron_start, intron_end, intron_line = get_intron_plot_coordinates(orf, comp, line, height)
         ax.add_line(mlines.Line2D([intron_start, intron_end], [intron_line, intron_line], lw=1.5, color='k', ls='--', dashes=(1,1.2), zorder=1))
         max_x = update_figure_range(max_x, intron_end)
