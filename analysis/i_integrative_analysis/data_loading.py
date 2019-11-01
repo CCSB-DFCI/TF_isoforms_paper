@@ -13,11 +13,25 @@ def load_valid_isoform_clones():
         set(str): clone accession IDs
 
     """
-    return pd.read_sql("""SELECT symbol as gene,
-                                 unique_acc as clone_acc
-                            FROM tf_screen.iso6k_annotation
-                           ORDER BY gene, clone_acc;""",
+    df = pd.read_sql("""SELECT symbol as gene,
+                               unique_acc as clone_acc,
+                               dup_idx
+                          FROM tf_screen.iso6k_annotation
+                         ORDER BY gene, clone_acc;""",
                        ccsblib.paros_connection())
+    y2h = load_isoform_and_paralog_y2h_data(filter_for_valid_clones=False)
+    y1h = load_y1h_pdi_data()
+    m1h = load_m1h_activation_data()
+    df['in_m1h'] = df['clone_acc'].isin(m1h['clone_acc'])
+    df['in_y1h'] = df['clone_acc'].isin(y1h['unique_acc'])
+    df['in_y2h'] = df['clone_acc'].isin(y2h.loc[(y2h['category'] == 'tf_isoform_ppis') &
+                                            y2h['score'].isin(['0', '1']),
+                                            'ad_clone_acc'])
+    # dropping duplicates with identical AA seqs, keeping those with M1H data
+    df = df.sort_values(['gene', 'in_m1h', 'in_y2h', 'in_y1h'], ascending=[True] + [False] * 3)
+    df = (df.loc[~df['dup_idx'].duplicated() | df['dup_idx'].isnull(), ['gene', 'clone_acc']]
+            .sort_values(['gene', 'clone_acc']))
+    return df
 
 
 def load_tf_isoform_screen_results():
@@ -48,14 +62,15 @@ def load_tf_isoform_screen_results():
     return df
 
 
-def load_isoform_and_paralog_y2h_data(add_missing_data=False):
+def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_clones=True):
     """
     - NS: sequencing failed
     - NC: no call (e.g., mis-spotting)
     - AA: autoactivator
 
     """
-    valid_clones = load_valid_isoform_clones()
+    if add_missing_data and not filter_for_valid_clones:
+        raise ValueError('This combination of arguments will not work')
     qry_a = """select a.category,
                       a.ad_orf_id,
                       b.unique_acc AS ad_clone_acc,
@@ -69,7 +84,9 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False):
                  LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c
                    ON a.db_orf_id = c.orf_id;"""
     df_a = pd.read_sql(qry_a, ccsblib.paros_connection())
-    df_a = df_a.loc[df_a['ad_clone_acc'].isin(valid_clones['clone_acc']), :]
+    if filter_for_valid_clones:
+        valid_clones = load_valid_isoform_clones()
+        df_a = df_a.loc[df_a['ad_clone_acc'].isin(valid_clones['clone_acc']), :]
 
     # remove duplicate ORF for gene DDX39B, where sequencing mostly failed
     df_a = df_a.loc[df_a['db_orf_id'] != 3677, :]
@@ -91,7 +108,8 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False):
                  LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c
                    ON a.db_orf_id = c.orf_id;"""
     df_b = pd.read_sql(qry_b, ccsblib.paros_connection())
-    df_b = df_b.loc[df_b['ad_clone_acc'].isin(valid_clones), :]
+    if filter_for_valid_clones:
+        df_b = df_b.loc[df_b['ad_clone_acc'].isin(valid_clones), :]
     df_b['category'] = df_b['category'].map({'paralog': 'tf_paralog_ppis',
                                              'PDI_PPI': 'paralog_with_PDI',
                                              'nonparalog': 'non_paralog_control',
@@ -104,11 +122,10 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False):
     df = df.dropna(subset=['db_gene_symbol'])
 
     if add_missing_data:
-        isoforms = load_valid_isoform_clones()
         all_possible_ints = (pd.merge(df.loc[df['category'] == 'tf_isoform_ppis',
                                               ['ad_gene_symbol', 'db_gene_symbol', 'category']]
                                          .drop_duplicates(),
-                                    isoforms,
+                                    valid_clones,
                                     left_on='ad_gene_symbol',
                                     right_on='gene')
                                 .drop(columns='gene')
