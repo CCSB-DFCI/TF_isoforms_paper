@@ -8,6 +8,7 @@ from ccsblib import ccsbplotlib as cplt
 
 sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), '../..'))
 from isomodules import isocreate, isoimage, isofunc
+from isoform_pairwise_metrics import paralog_pair_ppi_table
 
 
 def isoform_display_name(s):
@@ -35,9 +36,9 @@ def isoform_box_and_line_drawing(gene_name, clone_accs, ax=None):
                               ax=ax)
 
 
-def y2h_ppi_per_tf_gene_plot(gene_name, 
+def y2h_ppi_per_tf_gene_plot(gene_name,
                              data,
-                             ax=None, 
+                             ax=None,
                              min_n_isoforms=1,
                              min_n_partners=1):
     tf = data.loc[(data['category'] == 'tf_isoform_ppis') &
@@ -47,6 +48,50 @@ def y2h_ppi_per_tf_gene_plot(gene_name,
                                '0': False,
                                'AA': np.nan,
                                'NC': np.nan})
+    tf['ad_clone_acc'] = tf['ad_clone_acc'].apply(isoform_display_name)
+    tf = tf.pivot(index='ad_clone_acc',
+                  columns='db_gene_symbol',
+                  values='score')
+    if ax is None:
+        ax = plt.gca()
+    if tf.shape[0] < min_n_isoforms or tf.shape[1] < min_n_partners:
+        ax.set_axis_off()
+        ax.text(0.5, 0.5,
+                'No PPI data available',
+                ha='center', va='center',
+                fontsize=30,
+                fontweight='bold',
+                color='grey')
+        return
+    cplt.binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
+    ax.set_yticklabels([strikethrough(name) if all_na else name
+                        for name, all_na in tf.isnull().all(axis=1).iteritems()])
+
+
+def y2h_ppi_per_paralog_pair_plot(tf_gene_a,
+                                  tf_gene_b,
+                                  data,
+                                  ax=None, 
+                                  min_n_isoforms=1,
+                                  min_n_partners=1):
+    """
+
+    TODO: gap between the two genes?
+    
+    Arguments:
+        tf_gene_a {str} -- [description]
+        tf_gene_b {str} -- [description]
+        data {pandas.DataFrame} -- [description]
+        ax {pandas.DataFrame} -- [description] (default: {None})
+        min_n_isoforms {int} -- [description] (default: {1})
+        min_n_partners {int} -- [description] (default: {1})
+    
+    """
+    tf = paralog_pair_ppi_table(data, tf_gene_a, tf_gene_b)
+    tf['score'] = tf['score'].map({'1': True,
+                                   '0': False,
+                                   'AA': np.nan,
+                                   'NC': np.nan})
     tf['ad_clone_acc'] = tf['ad_clone_acc'].apply(isoform_display_name)
     tf = tf.pivot(index='ad_clone_acc',
                   columns='db_gene_symbol',

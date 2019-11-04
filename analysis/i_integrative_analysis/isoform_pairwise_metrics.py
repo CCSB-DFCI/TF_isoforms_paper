@@ -6,6 +6,24 @@ import pandas as pd
 from data_loading import load_seq_comparison_data
 
 
+def paralog_pair_ppi_table(data, tf_gene_a, tf_gene_b):
+    gene_a_partners = data.loc[(data['ad_gene_symbol'] == tf_gene_a) &
+                               (data['category'] == 'tf_isoform_ppis') &
+                               (data['score'] == '1'),
+                               'db_gene_symbol'].unique()
+    gene_b_partners = data.loc[(data['ad_gene_symbol'] == tf_gene_b) &
+                               (data['category'] == 'tf_isoform_ppis') &
+                               (data['score'] == '1'),
+                               'db_gene_symbol'].unique()
+    partners = np.concatenate([gene_a_partners, gene_b_partners])
+    tf = data.loc[((data['ad_gene_symbol'] == tf_gene_a) |
+                  (data['ad_gene_symbol'] == tf_gene_b))
+                  & data['category'].isin(['tf_isoform_ppis', 'tf_paralog_ppis'])
+                  & data['db_gene_symbol'].isin(partners),
+                  ['ad_clone_acc', 'db_gene_symbol', 'score']].copy()
+    return tf
+
+
 def pairs_of_isoforms_comparison_table(isoforms, y2h, y1h, m1h):
     iso_pairs = []
     for tf_gene in isoforms['gene'].unique():

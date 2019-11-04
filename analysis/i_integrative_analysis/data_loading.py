@@ -109,7 +109,7 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
                    ON a.db_orf_id = c.orf_id;"""
     df_b = pd.read_sql(qry_b, ccsblib.paros_connection())
     if filter_for_valid_clones:
-        df_b = df_b.loc[df_b['ad_clone_acc'].isin(valid_clones), :]
+        df_b = df_b.loc[df_b['ad_clone_acc'].isin(valid_clones['clone_acc']), :]
     df_b['category'] = df_b['category'].map({'paralog': 'tf_paralog_ppis',
                                              'PDI_PPI': 'paralog_with_PDI',
                                              'nonparalog': 'non_paralog_control',
@@ -231,3 +231,27 @@ def load_seq_comparison_data():
     if (df['aa_seq_pct_id'] < 0).any() or (df['aa_seq_pct_id'] > 100).any():
         raise UserWarning('Percent values outside 0-100')
     return df['aa_seq_pct_id']
+
+
+def load_paralog_pairs():
+    """Pairs of TF gene paralogs and non-paralogs that were tested
+
+    Returns:
+        pandas.DataFrame: one row for each pair
+
+    """
+    df = pd.read_csv('../../data/a_tf_iso_paralog_nonparalogs_tested.tsv', sep='\t')
+    df['is_paralog_pair'] = (df['cat2'] == 'paralog')
+    aa = pd.read_csv('../../data/tf_AA_seq_identities/b_2018-11-30_AA_seq_identity_Paralog_comparisons_unique_acc.txt',
+                     sep='\t')
+    if not (df['tf1'] < df['tf2']).all():
+        raise UserWarning('Expected genes to be ordered')
+    (aa[['gene1', 'gene2']].min(axis=1) + '_' + aa[['gene1', 'gene2']].max(axis=1)).duplicated().any()
+    aa['tf1'] = aa[['gene1', 'gene2']].min(axis=1)
+    aa['tf2'] = aa[['gene1', 'gene2']].max(axis=1)
+    df = (pd.merge(df, aa, how='left', on=['tf1', 'tf2'])
+            .loc[:, ['tf1', 'tf2', 'is_paralog_pair', 'AAseq_identity%']]
+            .rename(columns={'tf1': 'tf_gene_a',
+                             'tf2': 'tf_gene_b',
+                             'AAseq_identity%': 'pct_aa_seq_identity'}))
+    return df
