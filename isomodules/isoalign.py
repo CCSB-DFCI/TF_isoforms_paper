@@ -88,11 +88,13 @@ class AlignmentFull(Alignment):
         aa2 = ''.join([alnr.res2.aa for alnr in self.chain])
         frm2 = ''.join([alnr.res2.rfrm for alnr in self.chain])
         frm2 = frm2.replace('1', ' ').replace('-', ' ').replace('*', ' ')
+        aln_chain = ''.join([alnr.alnpb.cat for alnr in self.chain])
         ostr = ('{gene} {strand}\n{orf1:16s} AA:{aa1}\n{orf2:16s} AA:{aa2}\n'
-                '                 FM:{frm2}')
+                '                 FM:{frm2}\n'
+                '                 CT:{aln}')
         ostr = ostr.format(gene=self.orf1.gene.name, strand=self.orf1.strand,
                            orf1=self.orf1.name, aa1=aa1, orf2=self.orf2.name,
-                           aa2=aa2, frm2=frm2)
+                           aa2=aa2, frm2=frm2, aln=aln_chain)
         return ostr
 
     @property

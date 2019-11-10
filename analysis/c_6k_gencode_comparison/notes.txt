@@ -1,0 +1,7 @@
+191107
+
+retrospective notes
+
+This looks like a 6K/GENCODE comparison, but using the old models.
+
+Can do CDS coords, intron coords, or at-length (end-to-end, 95% identity) matches

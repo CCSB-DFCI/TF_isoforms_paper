@@ -1,13 +1,5 @@
 #!/usr/bin/env python
-#
-# title           :driver.py
-# description     :Instantiate gen_obj for 1600 TFs. Write-out same-prot. seq.
-#                  info to a table.
-# author          :Gloria Sheynkman
-# date            :May 27th, 2019
-# version         :1
-# python_version  :2.7.15
-# ==============================================================================
+# compare the genenames for the three TF lists
 
 import os
 from isomodules import isocreate

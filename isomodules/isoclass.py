@@ -35,10 +35,12 @@ class Biomolecule():
         self.frms = set()
         self.isrs = set()
 
+    #TODO - determine what the setter is for - had errored out when
+    # calling ORF.chrom and ORF.strand when it was from Gencode Gene
     @property
     def chrom(self):
         if hasattr(self, 'gene'):
-            return self.gene._chrom
+            return self.gene.chrom
         else:
             return self._chrom
 
@@ -49,7 +51,7 @@ class Biomolecule():
     @property
     def strand(self):
         if hasattr(self, 'gene'):
-            return self.gene._strand
+            return self.gene.strand
         else:
             return self._strand
 
