@@ -1,12 +1,5 @@
 #!/usr/bin/env python
-#
-# title           :driver.py
-# description     :Work out protein/genome-based alignment of protein isoforms.
-# author          :Gloria Sheynkman
-# date            :June 3rd, 2019
-# version         :1
-# python_version  :2.7.15
-# ==============================================================================
+# Work out protein/genome-based alignment of protein isoforms.
 
 import os
 from isomodules import isocreate

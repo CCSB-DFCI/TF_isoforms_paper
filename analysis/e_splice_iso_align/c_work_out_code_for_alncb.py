@@ -1,12 +1,4 @@
 #!/usr/bin/env python
-#
-# title           :driver.py
-# description     :Work out protein/genome-based alignment of protein isoforms.
-# author          :Gloria Sheynkman
-# date            :June 3rd, 2019
-# version         :1
-# python_version  :2.7.15
-# ==============================================================================
 
 import os
 from isomodules import isocreate
@@ -50,7 +42,7 @@ reload(isogroup)
 reload(isoalign)
 reload(isowrangle)
 
-# genes = ['NFYA', 'PAX5', 'CXXC1']
+genes = ['NFYA', 'PAX5', 'CXXC1']
 
 gd = isocreate.init_gen_obj_gc(path_gc_gtf, gene_list=genes)
 gd = isocreate.create_and_link_seq_related_obj(gd, orf_seqs)

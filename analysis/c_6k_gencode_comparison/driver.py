@@ -1,11 +1,5 @@
 #!/usr/bin/env python
-#
-# title           :driver.py
-# description     :Starting template to iso-objs and do analysis.
-# author          :Gloria Sheynkman
-# date            :May 6th, 2019
-# version         :1
-# python_version  :2.7.15
+# Compare TF isoform clones to GENCODE
 # ==============================================================================
 
 import os
