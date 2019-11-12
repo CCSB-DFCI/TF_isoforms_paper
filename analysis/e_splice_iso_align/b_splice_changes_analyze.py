@@ -1,4 +1,5 @@
 # from the output of a_*, evaluate splice changes
+# look at frequencies of various splice patterns (match block chain)
 
 from collections import defaultdict
 
