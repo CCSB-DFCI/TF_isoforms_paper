@@ -1,0 +1,5 @@
+191107
+
+retrospective notes
+
+This looks like a 6K/GENCODE comparison, but using the old models.
