@@ -87,6 +87,16 @@ class Biomolecule():
                 return dom
         return None
 
+    @property
+    def frm(self):
+        """Return a single frm_obj corresponding to the 'active' frm_obj."""
+        current_feat = self.orf.current_feat
+        for frm in self.frms:
+            if frm.featf == current_feat:
+                return frm
+        return None
+
+
 
 
 class Gene(Biomolecule):

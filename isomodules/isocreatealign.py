@@ -24,6 +24,10 @@ def create_and_map_splice_based_align_obj(orf_pairs, abacus=True):
        Returns a list of grps, each grp has orf pair and linked aln_objs.
        Gene_dict is modified in-place.
 
+       Note - In the process of creating alignment object, sets the relative
+              frame for position and residue objects. This is needed to determine
+              the residue match category.
+
        Input:
         orf_pairs - list of orf pairs (assume first orf is 'ref')
         abacus - abacus the nt overhangs at junctions
@@ -51,7 +55,7 @@ def create_and_map_splice_based_align_obj(orf_pairs, abacus=True):
         set_rfrm_of_pos_in_orf(all_coords, orf1_coords, orf2_coords, pair)
         set_rfrm_of_res_in_chain(chains)
 
-        # make a group of the two orfs
+        # make a grp_obj of the two orfs
         grp = isogroup.PairwiseAlignmentGroup(orf1, orf2)
         grps.append(grp)
         # instantiate the 'full' alignment (between orfs)
@@ -97,8 +101,7 @@ def create_and_map_splice_based_align_obj(orf_pairs, abacus=True):
                 new_block_string = block_string
             new_full_block_string += new_block_string
         new_split_blocks = split_blockstring_w_repeating_Ms(new_full_block_string)
-
-        # find 'protein-centric' blocks, make and link 'pblock' alnpb_obj
+        # second, find 'protein-centric' blocks, make and link 'pblock' alnpb_obj
         i = 0
         for block_string in new_split_blocks:
             cat = get_the_category_of_the_block(block_string)
@@ -378,6 +381,7 @@ def calc_rfrm(anchor_frm, other_frm):
     else:
         raise UserWarning('incompatible anchor/other frame:{},{}'.format(anchor_frm, other_frm))
 
+
 def set_rfrm_of_res_in_chain(chains):
     """Set temporary rfrm attribute for residues in the aa_chain."""
     for orfname, aa_chain in chains.items():
@@ -393,6 +397,7 @@ def set_rfrm_of_res_in_chain(chains):
             else:
                 # no res_obj exists, because res in one orf but not the other
                 pass
+
 
 def get_the_match_type_of_the_two_residues(res1, res2):
     """Compare the AA seq. of the two residues. Return a enum descr. the

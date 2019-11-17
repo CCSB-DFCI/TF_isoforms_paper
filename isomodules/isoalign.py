@@ -63,6 +63,7 @@ class AlignmentFull(Alignment):
         self.subblocks = []
         self.chain = []  # alnr_obj added during creation
         # self.full -> property
+        # self.match_block_chain -> property
         Alignment.__init__(self, anchor_orf, other_orf)
 
     @property
@@ -300,8 +301,8 @@ class AlignmentResidue(Alignment):
         # self.res2 -> property, syn of other_res
         self.alnf = alnf
         self.alnpb = None  # updated during isoalign creation
-        self.alnsb = None  # see above
         self.alnb = None  # see above
+        self.alnsb = None  # see above
         Alignment.__init__(self, anchor_res, other_res)
 
     @property
