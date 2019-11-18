@@ -22,7 +22,7 @@ class Feature():
     def update_ref_to_this_feat_in_obj(self, ftype):
         """Add references to this newly created feat_obj to iso_obj.
            Expected input - dom, ptm, isr, etc.
-           ORF attribute is orf.doms, orf.ptms.
+           ORF attribute is orf.doms, orf.ptms, CDS attribute is cds.doms, cds.ptms, etc.
            When orf.dom requested, retrieves the dom in orf.doms matching curr.
            feat.
         """
@@ -54,7 +54,6 @@ class FeatureFull(Feature):
         # self.orf -> property
         # self.full -> defined in subclass
         # self.name -> defined in subclass
-        # self.full -> defined in subclass
         # self.grp -> defined in subclass if feat is grp-dependent
         Feature.__init__(self, orf, ftype)
 
@@ -71,48 +70,15 @@ class FeatureFull(Feature):
         return self.chain[-1]
 
 
-class FrameFull(FeatureFull):
-    """Represents the relative frame for an orf from alignment of two orfs.
-       Note - assumes that this object is created immeidately after the
-              creation of an alignment object, where the res.rfrm is populated.
-    """
-    def __init__(self, orf, grp):
-        self.grp = grp
-        # self.name -> property
-        # self.full -> property
-        FeatureFull.__init__(self, orf, 'frm')
-
-    @property
-    def name(self):
-        return 'frmf: {} ({})'.format(self.obj.name, self.grp.repr_orf.name)
-
-    @property
-    def full(self):
-        aa_str = ''.join([res.aa for res in self.orf.res_chain])
-        self.orf.current_feat = self
-        frm_str = ''.join([frmr.cat for frmr in self.chain]) # frame (1,2,3)
-        stat_str = ''.join([frmr.status for frmr in self.chain]) # inferred stat.
-        return aa_str + '\n' + frm_str + '\n'  + stat_str
-        # TODO - code a string representation of a frame object
-        # options - frame for every AA in orf_obj
-        #           coordinate range for frame block
-
-
 class DomainFull(FeatureFull):
     """Represents a domain mapped to an ORF"""
-    def __init__(self, orf, cat, acc, desc, eval=None):
+    def __init__(self, orf, cat, acc, desc, eval, stat='direct'):
         self.cat = cat  # categories of feature (e.g. dom: dbd, reg)
         self.acc = acc  # e.g., pfam accession, linear motif acc, ptm accession
         self.desc = desc  # e.g., pfam name
-        # self.eval -> property, specific to dom, lm (?) mappings
-
-    @property
-    def eval(self):
-        try:
-            return float(eval)
-        except:
-            # is 'NA'
-            return eval
+        self.eval = float(eval) # -1 if non-existent
+        self.stat = stat # direct (mapped domain) or transferred (from aln_obj)
+        FeatureFull.__init__(self, orf, 'dom')
 
     @property
     def name(self):
@@ -170,13 +136,6 @@ class FeatureBlock(Feature):
         return 'frmb: {} {} -- {}'.format(self.featf.name, self.first.name, self.last.name)
 
 
-class FrameBlock(FeatureBlock):
-    """Represents a block of same-frame frmrs."""
-    def __init__(self, frmf, frmr_chain, cat):
-        # cat - 1, 2, or 3 (represents relative frame)
-        FeatureBlock.__init__(self, frmf, frmr_chain, cat)
-
-
 class FeatureSubblock(Feature):
     """A segment of a feature block, irreducable based on CDS structure.
        Note - some features lack featb, so featsb maps to featf directly
@@ -220,6 +179,12 @@ class FeatureSubblock(Feature):
     def name(self):
         return '{} {}-{}'.format(self.cds, self.first.res.idx, self.last.res.idx)
 
+class DomainSubblock(FeatureSubblock):
+    """A domain-specific feature subblock (domsb)."""
+    def __init__(self, featf, cds, featrs):
+        # domain subblock
+        FeatureSubblock.__init__(self, featf, cds, featrs)
+
 
 class FeatureResidue(Feature):
     """A feature mapped to a residue."""
@@ -252,6 +217,65 @@ class FeatureResidue(Feature):
         return str(self.res.idx) + '-' + self.res.aa
 
 
+class DomainResidue(FeatureResidue):
+    """A residue that represents an AA that is part of a domain."""
+    def __init__(self, featf, res):
+        # domain residue
+        # self.orf -> property
+        # self.idx -> property (1-based index of domr)
+        # self.name -> property
+        FeatureResidue.__init__(self, featf, res)
+
+    @property
+    def orf(self):
+        return self.featf.orf
+
+    @property
+    def idx(self):
+        # if issues with slowness, do-pre caching like in CDS.ord
+        return self.featf.chain.index(self) + 1
+
+    @property
+    def name(self):
+        return str(self.idx) + '-' + self.res.aa
+
+
+
+
+
+
+class FrameFull(FeatureFull):
+    """Represents the relative frame for an orf from alignment of two orfs.
+       Note - assumes that this object is created immeidately after the
+              creation of an alignment object, where the res.rfrm is populated.
+    """
+    def __init__(self, orf, grp):
+        self.grp = grp
+        # self.name -> property
+        # self.full -> property
+        FeatureFull.__init__(self, orf, 'frm')
+
+    @property
+    def name(self):
+        return 'frmf: {} ({})'.format(self.obj.name, self.grp.repr_orf.name)
+
+    @property
+    def full(self):
+        aa_str = ''.join([res.aa for res in self.orf.res_chain])
+        self.orf.current_feat = self
+        frm_str = ''.join([frmr.cat for frmr in self.chain]) # frame (1,2,3)
+        stat_str = ''.join([frmr.status for frmr in self.chain]) # inferred stat.
+        return aa_str + '\n' + frm_str + '\n'  + stat_str
+        # TODO - code a string representation of a frame object
+        # options - frame for every AA in orf_obj
+        #           coordinate range for frame block
+
+class FrameBlock(FeatureBlock):
+    """Represents a block of same-frame frmrs."""
+    def __init__(self, frmf, frmr_chain, cat):
+        # cat - 1, 2, or 3 (represents relative frame)
+        FeatureBlock.__init__(self, frmf, frmr_chain, cat)
+
 class FrameResidue(FeatureResidue):
     """A residue that represents the relative frame of translation.
 
@@ -275,12 +299,6 @@ class FrameResidue(FeatureResidue):
         if status == '0': return 'F'
         if status == '1': return 'f'
         raise Warning('invalid frame reasidue status, needs to be 0 or 1')
-
-
-
-class DomainResidue(FeatureResidue):
-    """A residue that represents an AA that is part of a domain."""
-    # TODO - complete this
 
 #
 # # ******************

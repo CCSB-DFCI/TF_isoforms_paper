@@ -14,32 +14,29 @@ from itertools import groupby
 
 # *****************************************************************************
 # create and map features to iso_obj
-def create_and_map_domain(orf, domain_info, with_evals=True):
+def create_and_map_domain(orf, domain_info):
     """Given an orf and info. on a domain mapped to its AAs, create a
        hierarchical feat_obj mapping.
+       Domain objects contain the domf, domsbs, and domrs.
        Input:
         orf - orf_obj
-        domain_info - [pfam_acc, pfam_name, cat (DBD, other), 1-base_start,
-                       1-base_end]
+        domain_info - [pfam_acc, pfam_name, cat (DBD, other), eval,
+                       1-base_start, 1-base_end]
       Return (optional):
        featf (domain object)
     """
-    if with_evals:
-        pfam, name, cat, eval, start, end = domain_info
-    else:
-        pfam, name, cat, start, end = domain_info
-        eval = 'NA'
-    featf = isofeature.FeatureFull(orf, 'dom', cat, eval=eval, acc=pfam, desc=name)
-    domain_ress = orf.res_chain[int(start) - 1:int(end)]
+    # TODO - issue is that if this is run twice on same orf,
+    #        multiple identically-named domains will map to orf
+    pfam, name, cat, eval, start, end = domain_info
+    featf = isofeature.DomainFull(orf, cat, pfam, name, eval)
+    domain_ress = orf.res_chain[int(start) - 1 : int(end)]
     for res in domain_ress:
-        featr = isofeature.FeatureResidue(featf, res)
+        featr = isofeature.DomainResidue(featf, res)
         featf.chain.append(featr)
     featr_groupings = find_groups_of_featr_in_subblocks(featf.chain)
-    for acc in sorted(featr_groupings):
-        cds_ord, cds = acc
-        featrs = featr_groupings[acc]
+    for (cds_ord, cds), featrs in sorted(featr_groupings.items()):
         featsb = isofeature.FeatureSubblock(featf, cds, featrs)
-        # update upwards/downwards references
+        # update upper/lower references
         featf.subblocks.append(featsb)
         for featr in featrs:
             featr.featsb = featsb
