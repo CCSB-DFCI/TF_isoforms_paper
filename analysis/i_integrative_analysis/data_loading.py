@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-import ccsblib
 
+import ccsblib
 
 
 def load_valid_isoform_clones():
@@ -71,7 +71,7 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
     """
     if add_missing_data and not filter_for_valid_clones:
         raise ValueError('This combination of arguments will not work')
-    qry_a = """select a.category,
+    qry_a = """SELECT a.category,
                       a.ad_orf_id,
                       b.unique_acc AS ad_clone_acc,
                       a.ad_symbol AS ad_gene_symbol,
@@ -135,6 +135,11 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
                       on=['ad_gene_symbol', 'db_gene_symbol', 'ad_clone_acc', 'category'],
                       how='outer')
         df['score'] = df['score'].fillna('NA')
+
+    cats = load_ppi_partner_categories()
+    cats = cats.groupby('category')['partner'].apply(set).to_dict()
+    for cat, members in cats.items():
+        df['is_partner_category_' + '_'.join(cat.split())] = df['db_gene_symbol'].isin(members)
 
     """
     # Need to map the screen data to the gene level first
@@ -254,4 +259,23 @@ def load_paralog_pairs():
             .rename(columns={'tf1': 'tf_gene_a',
                              'tf2': 'tf_gene_b',
                              'AAseq_identity%': 'pct_aa_seq_identity'}))
+    return df
+
+
+def load_ppi_partner_categories():
+    """Juan's manual classification of the PPI interaction partners.
+    
+     Note that a gene can be in multiple categories.
+    Returns:
+        pandas.DataFrame: gene and category
+    
+    """
+    df = pd.read_excel('../../data/20191023- Uniprot functions for interactors.xlsx', sheet_name='Sheet4')
+    df = df.dropna(subset=['Function class'])
+    # group annoatations for the same gene split on seperate rows
+    df = df.groupby('partner')['Function class'].apply(lambda x: ', '.join(x))
+    df = df.str.split(', ', expand=True).stack().reset_index().loc[:, ['partner', 0]].rename(columns={0: 'category'})
+    df['category'] = df['category'].str.strip()
+    if not (df['partner'] == df['partner'].str.strip()).all():
+        raise UserWarning('Possibly something wrong with gene names column')
     return df
