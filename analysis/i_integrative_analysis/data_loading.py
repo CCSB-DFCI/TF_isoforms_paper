@@ -77,12 +77,17 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
                       a.ad_symbol AS ad_gene_symbol,
                       a.db_orf_id,
                       c.symbol AS db_gene_symbol,
-                      a.final_score AS score
+                      a.final_score AS score,
+                      d.standard_batch,
+                      d.retest_pla,
+                      d.retest_pos
                  FROM tf_screen.tf_isoform_final AS a
                  LEFT JOIN tf_screen.iso6k_sequences AS b
                    ON a.ad_orf_id = b.orf_id
                  LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c
-                   ON a.db_orf_id = c.orf_id;"""
+                   ON a.db_orf_id = c.orf_id
+                 LEFT JOIN tf_screen.retest AS d
+                   ON a.retest_id = d.retest_id;"""
     df_a = pd.read_sql(qry_a, ccsblib.paros_connection())
     if filter_for_valid_clones:
         valid_clones = load_valid_isoform_clones()
@@ -95,18 +100,23 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
                                              'ng_stem_cell_factor': 'tf_isoform_ppis',
                                              'rrs': 'rrs_isoforms',
                                              'litbm': 'lit_bm_isoforms'})
-    qry_b = """select a.simple_category AS category,
+    qry_b = """SELECT a.simple_category AS category,
                       a.ad_orf_id,
                       b.unique_acc AS ad_clone_acc,
                       a.ad_symbol AS ad_gene_symbol,
                       a.db_orf_id,
                       c.symbol AS db_gene_symbol,
-                      a.final_score AS score
+                      a.final_score AS score,
+                      d.standard_batch,
+                      d.retest_pla,
+                      d.retest_pos
                  FROM tf_screen.paralog_final AS a
                  LEFT JOIN tf_screen.iso6k_sequences AS b
                    ON a.ad_orf_id = b.orf_id
                  LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c
-                   ON a.db_orf_id = c.orf_id;"""
+                   ON a.db_orf_id = c.orf_id
+                 LEFT JOIN tf_screen.retest AS d
+                   ON a.retest_id = d.retest_id;"""
     df_b = pd.read_sql(qry_b, ccsblib.paros_connection())
     if filter_for_valid_clones:
         df_b = df_b.loc[df_b['ad_clone_acc'].isin(valid_clones['clone_acc']), :]
