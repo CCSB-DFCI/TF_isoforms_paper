@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-import ccsblib
 
+import ccsblib
 
 
 def load_valid_isoform_clones():
@@ -71,18 +71,23 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
     """
     if add_missing_data and not filter_for_valid_clones:
         raise ValueError('This combination of arguments will not work')
-    qry_a = """select a.category,
+    qry_a = """SELECT a.category,
                       a.ad_orf_id,
                       b.unique_acc AS ad_clone_acc,
                       a.ad_symbol AS ad_gene_symbol,
                       a.db_orf_id,
                       c.symbol AS db_gene_symbol,
-                      a.final_score AS score
+                      a.final_score AS score,
+                      d.standard_batch,
+                      d.retest_pla,
+                      d.retest_pos
                  FROM tf_screen.tf_isoform_final AS a
                  LEFT JOIN tf_screen.iso6k_sequences AS b
                    ON a.ad_orf_id = b.orf_id
                  LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c
-                   ON a.db_orf_id = c.orf_id;"""
+                   ON a.db_orf_id = c.orf_id
+                 LEFT JOIN tf_screen.retest AS d
+                   ON a.retest_id = d.retest_id;"""
     df_a = pd.read_sql(qry_a, ccsblib.paros_connection())
     if filter_for_valid_clones:
         valid_clones = load_valid_isoform_clones()
@@ -95,21 +100,26 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
                                              'ng_stem_cell_factor': 'tf_isoform_ppis',
                                              'rrs': 'rrs_isoforms',
                                              'litbm': 'lit_bm_isoforms'})
-    qry_b = """select a.simple_category AS category,
+    qry_b = """SELECT a.simple_category AS category,
                       a.ad_orf_id,
                       b.unique_acc AS ad_clone_acc,
                       a.ad_symbol AS ad_gene_symbol,
                       a.db_orf_id,
                       c.symbol AS db_gene_symbol,
-                      a.final_score AS score
+                      a.final_score AS score,
+                      d.standard_batch,
+                      d.retest_pla,
+                      d.retest_pos
                  FROM tf_screen.paralog_final AS a
                  LEFT JOIN tf_screen.iso6k_sequences AS b
                    ON a.ad_orf_id = b.orf_id
                  LEFT JOIN horfeome_annotation_gencode27.orf_class_map_ensg AS c
-                   ON a.db_orf_id = c.orf_id;"""
+                   ON a.db_orf_id = c.orf_id
+                 LEFT JOIN tf_screen.retest AS d
+                   ON a.retest_id = d.retest_id;"""
     df_b = pd.read_sql(qry_b, ccsblib.paros_connection())
     if filter_for_valid_clones:
-        df_b = df_b.loc[df_b['ad_clone_acc'].isin(valid_clones), :]
+        df_b = df_b.loc[df_b['ad_clone_acc'].isin(valid_clones['clone_acc']), :]
     df_b['category'] = df_b['category'].map({'paralog': 'tf_paralog_ppis',
                                              'PDI_PPI': 'paralog_with_PDI',
                                              'nonparalog': 'non_paralog_control',
@@ -135,6 +145,11 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
                       on=['ad_gene_symbol', 'db_gene_symbol', 'ad_clone_acc', 'category'],
                       how='outer')
         df['score'] = df['score'].fillna('NA')
+
+    cats = load_ppi_partner_categories()
+    cats = cats.groupby('category')['partner'].apply(set).to_dict()
+    for cat, members in cats.items():
+        df['is_partner_category_' + '_'.join(cat.split())] = df['db_gene_symbol'].isin(members)
 
     """
     # Need to map the screen data to the gene level first
@@ -231,3 +246,46 @@ def load_seq_comparison_data():
     if (df['aa_seq_pct_id'] < 0).any() or (df['aa_seq_pct_id'] > 100).any():
         raise UserWarning('Percent values outside 0-100')
     return df['aa_seq_pct_id']
+
+
+def load_paralog_pairs():
+    """Pairs of TF gene paralogs and non-paralogs that were tested
+
+    Returns:
+        pandas.DataFrame: one row for each pair
+
+    """
+    df = pd.read_csv('../../data/a_tf_iso_paralog_nonparalogs_tested.tsv', sep='\t')
+    df['is_paralog_pair'] = (df['cat2'] == 'paralog')
+    aa = pd.read_csv('../../data/tf_AA_seq_identities/b_2018-11-30_AA_seq_identity_Paralog_comparisons_unique_acc.txt',
+                     sep='\t')
+    if not (df['tf1'] < df['tf2']).all():
+        raise UserWarning('Expected genes to be ordered')
+    (aa[['gene1', 'gene2']].min(axis=1) + '_' + aa[['gene1', 'gene2']].max(axis=1)).duplicated().any()
+    aa['tf1'] = aa[['gene1', 'gene2']].min(axis=1)
+    aa['tf2'] = aa[['gene1', 'gene2']].max(axis=1)
+    df = (pd.merge(df, aa, how='left', on=['tf1', 'tf2'])
+            .loc[:, ['tf1', 'tf2', 'is_paralog_pair', 'AAseq_identity%']]
+            .rename(columns={'tf1': 'tf_gene_a',
+                             'tf2': 'tf_gene_b',
+                             'AAseq_identity%': 'pct_aa_seq_identity'}))
+    return df
+
+
+def load_ppi_partner_categories():
+    """Juan's manual classification of the PPI interaction partners.
+    
+     Note that a gene can be in multiple categories.
+    Returns:
+        pandas.DataFrame: gene and category
+    
+    """
+    df = pd.read_excel('../../data/20191023- Uniprot functions for interactors.xlsx', sheet_name='Sheet4')
+    df = df.dropna(subset=['Function class'])
+    # group annoatations for the same gene split on seperate rows
+    df = df.groupby('partner')['Function class'].apply(lambda x: ', '.join(x))
+    df = df.str.split(', ', expand=True).stack().reset_index().loc[:, ['partner', 0]].rename(columns={0: 'category'})
+    df['category'] = df['category'].str.strip()
+    if not (df['partner'] == df['partner'].str.strip()).all():
+        raise UserWarning('Possibly something wrong with gene names column')
+    return df
