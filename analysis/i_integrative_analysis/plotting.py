@@ -12,8 +12,8 @@ from isoform_pairwise_metrics import paralog_pair_ppi_table
 
 
 def isoform_display_name(s):
-       """Convert clone accession ID to display friendly format"""
-       return s.split('|')[0] + '-' + s.split('|')[1].split('/')[0]
+    """Convert clone accession ID to display friendly format"""
+    return s.split('|')[0] + '-' + s.split('|')[1].split('/')[0]
 
 
 def strikethrough(s):
