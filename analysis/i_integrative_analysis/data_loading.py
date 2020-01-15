@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import pandas as pd
+from Bio import SeqIO
 
 import ccsblib
 
@@ -20,19 +21,26 @@ def load_valid_isoform_clones():
                                dup_idx
                           FROM tf_screen.iso6k_annotation
                          ORDER BY gene, clone_acc;""",
-                       ccsblib.paros_connection())
+                     ccsblib.paros_connection())
     y2h = load_isoform_and_paralog_y2h_data(filter_for_valid_clones=False)
     y1h = load_y1h_pdi_data()
     m1h = load_m1h_activation_data()
     df['in_m1h'] = df['clone_acc'].isin(m1h['clone_acc'])
     df['in_y1h'] = df['clone_acc'].isin(y1h['unique_acc'])
     df['in_y2h'] = df['clone_acc'].isin(y2h.loc[(y2h['category'] == 'tf_isoform_ppis') &
-                                            y2h['score'].isin(['0', '1']),
-                                            'ad_clone_acc'])
+                                                y2h['score'].isin(['0', '1']),
+                                                'ad_clone_acc'])
     # dropping duplicates with identical AA seqs, keeping those with M1H data
     df = df.sort_values(['gene', 'in_m1h', 'in_y2h', 'in_y1h'], ascending=[True] + [False] * 3)
     df = (df.loc[~df['dup_idx'].duplicated() | df['dup_idx'].isnull(), ['gene', 'clone_acc']]
             .sort_values(['gene', 'clone_acc']))
+    aa_seq_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                               '../../data',
+                               'j2_6k_unique_isoacc_and_prot_seqs.fa')
+    aa = {r.id.split('xxx')[1]: str(r.seq) for r in
+          SeqIO.parse(aa_seq_file, format='fasta')}
+    df['aa_seq'] = df['clone_acc'].map(aa)
+    df['num_aa'] = df['aa_seq'].str.len()
     return df
 
 
