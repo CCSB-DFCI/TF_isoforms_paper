@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 
@@ -289,3 +291,19 @@ def load_ppi_partner_categories():
     if not (df['partner'] == df['partner'].str.strip()).all():
         raise UserWarning('Possibly something wrong with gene names column')
     return df
+
+
+def load_tf_families():
+    """From the Lambert et al. review in Cell 2018
+
+    Returns:
+        pandas.Series: HGNC gene symbol to TF family
+
+    """
+    tf_fam = pd.read_csv(os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                      '../../data/external/Human_TF_DB_v_1.01.csv'))
+    tf_fam = tf_fam.loc[tf_fam['Is TF?'] == 'Yes', ['HGNC symbol', 'DBD']]
+    if tf_fam['HGNC symbol'].duplicated().any():
+        raise UserWarning('Unexpected duplicates')
+    tf_fam = tf_fam.set_index('HGNC symbol')['DBD']
+    return tf_fam
