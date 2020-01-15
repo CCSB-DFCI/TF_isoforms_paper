@@ -133,6 +133,16 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
     # drop interaction partner ORFs whose sequence does not map to an ensembl gene
     df = df.dropna(subset=['db_gene_symbol'])
 
+    non_protein_coding_genes = """RBMY2FP
+                                  REXO1L6P
+                                  SUMO1P1
+                                  SLCO4A1-AS1
+                                  ZNF213-AS1
+                                  AC023509.3
+                                  KRT8P41
+                                  LINC01658""".split()
+    df = df.loc[~df['db_gene_symbol'].isin(non_protein_coding_genes), :]
+
     if add_missing_data:
         all_possible_ints = (pd.merge(df.loc[df['category'] == 'tf_isoform_ppis',
                                               ['ad_gene_symbol', 'db_gene_symbol', 'category']]
