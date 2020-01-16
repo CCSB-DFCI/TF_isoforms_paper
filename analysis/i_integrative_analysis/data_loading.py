@@ -166,11 +166,13 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
                       how='outer')
         df['score'] = df['score'].fillna('NA')
 
-    cats = load_ppi_partner_categories()
-    cats = cats.groupby('category')['partner'].apply(set).to_dict()
+    cat_info = load_ppi_partner_categories()
+    cats = cat_info.groupby('category')['partner'].apply(set).to_dict()
     for cat, members in cats.items():
         df['is_partner_category_' + '_'.join(cat.split())] = df['db_gene_symbol'].isin(members)
-
+    cofac_type = cat_info.groupby('cofactor_type')['partner'].apply(set).to_dict()
+    for subtype, members in cofac_type.items():
+        df['is_cofactor_subtype_' + subtype] = df['db_gene_symbol'].isin(members)
     """
     # Need to map the screen data to the gene level first
     screen = load_tf_isoform_screen_results()
@@ -294,18 +296,26 @@ def load_paralog_pairs():
 
 def load_ppi_partner_categories():
     """Juan's manual classification of the PPI interaction partners.
-    
+
      Note that a gene can be in multiple categories.
+
     Returns:
         pandas.DataFrame: gene and category
-    
+
     """
-    df = pd.read_excel('../../data/20191023- Uniprot functions for interactors.xlsx', sheet_name='Sheet4')
-    df = df.dropna(subset=['Function class'])
-    # group annoatations for the same gene split on seperate rows
-    df = df.groupby('partner')['Function class'].apply(lambda x: ', '.join(x))
-    df = df.str.split(', ', expand=True).stack().reset_index().loc[:, ['partner', 0]].rename(columns={0: 'category'})
+    df = pd.read_excel('../../data/20191028- Uniprot functions for interactors.xlsx',
+                       sheet_name='Final')
+    if df['Function class'].isnull().any():
+        raise UserWarning('Unexpected missing values')
+    if df['partner'].duplicated().any():
+        raise UserWarning('Unexpected duplicate entries')
+    df = df.set_index('partner')
+    cofac_type = df['Cofactor type?'].copy()
+    df = df['Function class'].str.split(', ', expand=True).stack().reset_index().loc[:, ['partner', 0]].rename(columns={0: 'category'})
     df['category'] = df['category'].str.strip()
+    cf_rows = df['category'] == 'cofactor'
+    df.loc[cf_rows, 'cofactor_type'] = (df.loc[cf_rows, 'partner']
+                                          .map(cofac_type))
     if not (df['partner'] == df['partner'].str.strip()).all():
         raise UserWarning('Possibly something wrong with gene names column')
     return df
