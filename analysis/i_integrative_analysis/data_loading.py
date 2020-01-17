@@ -5,6 +5,7 @@ import pandas as pd
 from Bio import SeqIO
 
 import ccsblib
+from ccsblib import huri
 
 
 def load_valid_isoform_clones():
@@ -69,6 +70,62 @@ def load_tf_isoform_screen_results():
                             'pool_name_ds20180213_TFisoS05': 'in_focussed_screen'})
     if not (df['in_orfeome_screen'] | df['in_focussed_screen']).all():
         raise UserWarning('Something went wrong...')
+    return df
+
+
+def _annotate_ppi_source_info(df):
+
+    def load_orf_id_to_tf_gene():
+        qry = """SELECT orf_id,
+                        symbol AS tf_gene_symbol
+                FROM tf_screen.iso6k_sequences;"""
+        df = pd.read_sql(qry, ccsblib.paros_connection())
+        df = df.drop_duplicates()
+        if df['orf_id'].duplicated().any():
+            raise UserWarning('Unexpected duplicate ORF IDs')
+        return df.set_index('orf_id')['tf_gene_symbol']
+    
+    screen = load_tf_isoform_screen_results()
+    orf_id_to_tf_gene = load_orf_id_to_tf_gene()
+    screen['ad_gene_symbol'] = screen['ad_orf_id'].map(orf_id_to_tf_gene)
+    screen = (screen.dropna(subset=['ad_gene_symbol'])
+                    .drop(columns=['ad_orf_id']))
+    screen = screen.groupby(['ad_gene_symbol', 'db_orf_id']).any().reset_index()
+    df = pd.merge(df,
+                screen,
+                how='left',
+                on=['ad_gene_symbol', 'db_orf_id'])
+    df['in_orfeome_screen'] = df['in_orfeome_screen'].fillna(False)
+    df['in_focussed_screen'] = df['in_focussed_screen'].fillna(False)
+    hiu = huri.load_nw_hi_union(id_type='orf_id')
+    id_map = huri.load_id_map('orf_id', 'hgnc_symbol', via='ensembl_gene_id')
+    hiu_pairs = set((pd.merge(hiu, id_map, how='inner', 
+                    left_on='orf_id_a', right_on='orf_id')
+                [['hgnc_symbol', 'orf_id_b']]
+                    .drop_duplicates())
+                    .apply(lambda x: x['hgnc_symbol'] + '-' + str(x['orf_id_b']),
+                                axis=1))
+    hiu_pairs = hiu_pairs.union((pd.merge(hiu, id_map, how='inner', 
+                                        left_on='orf_id_b', right_on='orf_id')
+                                        [['hgnc_symbol', 'orf_id_a']]
+                                    .drop_duplicates())
+                                    .apply(lambda x: x['hgnc_symbol'] + '-' + str(x['orf_id_a']),
+                                    axis=1))
+    df['in_hi_union'] = (df['ad_gene_symbol'] + '-' + df['db_orf_id'].astype(str)).isin(hiu_pairs)
+    litbm = huri.load_nw_lit_bm_17(id_type='orf_id')
+    litbm_pairs = set((pd.merge(litbm, id_map, how='inner', 
+                    left_on='orf_id_a', right_on='orf_id')
+                [['hgnc_symbol', 'orf_id_b']]
+                    .drop_duplicates())
+                    .apply(lambda x: x['hgnc_symbol'] + '-' + str(x['orf_id_b']),
+                                axis=1))
+    litbm_pairs = litbm_pairs.union((pd.merge(litbm, id_map, how='inner', 
+                                        left_on='orf_id_b', right_on='orf_id')
+                                        [['hgnc_symbol', 'orf_id_a']]
+                                    .drop_duplicates())
+                                    .apply(lambda x: x['hgnc_symbol'] + '-' + str(x['orf_id_a']),
+                                    axis=1))
+    df['in_lit_bm'] = (df['ad_gene_symbol'] + '-' + df['db_orf_id'].astype(str)).isin(litbm_pairs)
     return df
 
 
@@ -173,14 +230,7 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
     cofac_type = cat_info.groupby('cofactor_type')['partner'].apply(set).to_dict()
     for subtype, members in cofac_type.items():
         df['is_cofactor_subtype_' + subtype] = df['db_gene_symbol'].isin(members)
-    """
-    # Need to map the screen data to the gene level first
-    screen = load_tf_isoform_screen_results()
-    pd.merge(df,
-            screen,
-            how='left',
-            on=['ad_orf_id', 'db_orf_id']).sort_values(['ad_gene_symbol', 'db_gene_symbol'])
-    """
+    df = _annotate_ppi_source_info(df)
     return df
 
 
