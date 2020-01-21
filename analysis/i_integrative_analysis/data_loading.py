@@ -1,7 +1,11 @@
+import os
+
 import numpy as np
 import pandas as pd
+from Bio import SeqIO
 
 import ccsblib
+from ccsblib import huri
 
 
 def load_valid_isoform_clones():
@@ -18,19 +22,26 @@ def load_valid_isoform_clones():
                                dup_idx
                           FROM tf_screen.iso6k_annotation
                          ORDER BY gene, clone_acc;""",
-                       ccsblib.paros_connection())
+                     ccsblib.paros_connection())
     y2h = load_isoform_and_paralog_y2h_data(filter_for_valid_clones=False)
     y1h = load_y1h_pdi_data()
     m1h = load_m1h_activation_data()
     df['in_m1h'] = df['clone_acc'].isin(m1h['clone_acc'])
     df['in_y1h'] = df['clone_acc'].isin(y1h['unique_acc'])
     df['in_y2h'] = df['clone_acc'].isin(y2h.loc[(y2h['category'] == 'tf_isoform_ppis') &
-                                            y2h['score'].isin(['0', '1']),
-                                            'ad_clone_acc'])
+                                                y2h['score'].isin(['0', '1']),
+                                                'ad_clone_acc'])
     # dropping duplicates with identical AA seqs, keeping those with M1H data
     df = df.sort_values(['gene', 'in_m1h', 'in_y2h', 'in_y1h'], ascending=[True] + [False] * 3)
     df = (df.loc[~df['dup_idx'].duplicated() | df['dup_idx'].isnull(), ['gene', 'clone_acc']]
             .sort_values(['gene', 'clone_acc']))
+    aa_seq_file = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                               '../../data',
+                               'j2_6k_unique_isoacc_and_prot_seqs.fa')
+    aa = {r.id.split('xxx')[1]: str(r.seq) for r in
+          SeqIO.parse(aa_seq_file, format='fasta')}
+    df['aa_seq'] = df['clone_acc'].map(aa)
+    df['num_aa'] = df['aa_seq'].str.len()
     return df
 
 
@@ -59,6 +70,62 @@ def load_tf_isoform_screen_results():
                             'pool_name_ds20180213_TFisoS05': 'in_focussed_screen'})
     if not (df['in_orfeome_screen'] | df['in_focussed_screen']).all():
         raise UserWarning('Something went wrong...')
+    return df
+
+
+def _annotate_ppi_source_info(df):
+
+    def load_orf_id_to_tf_gene():
+        qry = """SELECT orf_id,
+                        symbol AS tf_gene_symbol
+                FROM tf_screen.iso6k_sequences;"""
+        df = pd.read_sql(qry, ccsblib.paros_connection())
+        df = df.drop_duplicates()
+        if df['orf_id'].duplicated().any():
+            raise UserWarning('Unexpected duplicate ORF IDs')
+        return df.set_index('orf_id')['tf_gene_symbol']
+    
+    screen = load_tf_isoform_screen_results()
+    orf_id_to_tf_gene = load_orf_id_to_tf_gene()
+    screen['ad_gene_symbol'] = screen['ad_orf_id'].map(orf_id_to_tf_gene)
+    screen = (screen.dropna(subset=['ad_gene_symbol'])
+                    .drop(columns=['ad_orf_id']))
+    screen = screen.groupby(['ad_gene_symbol', 'db_orf_id']).any().reset_index()
+    df = pd.merge(df,
+                screen,
+                how='left',
+                on=['ad_gene_symbol', 'db_orf_id'])
+    df['in_orfeome_screen'] = df['in_orfeome_screen'].fillna(False)
+    df['in_focussed_screen'] = df['in_focussed_screen'].fillna(False)
+    hiu = huri.load_nw_hi_union(id_type='orf_id')
+    id_map = huri.load_id_map('orf_id', 'hgnc_symbol', via='ensembl_gene_id')
+    hiu_pairs = set((pd.merge(hiu, id_map, how='inner', 
+                    left_on='orf_id_a', right_on='orf_id')
+                [['hgnc_symbol', 'orf_id_b']]
+                    .drop_duplicates())
+                    .apply(lambda x: x['hgnc_symbol'] + '-' + str(x['orf_id_b']),
+                                axis=1))
+    hiu_pairs = hiu_pairs.union((pd.merge(hiu, id_map, how='inner', 
+                                        left_on='orf_id_b', right_on='orf_id')
+                                        [['hgnc_symbol', 'orf_id_a']]
+                                    .drop_duplicates())
+                                    .apply(lambda x: x['hgnc_symbol'] + '-' + str(x['orf_id_a']),
+                                    axis=1))
+    df['in_hi_union'] = (df['ad_gene_symbol'] + '-' + df['db_orf_id'].astype(str)).isin(hiu_pairs)
+    litbm = huri.load_nw_lit_bm_17(id_type='orf_id')
+    litbm_pairs = set((pd.merge(litbm, id_map, how='inner', 
+                    left_on='orf_id_a', right_on='orf_id')
+                [['hgnc_symbol', 'orf_id_b']]
+                    .drop_duplicates())
+                    .apply(lambda x: x['hgnc_symbol'] + '-' + str(x['orf_id_b']),
+                                axis=1))
+    litbm_pairs = litbm_pairs.union((pd.merge(litbm, id_map, how='inner', 
+                                        left_on='orf_id_b', right_on='orf_id')
+                                        [['hgnc_symbol', 'orf_id_a']]
+                                    .drop_duplicates())
+                                    .apply(lambda x: x['hgnc_symbol'] + '-' + str(x['orf_id_a']),
+                                    axis=1))
+    df['in_lit_bm'] = (df['ad_gene_symbol'] + '-' + df['db_orf_id'].astype(str)).isin(litbm_pairs)
     return df
 
 
@@ -131,6 +198,16 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
     # drop interaction partner ORFs whose sequence does not map to an ensembl gene
     df = df.dropna(subset=['db_gene_symbol'])
 
+    non_protein_coding_genes = """RBMY2FP
+                                  REXO1L6P
+                                  SUMO1P1
+                                  SLCO4A1-AS1
+                                  ZNF213-AS1
+                                  AC023509.3
+                                  KRT8P41
+                                  LINC01658""".split()
+    df = df.loc[~df['db_gene_symbol'].isin(non_protein_coding_genes), :]
+
     if add_missing_data:
         all_possible_ints = (pd.merge(df.loc[df['category'] == 'tf_isoform_ppis',
                                               ['ad_gene_symbol', 'db_gene_symbol', 'category']]
@@ -146,19 +223,14 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
                       how='outer')
         df['score'] = df['score'].fillna('NA')
 
-    cats = load_ppi_partner_categories()
-    cats = cats.groupby('category')['partner'].apply(set).to_dict()
+    cat_info = load_ppi_partner_categories()
+    cats = cat_info.groupby('category')['partner'].apply(set).to_dict()
     for cat, members in cats.items():
         df['is_partner_category_' + '_'.join(cat.split())] = df['db_gene_symbol'].isin(members)
-
-    """
-    # Need to map the screen data to the gene level first
-    screen = load_tf_isoform_screen_results()
-    pd.merge(df,
-            screen,
-            how='left',
-            on=['ad_orf_id', 'db_orf_id']).sort_values(['ad_gene_symbol', 'db_gene_symbol'])
-    """
+    cofac_type = cat_info.groupby('cofactor_type')['partner'].apply(set).to_dict()
+    for subtype, members in cofac_type.items():
+        df['is_cofactor_subtype_' + subtype] = df['db_gene_symbol'].isin(members)
+    df = _annotate_ppi_source_info(df)
     return df
 
 
@@ -274,18 +346,42 @@ def load_paralog_pairs():
 
 def load_ppi_partner_categories():
     """Juan's manual classification of the PPI interaction partners.
-    
+
      Note that a gene can be in multiple categories.
+
     Returns:
         pandas.DataFrame: gene and category
-    
+
     """
-    df = pd.read_excel('../../data/20191023- Uniprot functions for interactors.xlsx', sheet_name='Sheet4')
-    df = df.dropna(subset=['Function class'])
-    # group annoatations for the same gene split on seperate rows
-    df = df.groupby('partner')['Function class'].apply(lambda x: ', '.join(x))
-    df = df.str.split(', ', expand=True).stack().reset_index().loc[:, ['partner', 0]].rename(columns={0: 'category'})
+    df = pd.read_excel('../../data/20191028- Uniprot functions for interactors.xlsx',
+                       sheet_name='Final')
+    if df['Function class'].isnull().any():
+        raise UserWarning('Unexpected missing values')
+    if df['partner'].duplicated().any():
+        raise UserWarning('Unexpected duplicate entries')
+    df = df.set_index('partner')
+    cofac_type = df['Cofactor type?'].copy()
+    df = df['Function class'].str.split(', ', expand=True).stack().reset_index().loc[:, ['partner', 0]].rename(columns={0: 'category'})
     df['category'] = df['category'].str.strip()
+    cf_rows = df['category'] == 'cofactor'
+    df.loc[cf_rows, 'cofactor_type'] = (df.loc[cf_rows, 'partner']
+                                          .map(cofac_type))
     if not (df['partner'] == df['partner'].str.strip()).all():
         raise UserWarning('Possibly something wrong with gene names column')
     return df
+
+
+def load_tf_families():
+    """From the Lambert et al. review in Cell 2018
+
+    Returns:
+        pandas.Series: HGNC gene symbol to TF family
+
+    """
+    tf_fam = pd.read_csv(os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                      '../../data/external/Human_TF_DB_v_1.01.csv'))
+    tf_fam = tf_fam.loc[tf_fam['Is TF?'] == 'Yes', ['HGNC symbol', 'DBD']]
+    if tf_fam['HGNC symbol'].duplicated().any():
+        raise UserWarning('Unexpected duplicates')
+    tf_fam = tf_fam.set_index('HGNC symbol')['DBD']
+    return tf_fam
