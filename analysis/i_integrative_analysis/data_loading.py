@@ -208,6 +208,12 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
                                   LINC01658""".split()
     df = df.loc[~df['db_gene_symbol'].isin(non_protein_coding_genes), :]
 
+    # remove unexpected duplicates, some of which have inconsistent scores
+    # see Issue #28
+    df = df.loc[~(df.duplicated(subset=['ad_clone_acc', 'db_gene_symbol'],
+                                keep=False) 
+                  & (df['category'] == 'paralog_with_PDI')), :]
+
     if add_missing_data:
         all_possible_ints = (pd.merge(df.loc[df['category'] == 'tf_isoform_ppis',
                                               ['ad_gene_symbol', 'db_gene_symbol', 'category']]
@@ -312,6 +318,13 @@ def load_seq_comparison_data():
     df['pair'] = df.apply(lambda x: '_'.join(sorted([x.iso1, x.iso2])), axis=1)
     df = df[['pair', 'AAseq_identity%']]
     df.columns = ['pair', 'aa_seq_pct_id']
+
+    df_b = pd.read_csv('../../data/tf_AA_seq_identities/paralog_non_paralog_seq_id.tsv',
+                       sep='\t').drop_duplicates()
+    df_b['pair'] = df_b.apply(lambda x: '_'.join(sorted([x['clone_acc_a'], x['clone_acc_b']])), axis=1)
+    df_b = df_b.loc[:, ['pair', 'aa_seq_pct_id']]
+    df = pd.concat([df, df_b])
+
     if df['pair'].duplicated().any():
         raise UserWarning('Unexpected duplicates')
     df = df.set_index('pair')
@@ -341,7 +354,23 @@ def load_paralog_pairs():
             .rename(columns={'tf1': 'tf_gene_a',
                              'tf2': 'tf_gene_b',
                              'AAseq_identity%': 'pct_aa_seq_identity'}))
+    df = df.drop_duplicates()
     return df
+
+
+def load_isoforms_of_paralogs_pairs(pairs, isoforms):
+    pairs = pd.merge(pairs.loc[:, ['tf_gene_a', 'tf_gene_b', 'is_paralog_pair']],
+                     isoforms.loc[:, ['gene', 'clone_acc', 'aa_seq']],
+                     how='inner',
+                     left_on='tf_gene_a',
+                     right_on='gene').rename(columns={'aa_seq': 'aa_seq_a', 'clone_acc': 'clone_acc_a'})
+    pairs = pd.merge(pairs,
+                     isoforms.loc[:, ['gene', 'clone_acc', 'aa_seq']],
+                     how='inner',
+                     left_on='tf_gene_b',
+                     right_on='gene').rename(columns={'aa_seq': 'aa_seq_b', 'clone_acc': 'clone_acc_b'})
+    pairs = pairs.drop(columns=['gene_x', 'gene_y'])
+    return pairs
 
 
 def load_ppi_partner_categories():
