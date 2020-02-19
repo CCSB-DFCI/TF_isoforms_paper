@@ -3,7 +3,8 @@ from itertools import combinations
 import numpy as np
 import pandas as pd
 
-from data_loading import load_seq_comparison_data
+from data_loading import (load_seq_comparison_data,
+                          load_isoforms_of_paralogs_pairs)
 
 
 def paralog_pair_ppi_table(data, tf_gene_a, tf_gene_b):
@@ -18,94 +19,143 @@ def paralog_pair_ppi_table(data, tf_gene_a, tf_gene_b):
     partners = np.concatenate([gene_a_partners, gene_b_partners])
     tf = data.loc[((data['ad_gene_symbol'] == tf_gene_a) |
                   (data['ad_gene_symbol'] == tf_gene_b))
-                  & data['category'].isin(['tf_isoform_ppis', 'tf_paralog_ppis'])
+                  & data['category'].isin(['tf_isoform_ppis',
+                                           'tf_paralog_ppis',
+                                           'non_paralog_control',
+                                           'paralog_with_PDI'])
                   & data['db_gene_symbol'].isin(partners),
                   ['ad_clone_acc', 'db_gene_symbol', 'score']].copy()
     return tf
+
+
+def pairs_of_paralogs_and_isoforms_comparison_table(isoforms,
+                                                    paralog_pairs,
+                                                    y2h,
+                                                    y1h,
+                                                    m1h):
+    """[summary]
+
+    Restricted to isoforms pairs in the paralogs dataset.
+
+    Args:
+        isoforms (bool): [description]
+        paralog_pairs ([type]): [description]
+        y2h ([type]): [description]
+        y1h ([type]): [description]
+        m1h ([type]): [description]
+
+    Returns:
+        [type]: [description]
+
+    """
+    pairs = load_isoforms_of_paralogs_pairs(paralog_pairs, isoforms)
+    pairs['category'] = pairs['is_paralog_pair'].map({True: 'paralogs', False: 'non-paralog-control'})
+    pairs = pairs.drop(columns=['aa_seq_a', 'aa_seq_b', 'is_paralog_pair'])
+    iso_pairs = []
+    for tf_gene in isoforms['gene'].unique():
+        tf_iso = isoforms.loc[isoforms['gene'] == tf_gene,
+                              'clone_acc'].values
+        for iso_a, iso_b in combinations(tf_iso, 2):
+            iso_pairs.append((tf_gene, tf_gene, iso_a, iso_b))
+    iso_pairs = pd.DataFrame(data=iso_pairs,
+                             columns=['tf_gene_a', 'tf_gene_b', 'clone_acc_a', 'clone_acc_b'])
+    iso_pairs['category'] = 'isoforms'
+    iso_pairs = iso_pairs.loc[iso_pairs['tf_gene_a'].isin(pairs['tf_gene_a']) |
+                              iso_pairs['tf_gene_a'].isin(pairs['tf_gene_b']), :]
+    pairs = pd.concat([pairs, iso_pairs])
+    pairs['pair'] = pairs.apply(lambda x: '_'.join(sorted([x['clone_acc_a'],
+                                                           x['clone_acc_b']])),
+                                axis=1)
+    return _pairs_comparison_table(pairs, y2h, y1h, m1h)
 
 
 def pairs_of_isoforms_comparison_table(isoforms, y2h, y1h, m1h):
     iso_pairs = []
     for tf_gene in isoforms['gene'].unique():
         tf_iso = isoforms.loc[isoforms['gene'] == tf_gene,
-                            'clone_acc'].values
+                              'clone_acc'].values
         for iso_a, iso_b in combinations(tf_iso, 2):
             iso_pairs.append((tf_gene, iso_a, iso_b))
     iso_pairs = pd.DataFrame(data=iso_pairs,
-                            columns=['tf_gene_symbol', 'clone_acc_a', 'clone_acc_b'])
+                             columns=['tf_gene_symbol', 'clone_acc_a', 'clone_acc_b'])
     iso_pairs['pair'] = iso_pairs.apply(lambda x: '_'.join(sorted([x.clone_acc_a, x.clone_acc_b])), axis=1)
+    return _pairs_comparison_table(iso_pairs, y2h, y1h, m1h)
 
-    iso_pairs['ppi_n_tested'] = iso_pairs.apply(ppi_metric,
-                                                data=y2h.loc[y2h['category'] == 'tf_isoform_ppis', :],
-                                                function=number_tested_partners,
-                                                axis=1)
-    iso_pairs['ppi_n_shared'] = iso_pairs.apply(ppi_metric,
-                                                data=y2h.loc[y2h['category'] == 'tf_isoform_ppis', :],
-                                                function=number_shared_partners,
-                                                axis=1)
-    iso_pairs['ppi_n_min'] = iso_pairs.apply(ppi_metric,
-                                                data=y2h.loc[y2h['category'] == 'tf_isoform_ppis', :],
-                                                function=number_min_partners,
-                                                axis=1)
-    iso_pairs['ppi_n_min_diff'] = iso_pairs.apply(ppi_metric,
-                                                data=y2h.loc[y2h['category'] == 'tf_isoform_ppis', :],
-                                                function=min_difference,
-                                                axis=1)
-    iso_pairs['ppi_jaccard'] = iso_pairs.apply(ppi_metric,
-                                            data=y2h.loc[y2h['category'] == 'tf_isoform_ppis', :],
-                                            function=jaccard_index,
-                                            axis=1)
-    iso_pairs['ppi_simpson'] = iso_pairs.apply(ppi_metric,
-                                                data=y2h.loc[y2h['category'] == 'tf_isoform_ppis', :],
-                                                function=simpsons_index,
-                                                axis=1)
-    iso_pairs['ppi_n_diff'] = iso_pairs['ppi_n_tested'] - iso_pairs['ppi_n_shared']
 
-    iso_pairs['pdi_n_tested'] = iso_pairs.apply(pdi_metric,
-                                                data=y1h,
-                                                function=number_tested_partners,
-                                                axis=1)
-    iso_pairs['pdi_n_shared'] = iso_pairs.apply(pdi_metric,
-                                                data=y1h,
-                                                function=number_shared_partners,
-                                                axis=1)
-    iso_pairs['pdi_n_min'] = iso_pairs.apply(pdi_metric,
-                                                data=y1h,
-                                                function=number_min_partners,
-                                                axis=1)
-    iso_pairs['pdi_n_min_diff'] = iso_pairs.apply(pdi_metric,
-                                                data=y1h,
-                                                function=min_difference,
-                                                axis=1)
-    iso_pairs['pdi_jaccard'] = iso_pairs.apply(pdi_metric,
-                                            data=y1h,
-                                            function=jaccard_index,
-                                            axis=1)
-    iso_pairs['pdi_simpson'] = iso_pairs.apply(pdi_metric,
-                                                data=y1h,
-                                                function=simpsons_index,
-                                                axis=1)
-    iso_pairs['pdi_n_diff'] = iso_pairs['pdi_n_tested'] - iso_pairs['pdi_n_shared']
+def _pairs_comparison_table(pairs, y2h, y1h, m1h):
+    pairs['ppi_n_tested'] = pairs.apply(ppi_metric,
+                                        data=y2h,
+                                        function=number_tested_partners,
+                                        axis=1)
+    pairs['ppi_n_shared'] = pairs.apply(ppi_metric,
+                                        data=y2h,
+                                        function=number_shared_partners,
+                                        axis=1)
+    pairs['ppi_n_min'] = pairs.apply(ppi_metric,
+                                     data=y2h,
+                                     function=number_min_partners,
+                                     axis=1)
+    pairs['ppi_n_min_diff'] = pairs.apply(ppi_metric,
+                                          data=y2h,
+                                          function=min_difference,
+                                          axis=1)
+    pairs['ppi_jaccard'] = pairs.apply(ppi_metric,
+                                       data=y2h,
+                                       function=jaccard_index,
+                                       axis=1)
+    pairs['ppi_simpson'] = pairs.apply(ppi_metric,
+                                       data=y2h,
+                                       function=simpsons_index,
+                                       axis=1)
+    pairs['ppi_n_diff'] = pairs['ppi_n_tested'] - pairs['ppi_n_shared']
 
-    iso_pairs['activation_fold_change'] = iso_pairs.apply(fold_change_m1h, data=m1h, axis=1)
+    pairs['pdi_n_tested'] = pairs.apply(pdi_metric,
+                                        data=y1h,
+                                        function=number_tested_partners,
+                                        axis=1)
+    pairs['pdi_n_shared'] = pairs.apply(pdi_metric,
+                                        data=y1h,
+                                        function=number_shared_partners,
+                                        axis=1)
+    pairs['pdi_n_min'] = pairs.apply(pdi_metric,
+                                     data=y1h,
+                                     function=number_min_partners,
+                                     axis=1)
+    pairs['pdi_n_min_diff'] = pairs.apply(pdi_metric,
+                                          data=y1h,
+                                          function=min_difference,
+                                          axis=1)
+    pairs['pdi_jaccard'] = pairs.apply(pdi_metric,
+                                       data=y1h,
+                                       function=jaccard_index,
+                                       axis=1)
+    pairs['pdi_simpson'] = pairs.apply(pdi_metric,
+                                       data=y1h,
+                                       function=simpsons_index,
+                                       axis=1)
+    pairs['pdi_n_diff'] = pairs['pdi_n_tested'] - pairs['pdi_n_shared']
 
-    if (iso_pairs['clone_acc_a'] >= iso_pairs['clone_acc_b']).any():
-        raise UserWarning('Expected clone IDs to be ordered')
-    aa_ident = pd.Series(load_seq_comparison_data())
-    iso_pairs['aa_seq_pct_id'] = (iso_pairs['clone_acc_a'] + '_' + iso_pairs['clone_acc_b']).map(aa_ident)
+    pairs['activation_fold_change'] = pairs.apply(fold_change_m1h, data=m1h, axis=1)
 
-    return iso_pairs
+    aa_ident = load_seq_comparison_data()
+    pairs['aa_seq_pct_id'] = (pairs.apply(lambda x: '_'.join(sorted([x['clone_acc_a'],
+                                                                     x['clone_acc_b']])),
+                                          axis=1)
+                                   .map(aa_ident))
+    if pairs['aa_seq_pct_id'].isnull().any():
+        raise UserWarning('Problem with sequence similarity data')
+    return pairs
 
 
 def ppi_metric(row, data, function):
-    gene_name = row['tf_gene_symbol']
-    results = (data.loc[data['ad_gene_symbol'] == gene_name, :]
-                   .pivot(values='score', index='db_gene_symbol', columns='ad_clone_acc'))
     ad_a = row['clone_acc_a']
     ad_b = row['clone_acc_b']
-    if ad_a not in results.columns or ad_b not in results.columns:
+    pair = (data.loc[data['ad_clone_acc'].isin([ad_a, ad_b]), :]
+                .pivot(values='score',
+                       index='db_gene_symbol',
+                       columns='ad_clone_acc'))
+    if ad_a not in pair.columns or ad_b not in pair.columns:
         return np.nan
-    pair = results.loc[:, [ad_a, ad_b]]
     # remove any partner with AA / NC / NS / NaN in either
     pair = pair.loc[pair.isin(['0', '1']).all(axis=1), :].astype(int).astype(bool)
     # remove partners that tested negative in both
