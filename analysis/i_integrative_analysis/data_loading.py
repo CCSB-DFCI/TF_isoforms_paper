@@ -42,6 +42,9 @@ def load_valid_isoform_clones():
           SeqIO.parse(aa_seq_file, format='fasta')}
     df['aa_seq'] = df['clone_acc'].map(aa)
     df['num_aa'] = df['aa_seq'].str.len()
+    iso_annot = pd.read_csv('../../data/c_conso_annot_table_man_annot.tsv',
+                            sep='\t')
+    df['is_novel_isoform'] = df['clone_acc'].map(iso_annot.set_index('unique_acc')['gc_match'] == 0)
     return df
 
 
