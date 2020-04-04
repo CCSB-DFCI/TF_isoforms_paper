@@ -23,3 +23,5 @@ gencode.v25.annotation.gtf
 .vscode/
 *.pyc
 .ipynb_checkpoints
+
+venv
