@@ -1,2 +1,9 @@
-# tf_isoforms
-bioinfo pipelines for analysis of isoform structure, sequence, and interactions
+# TF isoform analysis code
+
+## Setup
+
+Create a symlink to the data directory in Dropbox, e.g.
+```
+ln -s ~/Dropbox/TF_isoforms/data .
+```
+
