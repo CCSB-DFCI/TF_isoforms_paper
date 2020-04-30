@@ -388,9 +388,9 @@ def load_uniprot_dbd_mappings(path_domain_table, path_domain_names, non_zf_only=
                 print(line)
             if non_zf_only:
                 if 'ZF' not in name.upper():
-                    domains[gene][isoacc].append([pfam, name, 'DBD', start, end])
+                    domains[gene][isoacc].append([pfam, name, 'DBD', -1, start, end])
             else:
-                domains[gene][isoacc].append([pfam, name, 'DBD', start, end])
+                domains[gene][isoacc].append([pfam, name, 'DBD', -1, start, end])
     return domains
 
 def load_sachi_assigned_dbd_pfam_names(fpath):

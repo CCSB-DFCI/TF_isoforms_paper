@@ -1,0 +1,3 @@
+Make table of %DBD affected in alt. isoform for all Gencode TFs.
+
+Made from script in e_*

@@ -29,7 +29,6 @@ class Feature():
         ftype_plural = ftype + 's'
         getattr(self.obj, ftype_plural).add(self)
 
-
 class FeatureFull(Feature):
     """Represents a feature that is mapped to an ORF.
        Holds connected series of feature blocks, subblocks, residues.
@@ -69,36 +68,6 @@ class FeatureFull(Feature):
     def last(self):
         return self.chain[-1]
 
-
-class DomainFull(FeatureFull):
-    """Represents a domain mapped to an ORF"""
-    def __init__(self, orf, cat, acc, desc, eval, stat='direct'):
-        self.cat = cat  # categories of feature (e.g. dom: dbd, reg)
-        self.acc = acc  # e.g., pfam accession, linear motif acc, ptm accession
-        self.desc = desc  # e.g., pfam name
-        self.eval = float(eval) # -1 if non-existent
-        self.stat = stat # direct (mapped domain) or transferred (from aln_obj)
-        FeatureFull.__init__(self, orf, 'dom')
-
-    @property
-    def name(self):
-        return self.obj.name + '|' + self.ftype + '-' + self.desc
-
-    @property
-    def full(self):
-        """Char. representation of domain, cds, and AA seq. tracks."""
-        chain = self.orf.res_chain
-        self.orf.current_feat = self
-        domain_chain = ''.join(['X' if res.dom else '-' for res in chain])
-        cds_chain = ''.join(['|' if res.is_at_cds_edge else str(res.cds.ord) for res in chain])
-        seq_chain = ''.join([res.aa for res in chain])
-        ostr = '{:16s}{}\n{:16s}{}\n{:16s}{}'.format(self.desc, domain_chain,
-                                                     'CDS ord.', cds_chain,
-                                                     'AA sequence', seq_chain)
-        return ostr
-
-
-
 class FeatureBlock(Feature):
     """Represents a range across one or more cds/exon with same-cat feat.
        Note - this may not exist for some feature types (e.g. domain)
@@ -134,7 +103,6 @@ class FeatureBlock(Feature):
     def name(self):
         # need a name to compute ordinal on demand
         return 'frmb: {} {} -- {}'.format(self.featf.name, self.first.name, self.last.name)
-
 
 class FeatureSubblock(Feature):
     """A segment of a feature block, irreducable based on CDS structure.
@@ -179,13 +147,6 @@ class FeatureSubblock(Feature):
     def name(self):
         return '{} {}-{}'.format(self.cds, self.first.res.idx, self.last.res.idx)
 
-class DomainSubblock(FeatureSubblock):
-    """A domain-specific feature subblock (domsb)."""
-    def __init__(self, featf, cds, featrs):
-        # domain subblock
-        FeatureSubblock.__init__(self, featf, cds, featrs)
-
-
 class FeatureResidue(Feature):
     """A feature mapped to a residue."""
     def __init__(self, featf, res):
@@ -216,6 +177,52 @@ class FeatureResidue(Feature):
     def name(self):
         return str(self.res.idx) + '-' + self.res.aa
 
+
+
+
+
+
+class DomainFull(FeatureFull):
+    """Represents a domain mapped to an ORF"""
+    def __init__(self, orf, cat, acc, desc, eval, stat='direct'):
+        self.cat = cat  # categories of feature (e.g. dom: dbd, reg)
+        self.acc = acc  # e.g., pfam accession, linear motif acc, ptm accession
+        self.desc = desc  # e.g., pfam name
+        self.eval = float(eval) # -1 if non-existent
+        self.stat = stat # direct (mapped domain) or transferred (from aln_obj)
+        FeatureFull.__init__(self, orf, 'dom')
+
+    @property
+    def name(self):
+        return self.obj.name + '|' + self.ftype + '-' + self.desc
+
+    @property
+    def full(self):
+        """Char. representation of domain, cds, and AA seq. tracks."""
+        chain = self.orf.res_chain
+        self.orf.current_feat = self
+        domain_chain = ''.join(['X' if res.dom else '-' for res in chain])
+        cds_chain = ''.join(['|' if res.is_at_cds_edge else str(res.cds.ord) for res in chain])
+        seq_chain = ''.join([res.aa for res in chain])
+        ostr = '{:16s}{}\n{:16s}{}\n{:16s}{}'.format(self.desc, domain_chain,
+                                                     'CDS ord.', cds_chain,
+                                                     'AA sequence', seq_chain)
+        return ostr
+
+    def return_aln_line(self, grp, res):
+        """A single 'track' showing the feat mapped to orf AA chain."""
+        self.orf.current_feat = self
+        chain = grp.alnf.chain
+        feat_str = ''.join(['X' if getattr(aln, res).dom else '-' for aln in chain])
+        self.orf.current_feat = None
+        return '{:16s}{}\n'.format(self.desc, feat_str)
+
+
+class DomainSubblock(FeatureSubblock):
+    """A domain-specific feature subblock (domsb)."""
+    def __init__(self, featf, cds, featrs):
+        # domain subblock
+        FeatureSubblock.__init__(self, featf, cds, featrs)
 
 class DomainResidue(FeatureResidue):
     """A residue that represents an AA that is part of a domain."""

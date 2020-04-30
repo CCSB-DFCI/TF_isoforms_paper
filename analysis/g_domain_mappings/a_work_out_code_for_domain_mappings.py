@@ -1,12 +1,4 @@
 #!/usr/bin/env python
-#
-# title           :driver.py
-# description     :Work out domain mappings to protein isoforms.
-# author          :Gloria Sheynkman
-# date            :June 17th, 2019
-# version         :1
-# python_version  :2.7.15
-# ==============================================================================
 
 
 import os
@@ -22,6 +14,8 @@ from isomodules import isoimage
 from isomodules import isogroup
 from isomodules import isoalign
 from isomodules import isowrangle
+reload(isofeature)
+reload(isoalign)
 
 data_dir = (
           '/Users/gloriasheynkman/Documents/research_drive/files_ccsb/'
@@ -49,6 +43,8 @@ gd = isocreate.create_and_link_seq_related_obj(gd, orf_seqs)
 gd = isowrangle.set_gencode_gene_orfs_as_repr_orfs_from_same_prot_seq_grps(gd)
 
 
+# %%
+
 all_grps = []
 for symbol, gene in gd.items():
     grps = isocreatealign.create_and_map_splice_based_align_obj(gene.ref_alt_pairs)
@@ -63,20 +59,28 @@ for symbol, gene in gd.items():
         for info in domain_infos:
             domf = isocreatefeat.create_and_map_domain(orf, info)
 
-# for grps in all_grps:
-#     first_grp = True
-#     for grp in grps:
-#         if first_grp:
-#             orf1 = grp.repr_orf
-#             domain_infos = domains[orf1.ensp]
-#             for info in domain_infos:
-#                 domf = isocreatefeat.create_and_map_domain(orf1, info)
-#                 tmp_orf = domf.orf
-#             first_grp = False
-#         orf2 = grp.other_orf
-#         domain_infos = domains[orf2.ensp]
-#         for info in domain_infos:
-#             isocreatefeat.create_and_map_domain(orf2, info)
+# %%
+
+for grps in all_grps:
+    for grp in grps:
+
+
+# %%
+
+with open('a_ref_and_alt_all_domains_as_tracks.txt', 'w') as ofile:
+    """print all domain mappings for anchor/other isoform"""
+    for grps in all_grps:
+        for grp in grps:
+            ostr = ''
+            for orf, ord in [(grp.repr_orf, '1'), (grp.other_orf, '2')]:
+                feats = sorted([(feat.desc, feat) for feat in orf.doms])
+                for name, feat in feats:
+                    ostr += feat.return_aln_line(grp, 'res' + ord)
+                ostr += '{:16s}{}\n'.format(orf.name, str(getattr(grp.alnf, 'seq' + ord)))
+                ostr += '{:16s}{}\n'.format(orf.name, str(getattr(grp.alnf, 'cds' + ord)))
+                ostr += '\n'
+            ofile.write(ostr)
+
 
 # %%
 
@@ -194,11 +198,9 @@ with open('a_ref_alt_domain_len_compare.txt', 'w') as ofile:
 
 # %%
 
-# find cases in the 1700TFs where a domain maps in the alt. but not ref.
-
+# list domains only found in alt orf
 with open('a_domain_in_alt_but_not_ref.txt', 'w') as ofile:
     ofile.write('ref_orf\talt_orf\tpfam_in_alt_only\n')
-    grp_to_print_out_later = []
     for grps in all_grps:
         for grp in grps:
             grp.enter()
@@ -208,42 +210,17 @@ with open('a_domain_in_alt_but_not_ref.txt', 'w') as ofile:
             pfam_in_alt = set([alt_featf.desc for alt_featf in alt_orf.doms])
             pfams_in_alt_only = pfam_in_alt - pfam_in_ref
             if pfams_in_alt_only:
-                grp_to_print_out_later.append(grp)
                 for alt_only_pfam in pfams_in_alt_only:
                     odata = (ref_orf.name, alt_orf.name, alt_only_pfam)
-                ofile.write('\t'.join(map(str, odata)) + '\n')
+                    ofile.write('\t'.join(map(str, odata)) + '\n')
             grp.exit()
 
-# %%
-
-def print_full_tracks_for_alignment_group(grp):
-    """print all domain mappings for anchor/other isoform"""
-    ostr = ''
-    chain = grp.alnf.chain
-    for orf, reslookup in [(grp.repr_orf, 'res1'), (grp.other_orf, 'res2')]:
-        feats = sorted([(feat.desc, feat) for feat in orf.doms])
-        for name, feat in feats:
-            orf.current_feat = feat
-            feat_str = ''.join(['X' if getattr(aln, reslookup).dom else '-' for aln in chain])
-            ostr += '{:16s}{}\n'.format(name, feat_str)
-            orf.current_feat = None
-        aa_str = ''.join([getattr(aln, reslookup).aa for aln in chain])
-        ostr += '{:16s}{}\n'.format(orf.name, aa_str)
-        # cds_str = ''.join(['|' if getattr(aln, reslookup).is_at_cds_edge else str(getattr(aln, reslookup).cds.ord)[0] for aln in chain])
-        # ostr += '{:16s}{}\n'.format(orf.name, cds_str)
-        ostr += '\n'
-    return ostr
-
-with open('a_domain_in_alt_but_not_ref_align_tracks.txt', 'w') as ofile:
-    for grp in grp_to_print_out_later:
-        ofile.write(print_full_tracks_for_alignment_group(grp) + '\n')
 
 
 # %%
 
 
-
-
+# TODO - go through and understand code
 # print all domain mappings for anchor/other isoform
 with open('a_ref_alt_next_150_tf_domain_mappings_DBDs.txt', 'w') as ofile:
     for grps in all_grps:
