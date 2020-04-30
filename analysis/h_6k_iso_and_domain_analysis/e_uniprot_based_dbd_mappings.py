@@ -41,6 +41,8 @@ reload(isofunc)
 domains = isofunc.load_uniprot_dbd_mappings(path_uniprot_dbd_to_best_iso, path_dbd_names)
 
 # %%
+
+# %%
 non_zf_domains = isofunc.load_uniprot_dbd_mappings(path_uniprot_dbd_to_best_iso, path_dbd_names, non_zf_only=True)
 
 orf_seqs_gc = isofunc.gc_fasta_to_orf_seq_dict(path_gc_fa)

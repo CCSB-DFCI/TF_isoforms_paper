@@ -1,6 +1,0 @@
-Regulatory domains were mapped to 6K isoforms.
-
-I took the regulatory domain sequences and sequence-aligned to all the 6K ORFs.
-
-This analysis was done by defining an anchor domain, which is the domain as mapped to the longest 6K ORF.
-Then, the anchor domain is propogated to all the ORFs of the TF gene, and from the aln object, I make calls in terms of which AAs are affected.

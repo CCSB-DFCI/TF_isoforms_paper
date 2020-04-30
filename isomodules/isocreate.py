@@ -452,17 +452,31 @@ def get_chain_of_coding_pos_objs(exon):
 
 # *****************************************************************************
 # populate and link junction and splicesite objects
-def create_and_link_junction_related_obj(gen_obj_dict, hg38_dict):
+def create_and_link_junct_and_ss_objs(gen_obj_dict, hg38_dict):
     """Traverse the gen_obj and all exons of each orf and create and link
        junc_obj and associated ss_obj.
+    """
+    gd = create_and_link_junc_obj(gen_obj_dict)
+    gd = create_and_link_ss_obj(gd, hg38_dict)
+    return gd
+
+def create_and_link_junc_obj(gen_obj_dict):
+    """Traverse gen_obj and create junc_obj linking up each exon. Update
+       relevant bio-objections. Changes made in place.
     """
     for gene_name, gene in gen_obj_dict.items():
         for orf in gene:
             # based on first N-1 exons, create and link junc_objs
             for exon in orf.exons[0:-1]:
-                junc_obj = isoclass.Junction(exon, exon.dn_exon, hg38_dict, orf)
+                junc_obj = isoclass.Junction(exon, exon.dn_exon, orf)
                 exon.dn_junc = junc_obj
                 exon.dn_exon.up_junc = junc_obj
+    return gen_obj_dict
+
+def create_and_link_ss_obj(gen_obj_dict, hg38_dict):
+    """Traverse gene dict. and create and link splicesite objects."""
+    for gene_name, gene in gen_obj_dict.items():
+        for orf in gene:
             # create and link ss_objs, each ss has first (up) and second (dn) nt
             for exon in orf.exons:
                 # if junc exist, create 2 ipos_obj (i=Intron), and into a ss_obj

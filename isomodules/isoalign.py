@@ -62,7 +62,10 @@ class AlignmentFull(Alignment):
         self.blocks = []  # nt-change blocks
         self.subblocks = []
         self.chain = []  # alnr_obj added during creation
+        # self.seq1 -> property, sequence of AAs
+        # self.seq2 -> property, sequence of AAs
         # self.full -> property
+        # self.match_block_chain -> property
         Alignment.__init__(self, anchor_orf, other_orf)
 
     @property
@@ -80,6 +83,23 @@ class AlignmentFull(Alignment):
     @property
     def orf2(self):
         return self.other_orf
+
+    @property
+    def seq1(self):
+        return ''.join([alnr.res1.aa for alnr in self.chain])
+
+    @property
+    def seq2(self):
+        return ''.join([alnr.res2.aa for alnr in self.chain])
+
+    @property
+    def cds1(self):
+        return ''.join(['|' if alnr.res1.is_at_cds_edge else str(alnr.res1.cds.ord)[0] for alnr in self.chain])
+
+    @property
+    def cds2(self):
+        return ''.join(['|' if alnr.res2.is_at_cds_edge else str(alnr.res2.cds.ord)[0] for alnr in self.chain])
+
 
     @property
     def full(self):
@@ -300,8 +320,8 @@ class AlignmentResidue(Alignment):
         # self.res2 -> property, syn of other_res
         self.alnf = alnf
         self.alnpb = None  # updated during isoalign creation
-        self.alnsb = None  # see above
         self.alnb = None  # see above
+        self.alnsb = None  # see above
         Alignment.__init__(self, anchor_res, other_res)
 
     @property

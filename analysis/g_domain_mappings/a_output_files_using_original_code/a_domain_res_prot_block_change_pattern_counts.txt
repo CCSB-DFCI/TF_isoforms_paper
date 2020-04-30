@@ -1,0 +1,33 @@
+17337 D
+15363 M
+15304 S
+ 892 MD
+ 598 DM
+ 464 MS
+ 166 SM
+ 145 MDM
+ 122 MIM
+  52 DMD
+  19 DMS
+  11 MDMS
+  10 MDMD
+   9 MSM
+   9 DMIM
+   6 SMDM
+   5 DMDM
+   4 SMS
+   4 SMD
+   4 MDMDM
+   3 MIMS
+   2 MIMD
+   1 prot_cmp_string
+   1 SMDMD
+   1 MSMS
+   1 MIMIMS
+   1 MIMIM
+   1 MIMDMS
+   1 MI
+   1 MDMIM
+   1 DMSMD
+   1 DMIMS
+   1 DMIMIMD

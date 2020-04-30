@@ -87,6 +87,7 @@ class PairwiseAlignmentGroup(ORFGroup):
         self.other_orf = other_orf  # consider ref to superclass ref.
         # self.anchor_orf -> property
         self.alnf = None  # update during creation 'full alignment' object
+        self.frmf = None # frmf for orf2 (other_orf)
         ORFGroup.__init__(self, set([anchor_orf, other_orf]))
 
     @property

@@ -19,7 +19,7 @@ from isomodules import isocompare
 
 data_dir = (
           '/Users/gloriasheynkman/Documents/research_drive/files_ccsb/'
-          'project_tf_isoforms/iso_master_take_3/data_input/'
+          'project_tf_isoforms/iso_master/data/'
           )
 
 # filepaths

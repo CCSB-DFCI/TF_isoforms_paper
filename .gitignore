@@ -24,4 +24,5 @@ gencode.v25.annotation.gtf
 *.pyc
 .ipynb_checkpoints
 
+.Rproj.user
 venv

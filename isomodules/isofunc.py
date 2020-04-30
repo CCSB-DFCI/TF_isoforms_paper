@@ -311,30 +311,9 @@ def load_tf_genenames(fpath):
 
 
 
-def load_domain_mappings(fpath_domain_mappings, fpath_pfam_names):
+def load_domain_mappings(fpath_domain_mappings, fpath_pfam_names, has_eval=False):
     """Load from list of domain mappings received from Sachi.
        Also, add in the pfam domain names.
-
-       Ouput structure:
-        ensp -> [[pfam, name, cat, start, end]]
-        (e.g. ENSP123 -> [[pfam123, ZF, DBD, 4, 10]])
-    """
-    domains = defaultdict(list)
-    pfam_names = load_pfam_names(fpath_pfam_names)
-    for line in open(fpath_domain_mappings).readlines()[1:]:
-        wds = line.rstrip().split('\t')
-        ensp, pfam, cat, start, end = wds
-        try:
-            domain_name = pfam_names[pfam]
-        except:
-            domain_name = 'unknown'
-        domains[ensp].append([pfam, domain_name, cat, start, end])
-    return domains
-
-def load_eval_domain_mappings(fpath_domain_mappings, fpath_pfam_names):
-    """Load from list of domain mappings received from Sachi.
-       Also, add in the pfam domain names.
-       Also, evalues included.
 
        Ouput structure:
         ensp -> [[pfam, name, cat, eval, start, end]]
@@ -344,12 +323,16 @@ def load_eval_domain_mappings(fpath_domain_mappings, fpath_pfam_names):
     pfam_names = load_pfam_names(fpath_pfam_names)
     for line in open(fpath_domain_mappings).readlines()[1:]:
         wds = line.rstrip().split('\t')
-        ensp, pfam, eval, cat, start, end = wds
+        if has_eval:
+            ensp, pfam, evalue, cat, start, end = wds
+        else:
+            ensp, pfam, cat, start, end = wds
+            evalue = -1
         try:
             domain_name = pfam_names[pfam]
         except:
             domain_name = 'unknown'
-        domains[ensp].append([pfam, domain_name, cat, eval, start, end])
+        domains[ensp].append([pfam, domain_name, cat, evalue, start, end])
     return domains
 
 def load_pfam_names(fpath):
@@ -405,9 +388,9 @@ def load_uniprot_dbd_mappings(path_domain_table, path_domain_names, non_zf_only=
                 print(line)
             if non_zf_only:
                 if 'ZF' not in name.upper():
-                    domains[gene][isoacc].append([pfam, name, 'DBD', start, end])
+                    domains[gene][isoacc].append([pfam, name, 'DBD', -1, start, end])
             else:
-                domains[gene][isoacc].append([pfam, name, 'DBD', start, end])
+                domains[gene][isoacc].append([pfam, name, 'DBD', -1, start, end])
     return domains
 
 def load_sachi_assigned_dbd_pfam_names(fpath):

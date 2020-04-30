@@ -19,10 +19,11 @@ from isomodules import isoimage
 from isomodules import isogroup
 from isomodules import isoalign
 from isomodules import isowrangle
+from isomodules import isocreatefeat
 
 data_dir = (
           '/Users/gloriasheynkman/Documents/research_drive/files_ccsb/'
-          'project_tf_isoforms/iso_master_take_3/data_input/'
+          'project_tf_isoforms/iso_master/data/'
           )
 
 # filepaths
@@ -33,19 +34,6 @@ path_tf_names = os.path.join(data_dir, 'tf_genenames/b_orig_genename_in_gencode3
 # load data
 orf_seqs = isofunc.gc_fasta_to_orf_seq_dict(path_gc_fa)
 genes = isofunc.load_tf_genenames(path_tf_names)  # ~1700 genenames
-
-# %%
-
-reload(isocreate)
-reload(isocreatealign)
-reload(isoclass)
-reload(isofunc)
-reload(isofeature)
-reload(isomap)
-reload(isoimage)
-reload(isogroup)
-reload(isoalign)
-reload(isowrangle)
 
 genes = ['NFYA', 'PAX5']
 
@@ -61,65 +49,14 @@ for symbol, gene in gd.items():
 all_grps = []
 for symbol, gene in gd.items():
     grps = isocreatealign.create_and_map_splice_based_align_obj(gene.ref_alt_pairs)
+    for grp in grps:
+        isocreatefeat.create_and_map_frame_objects(grp)
     all_grps.append(grps)
 
 # %%
 
-import itertools
-
-def infer_frame_of_non_overlapping_seq(frame_blocks):
-    """Infer the frame of sequence regions of alt. iso. that are not in ref.
-       Algorithm - look to the upstream-most overlapping segment. If doesn't
-       exist (b/c is at N-terminus), look to downstream.
-    """
-    inferred_frame_blocks = []
-    infer_status_chain = []
-    for i, block in enumerate(frame_blocks):
-        blen = len(block)
-        if i == 0 and '*' in block:
-            inferred_frm = frame_blocks[1][0]
-            infer_status = True
-        elif '*' in block:
-            inferred_frm = frame_blocks[i - 1][0]
-            infer_status = True
-        else:
-            # don't need to infer frame b/c propogated from ref.
-            inferred_frm = frame_blocks[i][0]
-            infer_status = False
-        infer_status = infer_status * 1  # convert to no. for writeout
-        inferred_frame_blocks.append(inferred_frm * blen)
-        infer_status_chain.extend([infer_status] * blen)
-    frm_list = list(''.join(inferred_frame_blocks))
-    infer_list = list(''.join(map(str, infer_status_chain)))
-    return infer_list, frm_list
-
-def create_list_of_frms_and_ifrms(inferred_blocks):
-    ifrm_str = ''.join(inferred_blocks)
-    return ifrm_str
-
-reload(isofeature)
-
 for grps in all_grps:
     for grp in grps:
-        orf1 = grp.repr_orf
         orf2 = grp.other_orf
-        print grp.alnf.full
-        print orf1, orf2
-        fstr = ''.join([res.rfrm for res in orf2.res_chain])
-        frame_blocks = [''.join(g) for _, g in itertools.groupby(fstr)]
-        infer_list, frm_list = infer_frame_of_non_overlapping_seq(frame_blocks)
-        featf = isofeature.FeatureFull(grp, orf2, 'frms')
-        print orf2.frms
-        for i, frm in enumerate(frm_list):
-            infer = infer_list[i]
-            res = orf2.res_chain[i]
-            if not infer:
-                frmr = isofeature.FeatureResidue(featf, frm, res, 'direct', 'frms')
-            else:
-                frmr = isofeature.FeatureResidue(featf, frm, res, 'inferred', 'frms')
-            featf.chain.append(frmr)
-
-
-
-
-    break
+        orf2.current_grp = grp
+        orf2.current_feat = grp.frmf
