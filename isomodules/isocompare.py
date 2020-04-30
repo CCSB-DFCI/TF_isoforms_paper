@@ -180,9 +180,9 @@ def compare_sequence_pair(first, second):
         label = 'mismatches:'
     else:
         label = 'all matchd:'
-    print 'sequence 1:' + seq1
-    print label + match_chain
-    print 'sequence 2:' + seq2
+    print('sequence 1:' + seq1)
+    print(label + match_chain)
+    print('sequence 2:' + seq2)
 
 
 

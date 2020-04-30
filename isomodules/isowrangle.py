@@ -1,8 +1,8 @@
 # functions that wrangle (reshape, regroup, restructure) iso-objects
 
 
-import isoclass
-import isogroup
+from isomodules import isoclass
+from isomodules import isogroup
 
 
 

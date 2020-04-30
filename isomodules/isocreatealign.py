@@ -7,10 +7,10 @@
 # python_version  :2.6.6
 # ==============================================================================
 
-import isoclass
+from isomodules import isoclass
 from collections import Counter
-import isoalign
-import isogroup
+from isomodules import isoalign
+from isomodules import isogroup
 import itertools
 from itertools import groupby
 import re
@@ -210,7 +210,7 @@ def make_orf_pair_aligned_aa_chain(all_coords, pair, orf1_coords, orf2_coords):
         try:
             coord = get_next_coord_in_all_coords(coord, all_coords)
         except:
-            print orf1.name
+            print(orf1.name)
             raise UserWarning('coord does not exist:' + '\n'.join(map(str, all_coords)) + '\n\n' + str(coord))
     return chains
 
@@ -521,7 +521,7 @@ def get_cds_mapped_to_alnr_chain(alnr_chain, rank):
         return list(mapped_cds)[0]
     if len(mapped_cds) > 1 or len(mapped_cds) == 0:
         # there are 2 distinct cdss, remove the emptycds
-        print 'error - failure of one cds mapped by alnrs ' + str(alnr)
+        print('error - failure of one cds mapped by alnrs ' + str(alnr))
     return list(mapped_cds)[0]
 
 def there_is_a_single_empty_cds(mapped_cds):
@@ -543,5 +543,5 @@ def get_alnb_mapped_to_alnr_chain(alnr_chain):
         pass
         # print 'error - aln subblock maps to 2+ aln block ' + str(alnr.alnf)
     if len(mapped_alnb) == 0:
-        print 'no mapped alnb from alnr of an alnsb ' + str(alnr.alnf)
+        print('no mapped alnb from alnr of an alnsb ' + str(alnr.alnf))
     return list(mapped_alnb)[0]

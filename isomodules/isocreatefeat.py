@@ -8,7 +8,7 @@
 # ==============================================================================
 
 from collections import defaultdict
-import isofeature
+from isomodules import isofeature
 import itertools
 from itertools import groupby
 

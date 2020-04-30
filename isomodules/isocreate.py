@@ -480,7 +480,9 @@ def create_and_link_ss_obj(gen_obj_dict, hg38_dict):
             # create and link ss_objs, each ss has first (up) and second (dn) nt
             for exon in orf.exons:
                 # if junc exist, create 2 ipos_obj (i=Intron), and into a ss_obj
-                if exon.dn_junc:
+                # had to do funky identity comparison, b/c otherwise it looks
+                # for __len__ of junc obj. in catch 22
+                if not exon.dn_junc is None:
                     junc = exon.dn_junc
                     coord1, coord2 = get_coord_downstream_two_ss_nt(exon)
                     nt1, nt2 = extract_hg38_nt(exon, coord1, coord2, hg38_dict)

@@ -2,9 +2,11 @@
 # Reviewing my OOP code while Luke goes through it.
 # ==============================================================================
 
+
 import os
 import re
 import pandas as pd
+import importlib
 from isomodules import isocreate
 from isomodules import isocreatealign
 from isomodules import isocreatefeat
@@ -18,8 +20,9 @@ from isomodules import isoalign
 from isomodules import isowrangle
 from isomodules import isocompare
 
-reload(isoclass)
-reload(isocreate)
+
+importlib.reload(isoclass)
+importlib.reload(isocreate)
 
 data_dir = (
           '/Users/gloriasheynkman/Documents/research_drive/files_ccsb/'
@@ -34,24 +37,30 @@ path_hg38 = os.path.join(data_dir, 'GRCh38.primary_assembly.genome.fa')
 ## load data
 orf_seqs_6k = isofunc.oc_fasta_to_orf_seq_dict(path_6k_fa)
 genes_6k = list(set([x.split('|')[0] for x in orf_seqs_6k.keys()]))
+hg38_dict = isofunc.load_hg38(path_hg38)
 
 # luke - changed this to all genes if you want to make iso-matrices for all 366 TFs
 # here I'm only taking the first two
 genes_6k = genes_6k[0:2]
 
+# %%
+
+importlib.reload(isoclass)
+importlib.reload(isocreate)
+
 # make gene dictionary (gd)
 gd = isocreate.init_gen_obj(path_6k_gtf, gene_list=genes_6k)
-gd = isocreate.create_and_link_junct_and_ss_objs(gd, hg38)
 gd = isocreate.create_and_link_seq_related_obj(gd, orf_seqs_6k, verbose=True)
+gd = isocreate.create_and_link_junct_and_ss_objs(gd, hg38_dict)
 
 
 
 for gname, gene in gd.items():
     for orf in gene:
         for junc in orf.juncs:
-            print junc.full
-            break
+            print(junc.ss_seq)
         break
+
 # %%
 
 def get_ordered_list_of_genome_coords(poss):
