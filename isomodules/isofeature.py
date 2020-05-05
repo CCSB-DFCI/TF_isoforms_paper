@@ -39,7 +39,7 @@ class FeatureFull(Feature):
        featrs - up-to-downstream feature residues (res-to-res)
        featps - up-to-downstream feature positions (featp-to-pos)
 
-       Note - All feat_obj must point to a grp that holds at least two orfs.
+       Note - All feat_obj can point to a grp that holds at least two orfs.
     """
     def __init__(self, orf, ftype):
         self.featf = self  # need for retrieving grp, for grp-dep. feat
@@ -49,7 +49,6 @@ class FeatureFull(Feature):
         self.chain = []
         # self.first -> property
         # self.last -> property
-        # self.name -> property
         # self.orf -> property
         # self.full -> defined in subclass
         # self.name -> defined in subclass
@@ -82,6 +81,7 @@ class FeatureBlock(Feature):
         self.subblocks = []
         self.chain = featr_chain
         # self.ord -> property
+        link_up_parent_child_references(self)
 
     @property
     def first(self):
@@ -104,6 +104,15 @@ class FeatureBlock(Feature):
         # need a name to compute ordinal on demand
         return 'frmb: {} {} -- {}'.format(self.featf.name, self.first.name, self.last.name)
 
+    def link_up_parent_child_references(self):
+        """Set upper (frmf) and lower (frmr) references."""
+        # TODO - check if correct code, b/c transferred from isocreatefeat.py
+        self.frmf.blocks.append(self)
+        for frmr in self.chain:
+            frmr.featb = self
+
+
+
 class FeatureSubblock(Feature):
     """A segment of a feature block, irreducable based on CDS structure.
        Note - some features lack featb, so featsb maps to featf directly
@@ -122,6 +131,7 @@ class FeatureSubblock(Feature):
         # self.cds_last -> property
         self.chain = featr_chain
         # self.name -> property
+        link_up_parent_child_references(self)
         Feature.__init__(self, cds, self.featf.ftype)
 
     @property
@@ -146,6 +156,15 @@ class FeatureSubblock(Feature):
     @property
     def name(self):
         return '{} {}-{}'.format(self.cds, self.first.res.idx, self.last.res.idx)
+
+    def link_up_parent_child_references(self):
+        # TODO - check that function works, moved from isocreatefeat.py to here
+        # on 200503
+        """Update upwer/lower references."""
+        self.featf.subblocks.append(self)
+        for featr in featr_chain:
+            featr.featsb = self
+
 
 class FeatureResidue(Feature):
     """A feature mapped to a residue."""
@@ -306,6 +325,8 @@ class FrameResidue(FeatureResidue):
         if status == '0': return 'F'
         if status == '1': return 'f'
         raise Warning('invalid frame reasidue status, needs to be 0 or 1')
+
+# TODO - write code for other feature types, such as ISRs
 
 #
 # # ******************

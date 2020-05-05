@@ -96,6 +96,11 @@ class Biomolecule():
                 return frm
         return None
 
+    @frm.setter
+    def frm(self, frm_value):
+        self.__frm = frm_value
+
+
 
 
 
@@ -963,6 +968,7 @@ class TranscribedPosition(Position):
     @property
     def orf_idx(self):
         return self.idx
+
 
 
 class SplicesitePosition(Position):

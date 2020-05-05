@@ -162,6 +162,7 @@ class AlignmentProteinBlock(Alignment):
         # self.aa1 -> property
         # self.res_chain2 -> property
         # self.aa2 -> property
+        update_references_to_parent_and_child_objects(self)
         Alignment.__init__(self, None, None)  # no direct anchor/other object
 
     @property
@@ -211,6 +212,18 @@ class AlignmentProteinBlock(Alignment):
         # TODO
         pass
 
+    def update_references_to_parent_and_child_objects(self):
+        # set lower rand upper references
+        # TODO - check if works, transferred from isocreatealign
+        self.alnf.protblocks.append(alnpb)
+        for alnb in self.blocks:
+            alnb.alnpb = self
+        for alnsb in self.subblocks:
+            alnsb.alnpb = self
+        for alnr in self.chain:
+            alnr.alnpb = self
+
+
 
 
 class AlignmentBlock(Alignment):
@@ -226,6 +239,7 @@ class AlignmentBlock(Alignment):
         # self.last -> property
         self.subblocks = []
         self.chain = alnr_chain
+        update_references_to_parent_and_child_objects(self)
         Alignment.__init__(self, None, None)  # no direct anchor/other object
 
     @property
@@ -247,6 +261,14 @@ class AlignmentBlock(Alignment):
     def ord(self):
         return self.alnf.blocks.index(self) + 1
 
+    def update_references_to_parent_and_child_objects(self):
+        # set lower and upper references
+        # TODO - check if works, transferred from isocreatealign
+        self.alnf.blocks.append(self)
+        for alnr in self.chain:
+            alnr.alnb = self
+
+
 
 class AlignmentSubblock(Alignment):
     """A segment of an alignment block, irreducable based on CDS structure."""
@@ -264,6 +286,7 @@ class AlignmentSubblock(Alignment):
         # self.last -> property
         self.chain = alnr_chain
         # self.alnrs -> property, syn of chain
+        update_references_to_parent_and_child_objects(self):
         Alignment.__init__(self, anchor_cds, other_cds)
 
     @property
@@ -307,6 +330,19 @@ class AlignmentSubblock(Alignment):
         orf2_name = '-' if not self.first.res2 else self.first.res2.orf.name
         return 'alnsb: {}|{} {} {}-{}'.format(orf1_name, orf2_name, self.cat,
                                               self.first.idx, self.last.idx)
+
+    def update_references_to_parent_and_child_objects(self):
+        """Grab the alnb associated with this alnsb and link up refs."""
+        # TODO - check for correctness
+        alnb = get_alnb_mapped_to_alnr_chain(self.chain)
+        self.alnb = alnb
+        alnb.subblocks.append(self)
+        self.alnf.subblocks.append(self)
+        for alnr in self.chain:
+            alnr.alnsb = self
+
+
+
 
 
 class AlignmentResidue(Alignment):
