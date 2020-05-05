@@ -87,6 +87,21 @@ class Biomolecule():
                 return dom
         return None
 
+    @property
+    def frm(self):
+        """Return a single frm_obj corresponding to the 'active' frm_obj."""
+        current_feat = self.orf.current_feat
+        for frm in self.frms:
+            if frm.featf == current_feat:
+                return frm
+        return None
+
+    @frm.setter
+    def frm(self, frm_value):
+        self.__frm = frm_value
+
+
+
 
 
 class Gene(Biomolecule):
@@ -95,12 +110,12 @@ class Gene(Biomolecule):
        cat, start, and end are attr required to be set by Sub class.
     """
     def __init__(self, name, chrom, strand):
-        # self.cat -> defined in sub class
+        # self.cat -> defined in sub class, category of "Gene"
         self.name = name  # symbol
         self.chrom = chrom  # chr1, chr2, etc.
         self.strand = strand
-        # self.start -> defined in sub class
-        # self.end -> defined in sub class
+        # self.start -> defined in sub class, left-most pos
+        # self.end -> defined in sub class, right-most pos
         # self.first -> property, up-most pos among orfs
         # self.last -> property, dn-most pos among orfs
         self.orfs = set()
@@ -172,7 +187,9 @@ class Gene(Biomolecule):
 
     @property
     def orf_pairs(self):
-        """Return all possible pairs of orfs, as a list of lists."""
+        """Return all possible pairs of orfs, as a list of lists.
+           e.g., [1, 2, 3] -> [1, 2], [1, 3], [2, 3]
+        """
         orf_pairs = []
         for (orf1, orf2) in itertools.combinations(self.orfs, 2):
             orf_pairs.append([orf1, orf2])
@@ -188,10 +205,11 @@ class Gene(Biomolecule):
             orf_pairs.append([orf1, orf2])
         return orf_pairs
 
-
     @property
     def same_seq_orfs(self):
-        """Return groups of same-protein-sequence orf_objs."""
+        """Return groups of same-protein-sequence orf_objs.
+           e.g., [[orf1_seq1, orf2_seq1], [orf3_seq2]]
+        """
         seqs = defaultdict(list)
         for orf in self:
             seqs[orf.tr].append(orf)
@@ -226,7 +244,7 @@ class Gene(Biomolecule):
                 return exon
 
     def get_other_orfs(self, anchor_orf):
-        """Return all other orfs of a gene."""
+        """Return all other orfs of a gene that is not an anchor_orf."""
         other_orfs = [orf for orf in self.orfs if orf != anchor_orf]
         return other_orfs
 
@@ -423,9 +441,11 @@ class ORF(Biomolecule):
             yield pos
 
     def __getitem__(self, i):
+        """Fetching index 1 means getting the first position."""
         return self.chain[i-1]
 
     def __getslice__(self, i, j):
+        """Slicing of pos out of orf is 0-based."""
         return self.__getitem__(slice(i, j))
 
     def __hash__(self):
@@ -456,6 +476,7 @@ class ORF(Biomolecule):
                 return exon
 
     def set_rel_start_and_end(self):
+        """This is probably for the iso-imager."""
         self.rel_start = self.exons[0].rel_start
         self.rel_end = self.exons[-1].rel_end
 
@@ -769,17 +790,18 @@ class CDS(Exon, Biomolecule):
         """Return amino acid sequence. Includes all res, even 1/3 mapping."""
         return ''.join(res.aa for res in self.chain)
 
+    @property
     def full(self):
         nt_seq = ''.join([pos.nt for pos in self.exon.chain])
-        ostr = '{} {}-{} {}\n'.format(self.exon.name, self.start, self.end, nt_seq)
-        aa_seq = ''.join([pos.res.aa for pos in self.chain])
-        ostr += '{} {}-{} {}'.format(self.name, self.start, self.end, aa_seq)
+        ostr = '{} {}\n'.format(self.exon.name, nt_seq)
+        aa_seq = ''.join([pos.res.aa for pos in self.exon.chain])
+        ostr += '{} {}'.format(self.name, aa_seq)
         return ostr
 
 
 class Junction(Biomolecule):
     """Represents a splice junction (exon-exon or cds-cds connection)."""
-    def __init__(self, up_exon, dn_exon, hg38_dict, orf):
+    def __init__(self, up_exon, dn_exon, orf):
         # self.name -> property
         # self.gene -> property
         # self.chrom -> Biomolecule
@@ -946,6 +968,7 @@ class TranscribedPosition(Position):
     @property
     def orf_idx(self):
         return self.idx
+
 
 
 class SplicesitePosition(Position):

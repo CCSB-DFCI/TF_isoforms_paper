@@ -7,10 +7,10 @@
 # python_version  :2.6.6
 # ==============================================================================
 
-import isoclass
+from isomodules import isoclass
 from collections import Counter
-import isoalign
-import isogroup
+from isomodules import isoalign
+from isomodules import isogroup
 import itertools
 from itertools import groupby
 import re
@@ -23,6 +23,10 @@ def create_and_map_splice_based_align_obj(orf_pairs, abacus=True):
        In the process, 'call' categories of alignments.
        Returns a list of grps, each grp has orf pair and linked aln_objs.
        Gene_dict is modified in-place.
+
+       Note - In the process of creating alignment object, sets the relative
+              frame for position and residue objects. This is needed to determine
+              the residue match category.
 
        Input:
         orf_pairs - list of orf pairs (assume first orf is 'ref')
@@ -51,14 +55,14 @@ def create_and_map_splice_based_align_obj(orf_pairs, abacus=True):
         set_rfrm_of_pos_in_orf(all_coords, orf1_coords, orf2_coords, pair)
         set_rfrm_of_res_in_chain(chains)
 
-        # make a group of the two orfs
+        # make a grp_obj of the two orfs
         grp = isogroup.PairwiseAlignmentGroup(orf1, orf2)
         grps.append(grp)
         # instantiate the 'full' alignment (between orfs)
         alnf = isoalign.AlignmentFull(grp, orf1, orf2)
         grp.alnf = alnf
 
-        # make and link 'residue' aln_objs
+        # make and link 'residue' aln_objs (via alnr obj)
         for res1, res2 in zip(chains[orf1.name], chains[orf2.name]):
             match = get_the_match_type_of_the_two_residues(res1, res2)
             # create a residue-level alignment
@@ -70,12 +74,13 @@ def create_and_map_splice_based_align_obj(orf_pairs, abacus=True):
         for match_cat, start, end in ranges:
             alnr_chain = alnf.chain[start: end]
             alnb = isoalign.AlignmentBlock(match_cat, alnf, alnr_chain)
-            # set lower and upper references
-            alnf.blocks.append(alnb)
-            for alnr in alnb.chain:
-                alnr.alnb = alnb
 
         # find 'protein-centric' blocks, make and link 'pblock' alnpb_obj
+        # alnf.blocks represent splice-based effects
+        #  For example: IDMDMFID
+        # alnf.pblocks represent protein-based effects
+        #  For example: SMDMS (drived from e.g. above)
+        # ---
         # first, run through and pinpoint cases where subst. is actually
         # a match (e.g. MA--V, --MAV)
         # output new blocks e.g. IDMDM -> MMMDM -> ['MMM', 'D', 'M']
@@ -88,7 +93,7 @@ def create_and_map_splice_based_align_obj(orf_pairs, abacus=True):
             # grab correpsonding alnb_objs
             start, end = i, i + len(block_string)
             i = end
-            alnbs = alnf.blocks[start: end]
+            alnbs = ß.blocks[start: end]
             # temporary alnpb to find if same residue
             alnpb = isoalign.AlignmentProteinBlock(cat, alnf, alnbs)
             if cat == 'S' and alnpb.aa1 == alnpb.aa2:
@@ -97,8 +102,7 @@ def create_and_map_splice_based_align_obj(orf_pairs, abacus=True):
                 new_block_string = block_string
             new_full_block_string += new_block_string
         new_split_blocks = split_blockstring_w_repeating_Ms(new_full_block_string)
-
-        # find 'protein-centric' blocks, make and link 'pblock' alnpb_obj
+        # second, find 'protein-centric' blocks, make and link 'pblock' alnpb_obj
         i = 0
         for block_string in new_split_blocks:
             cat = get_the_category_of_the_block(block_string)
@@ -107,14 +111,6 @@ def create_and_map_splice_based_align_obj(orf_pairs, abacus=True):
             i = end
             alnbs = alnf.blocks[start: end]
             alnpb = isoalign.AlignmentProteinBlock(cat, alnf, alnbs)
-            # set lower rand upper references
-            alnf.protblocks.append(alnpb)
-            for alnb in alnpb.blocks:
-                alnb.alnpb = alnpb
-            for alnsb in alnpb.subblocks:
-                alnsb.alnpb = alnpb
-            for alnr in alnpb.chain:
-                alnr.alnpb = alnpb
 
         # define and create 'subblock' aln_objs
         # note - functions below also used for clustal-based alignment
@@ -124,12 +120,6 @@ def create_and_map_splice_based_align_obj(orf_pairs, abacus=True):
             cds1 = get_cds_mapped_to_alnr_chain(alnsb_chain, 1)
             cds2 = get_cds_mapped_to_alnr_chain(alnsb_chain, 2)
             alnsb = isoalign.AlignmentSubblock(alnf, cds1, cds2, alnsb_chain)
-            alnb = get_alnb_mapped_to_alnr_chain(alnsb_chain)
-            alnsb.alnb = alnb
-            alnb.subblocks.append(alnsb)
-            alnf.subblocks.append(alnsb)
-            for alnr in alnsb.chain:
-                alnr.alnsb = alnsb
     return grps
 
 
@@ -207,7 +197,7 @@ def make_orf_pair_aligned_aa_chain(all_coords, pair, orf1_coords, orf2_coords):
         try:
             coord = get_next_coord_in_all_coords(coord, all_coords)
         except:
-            print orf1.name
+            print(orf1.name)
             raise UserWarning('coord does not exist:' + '\n'.join(map(str, all_coords)) + '\n\n' + str(coord))
     return chains
 
@@ -378,6 +368,7 @@ def calc_rfrm(anchor_frm, other_frm):
     else:
         raise UserWarning('incompatible anchor/other frame:{},{}'.format(anchor_frm, other_frm))
 
+
 def set_rfrm_of_res_in_chain(chains):
     """Set temporary rfrm attribute for residues in the aa_chain."""
     for orfname, aa_chain in chains.items():
@@ -393,6 +384,7 @@ def set_rfrm_of_res_in_chain(chains):
             else:
                 # no res_obj exists, because res in one orf but not the other
                 pass
+
 
 def get_the_match_type_of_the_two_residues(res1, res2):
     """Compare the AA seq. of the two residues. Return a enum descr. the
@@ -516,7 +508,7 @@ def get_cds_mapped_to_alnr_chain(alnr_chain, rank):
         return list(mapped_cds)[0]
     if len(mapped_cds) > 1 or len(mapped_cds) == 0:
         # there are 2 distinct cdss, remove the emptycds
-        print 'error - failure of one cds mapped by alnrs ' + str(alnr)
+        print('error - failure of one cds mapped by alnrs ' + str(alnr))
     return list(mapped_cds)[0]
 
 def there_is_a_single_empty_cds(mapped_cds):
@@ -538,5 +530,5 @@ def get_alnb_mapped_to_alnr_chain(alnr_chain):
         pass
         # print 'error - aln subblock maps to 2+ aln block ' + str(alnr.alnf)
     if len(mapped_alnb) == 0:
-        print 'no mapped alnb from alnr of an alnsb ' + str(alnr.alnf)
+        print('no mapped alnb from alnr of an alnsb ' + str(alnr.alnf))
     return list(mapped_alnb)[0]

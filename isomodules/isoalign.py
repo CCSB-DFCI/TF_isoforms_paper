@@ -62,7 +62,10 @@ class AlignmentFull(Alignment):
         self.blocks = []  # nt-change blocks
         self.subblocks = []
         self.chain = []  # alnr_obj added during creation
+        # self.seq1 -> property, sequence of AAs
+        # self.seq2 -> property, sequence of AAs
         # self.full -> property
+        # self.match_block_chain -> property
         Alignment.__init__(self, anchor_orf, other_orf)
 
     @property
@@ -80,6 +83,23 @@ class AlignmentFull(Alignment):
     @property
     def orf2(self):
         return self.other_orf
+
+    @property
+    def seq1(self):
+        return ''.join([alnr.res1.aa for alnr in self.chain])
+
+    @property
+    def seq2(self):
+        return ''.join([alnr.res2.aa for alnr in self.chain])
+
+    @property
+    def cds1(self):
+        return ''.join(['|' if alnr.res1.is_at_cds_edge else str(alnr.res1.cds.ord)[0] for alnr in self.chain])
+
+    @property
+    def cds2(self):
+        return ''.join(['|' if alnr.res2.is_at_cds_edge else str(alnr.res2.cds.ord)[0] for alnr in self.chain])
+
 
     @property
     def full(self):
@@ -142,6 +162,7 @@ class AlignmentProteinBlock(Alignment):
         # self.aa1 -> property
         # self.res_chain2 -> property
         # self.aa2 -> property
+        update_references_to_parent_and_child_objects(self)
         Alignment.__init__(self, None, None)  # no direct anchor/other object
 
     @property
@@ -191,6 +212,18 @@ class AlignmentProteinBlock(Alignment):
         # TODO
         pass
 
+    def update_references_to_parent_and_child_objects(self):
+        # set lower rand upper references
+        # TODO - check if works, transferred from isocreatealign
+        self.alnf.protblocks.append(alnpb)
+        for alnb in self.blocks:
+            alnb.alnpb = self
+        for alnsb in self.subblocks:
+            alnsb.alnpb = self
+        for alnr in self.chain:
+            alnr.alnpb = self
+
+
 
 
 class AlignmentBlock(Alignment):
@@ -206,6 +239,7 @@ class AlignmentBlock(Alignment):
         # self.last -> property
         self.subblocks = []
         self.chain = alnr_chain
+        update_references_to_parent_and_child_objects(self)
         Alignment.__init__(self, None, None)  # no direct anchor/other object
 
     @property
@@ -227,6 +261,14 @@ class AlignmentBlock(Alignment):
     def ord(self):
         return self.alnf.blocks.index(self) + 1
 
+    def update_references_to_parent_and_child_objects(self):
+        # set lower and upper references
+        # TODO - check if works, transferred from isocreatealign
+        self.alnf.blocks.append(self)
+        for alnr in self.chain:
+            alnr.alnb = self
+
+
 
 class AlignmentSubblock(Alignment):
     """A segment of an alignment block, irreducable based on CDS structure."""
@@ -244,6 +286,7 @@ class AlignmentSubblock(Alignment):
         # self.last -> property
         self.chain = alnr_chain
         # self.alnrs -> property, syn of chain
+        update_references_to_parent_and_child_objects(self):
         Alignment.__init__(self, anchor_cds, other_cds)
 
     @property
@@ -288,6 +331,19 @@ class AlignmentSubblock(Alignment):
         return 'alnsb: {}|{} {} {}-{}'.format(orf1_name, orf2_name, self.cat,
                                               self.first.idx, self.last.idx)
 
+    def update_references_to_parent_and_child_objects(self):
+        """Grab the alnb associated with this alnsb and link up refs."""
+        # TODO - check for correctness
+        alnb = get_alnb_mapped_to_alnr_chain(self.chain)
+        self.alnb = alnb
+        alnb.subblocks.append(self)
+        self.alnf.subblocks.append(self)
+        for alnr in self.chain:
+            alnr.alnsb = self
+
+
+
+
 
 class AlignmentResidue(Alignment):
     """An alignment between two residues."""
@@ -300,8 +356,8 @@ class AlignmentResidue(Alignment):
         # self.res2 -> property, syn of other_res
         self.alnf = alnf
         self.alnpb = None  # updated during isoalign creation
-        self.alnsb = None  # see above
         self.alnb = None  # see above
+        self.alnsb = None  # see above
         Alignment.__init__(self, anchor_res, other_res)
 
     @property

@@ -1,1 +1,0 @@
-ref_orf	alt_orf	pfam	ref_len	alt_pfam	alt_len	len_diff	alt_is_longer
