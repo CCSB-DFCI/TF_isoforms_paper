@@ -40,7 +40,6 @@ def render_iso_image(orfs_to_plot, ax=None, mode='all', dname='output_isoimages'
 
     # initialize matplotlib fig and axes objects and parameters
     max_x, min_y = 0, 0 # track abs figsize (to correctly proportion plot)
-    #fig, ax = plt.subplots()
     if ax is None:
         ax = plt.gca()
     line = 0 # initial track position (y-axis)
@@ -81,8 +80,10 @@ def render_iso_image(orfs_to_plot, ax=None, mode='all', dname='output_isoimages'
             # first, make sure the exon contains a (coding) cds object
             if exon.cds:
                 delta_start, delta_end = retrieve_subtle_splice_amounts(exon.cds)
-                if delta_start: ax.text(x, y+height*2, delta_start, va='bottom', ha='left', size='x-small')
-                if delta_end: ax.text(x+blength, y+height*2, delta_end, va='bottom', ha='right', size='x-small')
+                if delta_start:
+                    ax.text(x, y+height*2, delta_start, va='bottom', ha='left', size='x-small')
+                if delta_end:
+                    ax.text(x+blength, y+height*2, delta_end, va='bottom', ha='right', size='x-small')
             # render cds blocks, if exists
             if exon.cds:
                 x, y, blength, bheight = get_exon_plot_coordinates(exon.cds, comp, height, line, cds=True)
@@ -99,27 +100,12 @@ def render_iso_image(orfs_to_plot, ax=None, mode='all', dname='output_isoimages'
             #         ax.add_patch(mpatches.Rectangle([fx, y], flen, bheight, lw=0, fc='darkorange', zorder=3, alpha=0.7))
             #         plt.text(fx, y+height*2, m.feat.name, va='bottom', size=6)
         line -= spacing
-        # TODO - 191015 update, because no more muts
-        # if has_muts: line -= spacing * 0.5 # bigger spacing if plotting disease
     line += spacing
 
-    #plt.axis('image')
-    #plt.axis('off')
     ax.axis('off')
     ax.axis('image')
-    #if not os.path.exists(dname):
-    #    os.mkdir(dname)
-    # set figsize so proportions are equal between many/few isoform images
     max_y = line - spacing
     max_x = max_x + abs(sp[0]) # adjust for sp[0] plotted
-    # fig.set_size_inches(max_x*1.7, abs(max_y)*1.7)
-    #plt.savefig('./{}/{}.pdf'.format(dname, repr_orf.gene.name), bbox_inches='tight')
-
-    # use this to set size of the axis - before I set size to figure
-    # but now (191022), Luke draws image on ax object
-    # this function requires dimensions in inches, and I compute optimal dim.
-    # in points TODO - convert points to inches
-    # set_size_of_ax(50, 50)
 
 
 def grab_gen_objs_from_orfs(orfs):
