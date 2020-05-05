@@ -1,3 +1,5 @@
+import os
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -6,6 +8,9 @@ from Bio import SeqIO
 
 
 DATA_DIR = Path(__file__).resolve().parents[2] / 'data'
+
+sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), '../..'))
+from isomodules import isocreate, isofunc
 
 
 def load_valid_isoform_clones():
@@ -39,6 +44,29 @@ def load_valid_isoform_clones():
                             sep='\t')
     df['is_novel_isoform'] = df['clone_acc'].map(iso_annot.set_index('unique_acc')['gc_match'] == 0)
     return df
+
+
+def load_aligned_aa_seqs(gene_name):
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            '../../data')
+    path_6k_gtf = os.path.join(data_dir,
+                               'hTFIso6K_valid_isoforms/c_6k_unique_acc_aligns.gtf')
+    path_6k_fa = os.path.join(data_dir,
+                              'hTFIso6K_valid_isoforms/j2_6k_unique_isoacc_and_nt_seqs.fa')
+    orf_seqs_6k = isofunc.oc_fasta_to_orf_seq_dict(path_6k_fa)
+    gd = isocreate.init_gen_obj(path_6k_gtf, [gene_name])
+    gd = isocreate.create_and_link_seq_related_obj(gd, orf_seqs_6k)
+
+    gene = gd[gene_name]
+
+    gene_coords = sorted(list(set([pos.coord for pos in gene.poss])))
+    tracks = {}
+    for orf in sorted(gene.orfs):
+        orf_aa = {pos.coord: pos.res.aa for pos in orf.chain if pos.res is not None}
+        tracks[orf.name] = ''.join([orf_aa.get(i, '-') for i in gene_coords[::3]])
+    if gene.strand == '-':
+        tracks = {k: v[::-1] for k, v in tracks.items()}
+    return tracks
 
 
 def load_tf_isoform_y2h_screen_results():

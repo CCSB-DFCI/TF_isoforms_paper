@@ -36,10 +36,6 @@ def create_and_map_domain(orf, domain_info):
     featr_groupings = find_groups_of_featr_in_subblocks(featf.chain)
     for (cds_ord, cds), featrs in sorted(featr_groupings.items()):
         featsb = isofeature.FeatureSubblock(featf, cds, featrs)
-        # update upper/lower references
-        featf.subblocks.append(featsb)
-        for featr in featrs:
-            featr.featsb = featsb
     return featf
 
 def find_groups_of_featr_in_subblocks(featrs):
@@ -61,6 +57,8 @@ def find_groups_of_featr_in_subblocks(featrs):
 
 
 
+# NOTE - frame feature type, as implemented only exists for the other orf
+# consider editing code so that a featf (frmf) is made for the anchor orf too
 # *****************************************************************************
 # create and map frm feature to iso_obj
 def create_and_map_frame_objects(grp):
@@ -86,11 +84,6 @@ def create_and_map_frame_objects(grp):
     for match_cat, start, end in ranges:
         frmrs, frmb_cat = extract_the_frmb_info(frmf, start, end)
         frmb = isofeature.FrameBlock(frmf, frmrs, frmb_cat)
-        # set upper (frmf) and lower (frmr) references
-        frmf.blocks.append(frmb)
-        for frmr in frmb.chain:
-            frmr.featb = frmb
-
 
 def infer_frame_of_non_overlapping_seq(frame_blocks):
     """Infer the frame of sequence regions of alt. iso. that are not in ref.

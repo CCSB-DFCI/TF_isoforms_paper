@@ -1,3 +1,9 @@
+# This module likely will be deprecated, because I decided to directly
+# map the feature object types to the ORF objects, rather than going through
+# a mapping object. This is because adding the mapping object seemed to
+# complicated the code.
+# 200503
+
 # module with class of mapping type, which links molec. obj with features
 # or annotations
 
