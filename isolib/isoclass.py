@@ -63,11 +63,9 @@ class ProteinSequenceFeature:
         return self.end - self.start
 
     def __repr__(self):
-        s = '{}: {} {} {}-{}'.format(self.category,
-                                 self.accession,
-                                 self.name,
-                                 self.start + 1,
-                                 self.end)
+        s = "{}: {} {} {}-{}".format(
+            self.category, self.accession, self.name, self.start + 1, self.end
+        )
         return s
 
 
@@ -99,8 +97,9 @@ class Gene(GenomicFeature):
         )
         self.number_of_isoforms = len(orfs)
         self.name = name
-        self.orfs = list(sorted(orfs,
-                                key=lambda x: int(x.name.split('|')[1].split('/')[0])))
+        self.orfs = list(
+            sorted(orfs, key=lambda x: int(x.name.split("|")[1].split("/")[0]))
+        )
         self._orf_dict = {orf.name: orf for orf in self.orfs}
         GenomicFeature.__init__(
             self,
@@ -117,8 +116,8 @@ class Gene(GenomicFeature):
             subset = all_orf_names
         orfs = [orf for orf in self.orfs if orf.name in subset]
         if len(orfs) != len(subset):
-            msg = 'Missing ORFs: '
-            msg += '/'.join([s for s in subset if s not in all_orf_names])
+            msg = "Missing ORFs: "
+            msg += "/".join([s for s in subset if s not in all_orf_names])
             raise ValueError(msg)
         gene_coords = sorted(
             list(set([res.coords[1] for orf in orfs for res in orf.residues]))
@@ -140,22 +139,23 @@ class Gene(GenomicFeature):
         algn = self.genomic_alignment_of_aa_seqs(subset=[ref_iso_name, alt_iso_name])
 
         def _coords_transform_alignment_to_aa_seq(i, alignment):
-            if alignment[i] == '-':
-                raise ValueError('position is not in ORF AA sequence')
-            return len(alignment[:i+1].replace('-', ''))
+            if alignment[i] == "-":
+                raise ValueError("position is not in ORF AA sequence")
+            return len(alignment[: i + 1].replace("-", ""))
 
         def _coords_transform_aa_seq_to_aligment(i, alignment):
-            if i > len(alignment.replace('-', '')):
-                raise ValueError('position is not in ORF AA sequence')
-            aa_seq_indices = ['' if c == '-' else len(alignment[:j].replace('-', '')) for j, c in enumerate(alignment)]
+            if i > len(alignment.replace("-", "")):
+                raise ValueError("position is not in ORF AA sequence")
+            aa_seq_indices = [
+                "" if c == "-" else len(alignment[:j].replace("-", ""))
+                for j, c in enumerate(alignment)
+            ]
             return aa_seq_indices.index(i)
 
-        start = _coords_transform_aa_seq_to_aligment(domain_start,
-                                                     algn[ref_iso_name])
-        end = _coords_transform_aa_seq_to_aligment(domain_end,
-                                                   algn[ref_iso_name])
-        n_aa_insert = algn[ref_iso_name][start:end].count('-')
-        n_aa_del = algn[alt_iso_name][start:end].count('-')
+        start = _coords_transform_aa_seq_to_aligment(domain_start, algn[ref_iso_name])
+        end = _coords_transform_aa_seq_to_aligment(domain_end, algn[ref_iso_name])
+        n_aa_insert = algn[ref_iso_name][start:end].count("-")
+        n_aa_del = algn[alt_iso_name][start:end].count("-")
         # todo: process frameshift, insertion / deletion / substitution
         return (n_aa_insert, n_aa_del)
 
@@ -166,10 +166,9 @@ class Gene(GenomicFeature):
             for alt_iso_name, alt_iso in self._orf_dict.items():
                 if alt_iso_name == ref_iso_name:
                     continue
-                r = self.aa_seq_disruption(ref_iso_name,
-                                           alt_iso_name,
-                                           aa_feature.start,
-                                           aa_feature.end)
+                r = self.aa_seq_disruption(
+                    ref_iso_name, alt_iso_name, aa_feature.start, aa_feature.end
+                )
                 results[(ref_iso_name, alt_iso_name, aa_feature.accession)] = r
         return results
 
@@ -177,7 +176,7 @@ class Gene(GenomicFeature):
         if ax is None:
             ax = plt.gca()
         exon_bounds = [(exon.start, exon.end) for exon in self.exons]
-        if self.strand == '-':
+        if self.strand == "-":
             exon_bounds = exon_bounds[::-1]
         merged_exon_bounds = []
         for i in range(len(exon_bounds) - 1):
@@ -195,18 +194,18 @@ class Gene(GenomicFeature):
             b = a + (merged_exon_bounds[i][1] - merged_exon_bounds[i][0])
             mapped_exon_bounds.append((a, b))
 
-        def _map_position(pos,
-                          bounds_in=merged_exon_bounds,
-                          bounds_out=mapped_exon_bounds):
+        def _map_position(
+            pos, bounds_in=merged_exon_bounds, bounds_out=mapped_exon_bounds
+        ):
             if len(bounds_in) != len(bounds_out):
-                raise ValueError('Invalid boundary mapping')
+                raise ValueError("Invalid boundary mapping")
             for (start_in, stop_in), (start_out, stop_out) in zip(
                 bounds_in, bounds_out
             ):
                 if pos >= start_in and pos < stop_in:
                     return start_out + (pos - start_in)
             msg = "can't map position outside of exon boundaries\n"
-            msg += 'position: {}\nboundaries: {}\n'.format(pos, bounds_in)
+            msg += "position: {}\nboundaries: {}\n".format(pos, bounds_in)
             raise ValueError(msg)
 
         for i, orf in enumerate(self.orfs):
@@ -231,19 +230,19 @@ class Gene(GenomicFeature):
         xmax = _map_position(merged_exon_bounds[-1][1] - 1)
         x_pad = intron_nt_space * 3
         # intron dotted lines
-        plt.hlines(y=[i + height / 2 for i in range(len(self.orfs))],
-                   xmin=[_map_position(orf.start) for orf in self.orfs],
-                   xmax=[_map_position(orf.end - 1) for orf in self.orfs],
-                   color='black',
-                   ls="dotted",
-                   lw=1.5,
-                   zorder=0)
-        if self.strand == '-':
-            ax.set_xlim(xmax + x_pad,
-                        xmin - x_pad)
+        plt.hlines(
+            y=[i + height / 2 for i in range(len(self.orfs))],
+            xmin=[_map_position(orf.start) for orf in self.orfs],
+            xmax=[_map_position(orf.end - 1) for orf in self.orfs],
+            color="black",
+            ls="dotted",
+            lw=1.5,
+            zorder=0,
+        )
+        if self.strand == "-":
+            ax.set_xlim(xmax + x_pad, xmin - x_pad)
         else:
-            ax.set_xlim(xmin - intron_nt_space * 3,
-                        xmax + intron_nt_space * 3)
+            ax.set_xlim(xmin - intron_nt_space * 3, xmax + intron_nt_space * 3)
         ax.set_ylim(len(self.orfs), height - 1)
         for spine in ax.spines.values():
             spine.set_visible(False)
@@ -258,8 +257,8 @@ class Gene(GenomicFeature):
         return orf_id in self._orf_dict
 
     def __repr__(self):
-        s = 'Gene: {}\n'.format(self.name)
-        s += 'Isoforms: ' + str([orf.name for orf in self.orfs])
+        s = "Gene: {}\n".format(self.name)
+        s += "Isoforms: " + str([orf.name for orf in self.orfs])
         return s
 
 
@@ -300,7 +299,7 @@ class ORF(GenomicFeature):
             self.nt_seq = nt_seq
             self.aa_seq = str(Seq(self.nt_seq).translate(to_stop=True))
             self.codons = [
-                self.nt_seq[i: i + 3] for i in range(0, len(self.aa_seq) * 3, 3)
+                self.nt_seq[i : i + 3] for i in range(0, len(self.aa_seq) * 3, 3)
             ]
         else:
             raise NotImplementedError()
@@ -328,12 +327,10 @@ class ORF(GenomicFeature):
 
     def add_aa_seq_feature(self, category, accession, name, start, end):
         if end > len(self.aa_seq):
-            raise ValueError('Feature bounds outside protein')
-        self.aa_seq_features.append(ProteinSequenceFeature(category,
-                                                           accession,
-                                                           name,
-                                                           start,
-                                                           end))
+            raise ValueError("Feature bounds outside protein")
+        self.aa_seq_features.append(
+            ProteinSequenceFeature(category, accession, name, start, end)
+        )
 
 
 class Exon(GenomicFeature):
@@ -347,6 +344,7 @@ class Exon(GenomicFeature):
             convention of 0-indexed half-open interval, start must be before end
 
     """
+
     def __init__(self, gene_id, transcript_id, chrom, strand, start, end):
         self.gene_id = gene_id
         self.transcript_id = transcript_id
