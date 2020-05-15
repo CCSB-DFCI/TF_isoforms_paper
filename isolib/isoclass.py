@@ -10,6 +10,7 @@ import itertools
 
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
+import pandas as pd
 from Bio.Seq import Seq
 
 
@@ -132,44 +133,152 @@ class Gene(GenomicFeature):
             tracks = {k: v[::-1] for k, v in tracks.items()}
         return tracks
 
+    def pairwise_changes_relative_to_reference(self, ref_iso_name, alt_iso_name):
+        """
+            Try and recreate Gloria's string of MMMMIIIIMMMRRRRMMMMFFF etc etc..
+
+        Doesn't currently do substitutions
+
+        """
+        alignment = ''
+        ref_iter = iter(self._orf_dict[ref_iso_name].residues)
+        alt_iter = iter(self._orf_dict[alt_iso_name].residues)
+        ref_res = next(ref_iter)
+        alt_res = next(alt_iter)
+        while True:
+            if not any(i in ref_res.coords for i in alt_res.coords):
+                if ((self.strand == '+' and ref_res.coords[2] < alt_res.coords[2])
+                   or (self.strand == '-' and ref_res.coords[2] > alt_res.coords[2])):
+                    alignment += 'D'
+                    try:
+                        ref_res = next(ref_iter)
+                    except StopIteration:
+                        alignment += 'I'  # since alt_iter was incremented
+                        for _remaining in alt_iter:
+                            alignment += 'I'
+                        break
+                else:
+                    alignment += 'I'
+                    try:
+                        alt_res = next(alt_iter)
+                    except StopIteration:
+                        alignment += 'D'  # since ref_iter was incremented
+                        for _remaining in ref_iter:
+                            alignment += 'D'
+                        break
+            else:
+                if ref_res.coords == alt_res.coords:
+                    alignment += 'M'
+                elif any(i == j for i, j in zip(ref_res.coords, alt_res.coords)):
+                    # Different exon junctions
+                    if ref_res.aa == alt_res.aa:
+                        alignment += 'M'
+                    else:
+                        if ((ref_res.coords[0] < alt_res.coords[0] and self.strand == '+')
+                           or (ref_res.coords[2] > alt_res.coords[2] and self.strand == '+')
+                           or (ref_res.coords[0] > alt_res.coords[0] and self.strand == '-')
+                           or (ref_res.coords[2] < alt_res.coords[2] and self.strand == '-')):
+                            alignment += 'I'
+                            try:
+                                alt_res = next(alt_iter)
+                                continue
+                            except StopIteration:
+                                alignment += 'D'  # since ref_iter was incremented
+                                for _remaining in ref_iter:
+                                    alignment += 'D'
+                                break
+                        elif ((ref_res.coords[0] > alt_res.coords[0] and self.strand == '+')
+                              or (ref_res.coords[2] < alt_res.coords[2] and self.strand == '+')
+                              or (ref_res.coords[0] < alt_res.coords[0] and self.strand == '-')
+                              or (ref_res.coords[2] > alt_res.coords[2] and self.strand == '-')):
+                            alignment += 'D'
+                            try:
+                                ref_res = next(ref_iter)
+                                continue
+                            except StopIteration:
+                                alignment += 'I'  # since alt_iter was incremented
+                                for _remaining in alt_iter:
+                                    alignment += 'I'
+                                break
+                        else:  # Here just the middle nt in codon matched
+                            msg = 'Unexpected alignement issue between: '
+                            msg += ref_iso_name + ' and ' + alt_iso_name
+                            raise UserWarning(msg)
+                else:  # Frameshift
+                    if any(ref_res.coords[i] == alt_res.coords[(i + 1) % 3] for i in range(3)):
+                        alignment += 'F'
+                    else:
+                        alignment += 'f'
+
+                try:
+                    ref_res = next(ref_iter)
+                except StopIteration:
+                    for _remaining in alt_iter:
+                        alignment += 'I'
+                    break
+                try:
+                    alt_res = next(alt_iter)
+                except StopIteration:
+                    alignment += 'D'  # since we incremented above already
+                    for _remaining in ref_iter:
+                        alignment += 'D'
+                    break
+        return alignment
+
     def aa_seq_disruption(self, ref_iso_name, alt_iso_name, domain_start, domain_end):
         """Get pairwise alignment of orf protein sequences. Return fraction of
            domain and insertion
         """
-        algn = self.genomic_alignment_of_aa_seqs(subset=[ref_iso_name, alt_iso_name])
+        algn = self.pairwise_changes_relative_to_reference(ref_iso_name,
+                                                           alt_iso_name)
+        if len(algn.replace("I", "")) != len(self._orf_dict[ref_iso_name].aa_seq):
+            msg = 'Something is wrong\n'
+            msg += ref_iso_name + ', ' + alt_iso_name
+            raise UserWarning(msg)
 
-        def _coords_transform_alignment_to_aa_seq(i, alignment):
-            if alignment[i] == "-":
-                raise ValueError("position is not in ORF AA sequence")
-            return len(alignment[: i + 1].replace("-", ""))
-
-        def _coords_transform_aa_seq_to_aligment(i, alignment):
-            if i > len(alignment.replace("-", "")):
+        def _coords_transform_aa_seq_to_alignment(i, alignment):
+            if i > len(alignment.replace("I", "")):
                 raise ValueError("position is not in ORF AA sequence")
             aa_seq_indices = [
-                "" if c == "-" else len(alignment[:j].replace("-", ""))
+                "" if c == "I" else len(alignment[:j].replace("I", ""))
                 for j, c in enumerate(alignment)
             ]
             return aa_seq_indices.index(i)
 
-        start = _coords_transform_aa_seq_to_aligment(domain_start, algn[ref_iso_name])
-        end = _coords_transform_aa_seq_to_aligment(domain_end, algn[ref_iso_name])
-        n_aa_insert = algn[ref_iso_name][start:end].count("-")
-        n_aa_del = algn[alt_iso_name][start:end].count("-")
-        # todo: process frameshift, insertion / deletion / substitution
-        return (n_aa_insert, n_aa_del)
+        #print(ref_iso_name, alt_iso_name, domain_start, domain_end)  # DEBUG
+        start = _coords_transform_aa_seq_to_alignment(domain_start, algn)
+        end = _coords_transform_aa_seq_to_alignment(domain_end - 1, algn) + 1
+        return {'deletion': algn[start:end].count('D'),
+                'insertion': algn[start:end].count('I'),
+                'frameshift': algn[start:end].count('F') + algn[start:end].count('f')}
 
     def aa_feature_disruption(self, ref_iso_name):
-        results = {}
+        """
+
+        TODO: turn into a pandas table
+
+        Args:
+            ref_iso_name (str): [description]
+
+        Returns:
+            [type]: [description]
+        """
+        results = []
         ref_iso = self._orf_dict[ref_iso_name]
+        row = {'gene': self.name, 'ref_iso': ref_iso_name}
         for aa_feature in ref_iso.aa_seq_features:
             for alt_iso_name, alt_iso in self._orf_dict.items():
                 if alt_iso_name == ref_iso_name:
                     continue
+                row.update({'alt_iso': alt_iso_name})
+                row.update({'accession': aa_feature.accession})
                 r = self.aa_seq_disruption(
                     ref_iso_name, alt_iso_name, aa_feature.start, aa_feature.end
                 )
-                results[(ref_iso_name, alt_iso_name, aa_feature.accession)] = r
+                row.update(r)
+                row.update({'length': aa_feature.end - aa_feature.start})
+                results.append(row.copy())
+        results = pd.DataFrame(results)
         return results
 
     def exon_diagram(self, intron_nt_space=30, height=0.5, ax=None):
@@ -299,18 +408,19 @@ class ORF(GenomicFeature):
             self.nt_seq = nt_seq
             self.aa_seq = str(Seq(self.nt_seq).translate(to_stop=True))
             self.codons = [
-                self.nt_seq[i : i + 3] for i in range(0, len(self.aa_seq) * 3, 3)
+                self.nt_seq[i:i + 3] for i in range(0, len(self.aa_seq) * 3, 3)
             ]
         else:
             raise NotImplementedError()
         residues = []
         genomic_coords = [i for exon in self.exons for i in exon.genomic_coords()]
-        codon_genomic_coords = [
-            (a, b, c)
-            for a, b, c in zip(
-                genomic_coords[0::3], genomic_coords[1::3], genomic_coords[2::3]
-            )
-        ]
+        codon_genomic_coords = [(a, b, c) for a, b, c in zip(genomic_coords[0::3],
+                                                             genomic_coords[1::3],
+                                                             genomic_coords[2::3])
+                                ]
+        if ((sum(len(e) for e in self.exons) != len(self.aa_seq) * 3)
+           and (len(self.nt_seq) != sum(len(e) for e in self.exons))):
+            raise UserWarning('Genome alignment issues for ' + self.name)
         for aa, codon, codon_coords in zip(
             self.aa_seq, self.codons, codon_genomic_coords
         ):
@@ -374,7 +484,7 @@ class Residue:
         chrom (str): chromosome identifier
         strand (str): must be '+'/'-'
         positions ((int, int, int)): genomic coordinates of each of three nucleotides
-    
+
     """
 
     def __init__(self, aa, codon, chrom, strand, coords):

@@ -431,8 +431,9 @@ def load_annotated_6k_collection():
     clones = load_valid_isoform_clones()
     algn = algn.loc[algn['transcript_id'].isin(clones['clone_acc'].unique()), :]
     genes = {}
-    gene_name = 'ATF2'
     for gene_name in algn['gene_id'].unique():
+        if gene_name == 'PCGF6':  # has a 6nt insertion that doesn't map to reference genome
+            continue
         orf_ids = algn.loc[algn['gene_id'] == gene_name, 'transcript_id'].unique()
         missing = [orf for orf in orf_ids if orf not in nt_seq]
         if missing:
@@ -448,7 +449,7 @@ def load_annotated_6k_collection():
                 exons.append(isolib.Exon(*row.values))
             isoforms.append(isolib.ORF(orf_id, exons, str(nt_seq[orf_id].seq)))
         genes[gene_name] = isolib.Gene(gene_name, isoforms)
-        pfam['gene_name'] = pfam['query name'].apply(lambda x: x.split('|')[0])
+    pfam['gene_name'] = pfam['query name'].apply(lambda x: x.split('|')[0])
     for _i, row in pfam.iterrows():
         gene_name = row['gene_name']
         iso_name = row['query name']
