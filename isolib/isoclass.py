@@ -245,7 +245,6 @@ class Gene(GenomicFeature):
             ]
             return aa_seq_indices.index(i)
 
-        #print(ref_iso_name, alt_iso_name, domain_start, domain_end)  # DEBUG
         start = _coords_transform_aa_seq_to_alignment(domain_start, algn)
         end = _coords_transform_aa_seq_to_alignment(domain_end - 1, algn) + 1
         return {'deletion': algn[start:end].count('D'),
@@ -281,7 +280,12 @@ class Gene(GenomicFeature):
         results = pd.DataFrame(results)
         return results
 
-    def exon_diagram(self, intron_nt_space=30, height=0.5, ax=None):
+    def exon_diagram(self,
+                     intron_nt_space=30,
+                     height=0.5,
+                     draw_domains=True,
+                     ax=None,
+                     domain_font_size=6):
         if ax is None:
             ax = plt.gca()
         exon_bounds = [(exon.start, exon.end) for exon in self.exons]
@@ -317,6 +321,8 @@ class Gene(GenomicFeature):
             msg += "position: {}\nboundaries: {}\n".format(pos, bounds_in)
             raise ValueError(msg)
 
+        xmin = _map_position(merged_exon_bounds[0][0])
+        xmax = _map_position(merged_exon_bounds[-1][1] - 1)
         for i, orf in enumerate(self.orfs):
             for exon in orf.exons:
                 x_start = _map_position(exon.start)
@@ -331,12 +337,39 @@ class Gene(GenomicFeature):
                     joinstyle="round",
                 )
                 ax.add_patch(box)
+            if not draw_domains:
+                continue
+            for dom in orf.aa_seq_features:
+                dom_x_start = _map_position(orf.residues[dom.start].coords[0])
+                dom_x_stop = _map_position(orf.residues[dom.end - 1].coords[2])
+                dom_x_center = (dom_x_stop - dom_x_start) / 2 + dom_x_start
+                dom_x_len = abs(dom_x_stop - dom_x_start)
+                if i != 0:  # TODO: make this an option argument?
+                    break
+                ax_x_range = abs(xmax - xmin)
+                ax_y_range = len(self.orfs) + 1
+                # the 0.3 below is just tuned by hand
+                y_height = (ax_x_range * 0.3) / ax_y_range
+                ax.annotate('',
+                            xy=(dom_x_start, i),
+                            xycoords='data',
+                            xytext=(dom_x_stop, i),
+                            textcoords='data',
+                            arrowprops=dict(arrowstyle="<->, head_length=0, head_width=0.01",
+                                            connectionstyle="bar, fraction={}".format(y_height / (dom_x_len)),
+                                            color='darkorange',))
+                ax.text(dom_x_center,
+                        i - (1 - height),
+                        dom.name,
+                        rotation=90,
+                        va='bottom',
+                        ha='center',
+                        fontsize=domain_font_size
+                        )
         ax.set_yticks([y + height / 2 for y in range(len(self.orfs))])
         ax.set_yticklabels([orf.name for orf in self.orfs])
         ax.yaxis.set_tick_params(length=0)
         ax.set_xticks([])
-        xmin = _map_position(merged_exon_bounds[0][0])
-        xmax = _map_position(merged_exon_bounds[-1][1] - 1)
         x_pad = intron_nt_space * 3
         # intron dotted lines
         plt.hlines(
