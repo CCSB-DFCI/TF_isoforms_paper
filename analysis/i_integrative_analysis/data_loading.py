@@ -7,7 +7,6 @@ import warnings
 import numpy as np
 import pandas as pd
 from Bio import SeqIO
-import pyranges
 import tqdm
 
 sys.path.append('../..')
@@ -465,6 +464,7 @@ def load_DNA_binding_domains():
 def load_annotated_6k_collection():
     path_6k_gtf = DATA_DIR / 'internal/c_6k_unique_acc_aligns.gtf'
     path_6k_fa = DATA_DIR / 'internal/j2_6k_unique_isoacc_and_nt_seqs.fa'
+    import pyranges
     # note that pyranges switches the indexing to python 0-indexed, half-open interval
     algn = pyranges.read_gtf(path_6k_gtf).df
     algn = algn.loc[algn['Start'] < algn['End'], :]  # filter out problematic rows
