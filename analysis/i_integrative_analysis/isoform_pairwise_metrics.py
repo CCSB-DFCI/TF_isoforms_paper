@@ -33,12 +33,12 @@ def pairs_of_paralogs_and_isoforms_comparison_table(isoforms,
                                                     y2h,
                                                     y1h,
                                                     m1h):
-    """[summary]
+    """
 
     Restricted to isoforms pairs in the paralogs dataset.
 
     Args:
-        isoforms (bool): [description]
+        isoforms (): [description]
         paralog_pairs ([type]): [description]
         y2h ([type]): [description]
         y1h ([type]): [description]

@@ -4,12 +4,87 @@ from pathlib import Path
 
 import numpy as np
 from matplotlib import pyplot as plt
-
-from ccsblib import ccsbplotlib as cplt
+from matplotlib import patches
 
 sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), '../..'))
 from isomodules import isocreate, isoimage, isofunc
 from isoform_pairwise_metrics import paralog_pair_ppi_table
+
+
+def binary_profile_matrix(data,
+                          ax=None,
+                          box_size=0.7,
+                          fill_color='black',
+                          border_color='black',
+                          column_label_rotation=40):
+    """Used for edgotyping: displays binary results with a grid of boxes
+    
+    Empty box for negative, filled box for positive and 
+    missing box for missing values.
+
+    (Copied over from ccsblib)
+    
+    Args:
+        data (pandas.DataFrame): boolean values
+        ax (matplotlib.axes.Axes): axes to draw on
+        box_size (float): area of the boxes between 0 and 1
+        fill_color (str): color of filled sqaure
+        border_color (str): color of outside of square
+        column_label_roation: angle in degrees of top labels
+    Examples:
+        Display results of some dummy edgotyping data:
+        .. plot::
+            :context: close-figs
+            >>> import pandas as pd
+            >>> df = pd.DataFrame(index=['Allele A', 'Allele B', 'Allele C'],
+            ...                   columns=['Partner W', 'Partner X', 'Parner Y', 'Partner Z'],
+            ...                   data=[[True] * 4,
+            ...                         [True, False, True, False],
+            ...                         [False, False, np.nan, False]])
+            >>> binary_profile_matrix(df)
+        You can switch the rows and columns by transposing the input DataFrame:
+        .. plot::
+            :context: close-figs
+             >>> binary_profile_matrix(df.T,
+             ...                            fill_color='grey',
+             ...                            border_color='black',
+             ...                            box_size=0.6,
+             ...                            column_label_rotation=90)
+    """
+    if box_size > 1. or box_size < 0.:
+        raise ValueError('box_size must be between 0-1')
+    if ax is None:
+        ax = plt.gca()
+    ax.set_aspect('equal')
+    positives = [(i, j) for i in range(data.shape[1]) for j in range(data.shape[0]) if data.iloc[j, i] == 1]
+    negatives = [(i, j) for i in range(data.shape[1]) for j in range(data.shape[0]) if data.iloc[j, i] == 0]
+    for x, y in negatives:
+        r = patches.Rectangle((x - box_size / 2, y - box_size / 2),
+                              box_size, box_size,
+                              fill=False,
+                              edgecolor=border_color)
+        ax.add_patch(r)
+    for x, y in positives:
+        r = patches.Rectangle((x - box_size / 2, y - box_size / 2),
+                              box_size, box_size,
+                              fill=True,
+                              facecolor=fill_color,
+                              edgecolor=border_color)
+        ax.add_patch(r)
+    ax.spines['top'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.xaxis.tick_top()
+    ax.set_xticks(range(data.shape[1]))
+    ax.xaxis.set_tick_params(length=0)
+    ax.xaxis.set_ticklabels(data.columns, rotation=column_label_rotation, ha='left')
+    ax.set_yticks(range(data.shape[0]))
+    ax.yaxis.set_tick_params(length=0)
+    ax.set_yticklabels(data.index)
+    ax.set_ylim((-0.5, data.shape[0] - 0.5))
+    ax.set_xlim((-0.5, data.shape[1] - 0.5))
+    ax.invert_yaxis()
 
 
 def isoform_display_name(s):
@@ -61,7 +136,7 @@ def y2h_ppi_per_tf_gene_plot(gene_name,
                 fontweight='bold',
                 color='grey')
         return
-    cplt.binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
+    binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels([strikethrough(name) if all_na else name
                         for name, all_na in tf.isnull().all(axis=1).iteritems()])
 
@@ -105,7 +180,7 @@ def y2h_ppi_per_paralog_pair_plot(tf_gene_a,
                 fontweight='bold',
                 color='grey')
         return
-    cplt.binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
+    binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels([strikethrough(name) if all_na else name
                         for name, all_na in tf.isnull().all(axis=1).iteritems()])
 
@@ -130,7 +205,7 @@ def y1h_pdi_per_tf_gene_plot(gene_name,
                 fontweight='bold',
                 color='grey')
         return
-    cplt.binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
+    binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels([strikethrough(name) if all_na else name
                         for name, all_na in tf.isnull().all(axis=1).iteritems()])
 

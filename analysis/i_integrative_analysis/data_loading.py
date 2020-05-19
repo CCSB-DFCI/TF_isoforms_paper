@@ -94,6 +94,49 @@ def load_tf_isoform_y2h_screen_results():
     return df
 
 
+def load_y2h_isoform_data(require_at_least_one_ppi_per_isoform=True,
+                          add_missing_data=False,
+                          filter_for_valid_clones=True):
+    """
+
+    filtered dataset:
+        remove partners with no positive tests per tf gene
+        remove isoforms with no successful tests
+        remove genes with < 2 isoforms
+
+    Args:
+        require_at_least_one_ppi_per_isoform (bool, optional): Defaults to True.
+        add_missing_data (bool, optional): Defaults to False.
+        filter_for_valid_clones (bool, optional): Defaults to True.
+
+    Returns:
+        pandas.DataFrame
+
+    """
+    y2h = load_isoform_and_paralog_y2h_data(add_missing_data, filter_for_valid_clones)
+    ppi = y2h.loc[(y2h['category'] == 'tf_isoform_ppis'),
+                ['ad_clone_acc',
+                'ad_gene_symbol',
+                'db_gene_symbol',
+                'score']].copy()
+    ppi = ppi.loc[ppi.groupby(['ad_gene_symbol', 'db_gene_symbol'])
+                    ['score']
+                    .transform(lambda row: (row == '1').any()),
+                :]
+    ppi = ppi.loc[ppi.groupby('ad_clone_acc')
+                    ['score']
+                    .transform(lambda x: (x.isin(['0', '1']).any())),
+                :]
+    if require_at_least_one_ppi_per_isoform:
+        ppi = ppi.loc[ppi.groupby('ad_clone_acc')['score'].transform(lambda x: (x == '1').any()),
+                    :]
+    ppi = ppi.loc[ppi.groupby('ad_gene_symbol')
+                    ['ad_clone_acc']
+                    .transform(lambda x: x.nunique() >= 2),
+                :]
+    return ppi
+
+
 def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_clones=True):
     """
     - NS: sequencing failed
