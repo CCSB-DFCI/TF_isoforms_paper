@@ -286,7 +286,7 @@ class AlignmentSubblock(Alignment):
         # self.last -> property
         self.chain = alnr_chain
         # self.alnrs -> property, syn of chain
-        update_references_to_parent_and_child_objects(self):
+        update_references_to_parent_and_child_objects(self)
         Alignment.__init__(self, anchor_cds, other_cds)
 
     @property

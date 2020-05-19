@@ -1,11 +1,17 @@
 import os
 import sys
 from pathlib import Path
+import itertools
+import warnings
 
 import numpy as np
 import pandas as pd
 from Bio import SeqIO
+import pyranges
+import tqdm
 
+sys.path.append('../..')
+import isolib
 
 DATA_DIR = Path(__file__).resolve().parents[2] / 'data'
 
@@ -43,6 +49,8 @@ def load_valid_isoform_clones():
     iso_annot = pd.read_csv(DATA_DIR / 'internal/c_conso_annot_table_man_annot.tsv',
                             sep='\t')
     df['is_novel_isoform'] = df['clone_acc'].map(iso_annot.set_index('unique_acc')['gc_match'] == 0)
+    exclude_both_strands_genes = ['FOXD4L3', 'NANOG']
+    df = df.loc[~df['gene'].isin(exclude_both_strands_genes), :]
     return df
 
 
@@ -300,3 +308,156 @@ def load_tf_families():
         raise UserWarning('Unexpected duplicates')
     tf_fam = tf_fam.set_index('HGNC symbol')['DBD']
     return tf_fam
+
+def convert_old_id_to_new_id(old_id):
+    if len(old_id.split('xxx')) != 3:
+        raise UserWarning('Unrecognized old isoform clone ID')
+    return old_id.split('xxx')[1]
+
+
+def read_hmmer3_domtab(filepath):
+    """Parser for HMMER 3 hmmscan with the --domtblout option.
+    Args:
+        filepath (str): location of file
+    Returns:
+        pandas.DataFrame: see the HMMER User's Guide for a description of the
+                          columns.
+    """
+    columns = ['target name',
+               'target accession',
+               'tlen',
+               'query name',
+               'query accession',
+               'qlen',
+               'E-value',
+               'score',
+               'bias',
+               '#',
+               'of',
+               'c-Evalue',
+               'i-Evalue',
+               'full_sequence_score',
+               'full_sequence_bias',
+               'hmm_coord_from',
+               'hmm_coord_to',
+               'ali_coord_from',
+               'ali_coord_to',
+               'env_coord_from',
+               'env_coord_to',
+               'acc',
+               'description of target']
+    ncols = len(columns)
+    # can't just use pandas.read_csv because spaces are used both as the
+    # delimeter and are present in the values of the last columns
+    with open(filepath, 'r') as f:
+        data = []
+        for line in f:
+            if line.startswith('#'):
+                continue
+            s = line.split()
+            data.append(s[:ncols - 1] + [' '.join(s[ncols - 1:])])
+    df = pd.DataFrame(data=data, columns=columns)
+    int_cols = ['tlen', 'qlen', '#', 'of',
+                'hmm_coord_from', 'hmm_coord_to',
+                'ali_coord_from', 'ali_coord_to',
+                'env_coord_from', 'env_coord_to']
+    float_cols = ['E-value', 'score', 'bias', 'c-Evalue', 'i-Evalue',
+                  'full_sequence_score', 'full_sequence_bias', 'acc']
+    df[int_cols] = df[int_cols].astype(int)
+    df[float_cols] = df[float_cols].astype(float)
+    return df
+
+
+def load_pfam_domains_for_6k(remove_overlapping=True, cutoff=1E-5):
+    fpath = DATA_DIR / 'processed/6K_hmmer_2020-04-16_domtabl.txt'
+    pfam = read_hmmer3_domtab(fpath)
+    pfam['pfam_ac'] = pfam['target accession'].str.replace(r'\..*', '')
+    pfam['query name'] = pfam['query name'].map(convert_old_id_to_new_id)
+    pfam = pfam.loc[pfam['E-value'] < cutoff, :]
+    pfam = _remove_overlapping_domains_from_same_clan(pfam)
+    return pfam
+
+
+def _is_overlapping(dom_a, dom_b):
+    if dom_b['env_coord_from'] > dom_a['env_coord_to'] or dom_a['env_coord_from'] > dom_b['env_coord_to']:
+        return False
+    else:
+        return True
+
+
+def _remove_overlapping_domains_from_same_clan(pfam_in):
+    """
+    Trying to follow the method in the pfam_scan pearl script from EBI.
+    """
+    pfam = pfam_in.copy()
+    clans = pd.read_csv(DATA_DIR / 'external/Pfam-A.clans.tsv',
+                        sep='\t',
+                        header=None)
+    if clans.loc[:, 0].duplicated().any():
+        raise UserWarning()
+    clans = clans.iloc[:, [0, 1]].dropna().set_index(0)[1].to_dict()
+    to_remove = set()
+    pfam = pfam.sort_values(['query name', 'E-value'])
+    # This is a bit slow
+    for iso_id in tqdm.tqdm(pfam['query name'].unique()):
+        doms = pfam.loc[(pfam['query name'] == iso_id) &
+                        (pfam['pfam_ac'].isin(clans)), :]
+        for i, j in itertools.combinations(doms.index, 2):
+            if i in to_remove or j in to_remove:
+                continue
+            dom_a = doms.loc[i, :]
+            dom_b = doms.loc[j, :]
+            if clans[dom_a['pfam_ac']] == clans[dom_b['pfam_ac']]:
+                if _is_overlapping(dom_a, dom_b):
+                    to_remove.add(j)
+    pfam = pfam.drop(to_remove)
+    return pfam
+
+
+def load_DNA_binding_domains():
+    return pd.read_csv(DATA_DIR / 'internal/a2_final_list_of_dbd_pfam_and_names_ZF_marked.txt',
+                       sep='\t')
+
+
+def load_annotated_6k_collection():
+    path_6k_gtf = DATA_DIR / 'internal/c_6k_unique_acc_aligns.gtf'
+    path_6k_fa = DATA_DIR / 'internal/j2_6k_unique_isoacc_and_nt_seqs.fa'
+    # note that pyranges switches the indexing to python 0-indexed, half-open interval
+    algn = pyranges.read_gtf(path_6k_gtf).df
+    algn = algn.loc[algn['Start'] < algn['End'], :]  # filter out problematic rows
+    nt_seq = {r.name: r for r in SeqIO.parse(path_6k_fa, format='fasta')}
+    pfam = load_pfam_domains_for_6k()
+    dbd = load_DNA_binding_domains()
+    clones = load_valid_isoform_clones()
+    algn = algn.loc[algn['transcript_id'].isin(clones['clone_acc'].unique()), :]
+    genes = {}
+    for gene_name in algn['gene_id'].unique():
+        if gene_name == 'PCGF6':  # has a 6nt insertion that doesn't map to reference genome
+            continue
+        orf_ids = algn.loc[algn['gene_id'] == gene_name, 'transcript_id'].unique()
+        missing = [orf for orf in orf_ids if orf not in nt_seq]
+        if missing:
+            raise ValueError(', '.join(missing) + ' not in ' + path_6k_fa)
+        extra = [orf for orf in nt_seq.keys() if orf.split('|')[0] == gene_name and orf not in orf_ids]
+        if extra:
+            warnings.warn(', '.join(extra) + ' in fasta but not in gtf')
+        isoforms = []
+        for orf_id in orf_ids:
+            exons = []
+            columns = ['gene_id', 'transcript_id', 'Chromosome', 'Strand', 'Start', 'End']
+            for _i, row in algn.loc[algn['transcript_id'] == orf_id, columns].iterrows():
+                exons.append(isolib.Exon(*row.values))
+            isoforms.append(isolib.ORF(orf_id, exons, str(nt_seq[orf_id].seq)))
+        genes[gene_name] = isolib.Gene(gene_name, isoforms)
+    pfam['gene_name'] = pfam['query name'].apply(lambda x: x.split('|')[0])
+    for _i, row in pfam.iterrows():
+        gene_name = row['gene_name']
+        iso_name = row['query name']
+        if gene_name not in genes or iso_name not in genes[gene_name]:
+            continue
+        genes[gene_name][iso_name].add_aa_seq_feature(category='Pfam_domain', 
+                                                                    name=row['target name'],
+                                                                    accession=row['pfam_ac'],
+                                                                    start=row['env_coord_from'] - 1,
+                                                                    end=row['env_coord_to'])
+    return genes
