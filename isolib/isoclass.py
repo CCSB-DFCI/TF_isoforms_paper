@@ -102,6 +102,7 @@ class Gene(GenomicFeature):
             sorted(orfs, key=lambda x: int(x.name.split("|")[1].split("/")[0]))
         )
         self._orf_dict = {orf.name: orf for orf in self.orfs}
+        self._pairwise_changes = {}
         GenomicFeature.__init__(
             self,
             chroms[0],
@@ -140,6 +141,9 @@ class Gene(GenomicFeature):
         Doesn't currently do substitutions
 
         """
+        key = (ref_iso_name, alt_iso_name)
+        if key in self._pairwise_changes:  # check cache
+            return self._pairwise_changes[key]
         alignment = ''
         ref_iter = iter(self._orf_dict[ref_iso_name].residues)
         alt_iter = iter(self._orf_dict[alt_iso_name].residues)
@@ -223,6 +227,7 @@ class Gene(GenomicFeature):
                     for _remaining in ref_iter:
                         alignment += 'D'
                     break
+        self._pairwise_changes[key] = alignment   # cache result
         return alignment
 
     def aa_seq_disruption(self, ref_iso_name, alt_iso_name, domain_start, domain_end):
@@ -254,8 +259,6 @@ class Gene(GenomicFeature):
     def aa_feature_disruption(self, ref_iso_name):
         """
 
-        TODO: turn into a pandas table
-
         Args:
             ref_iso_name (str): [description]
 
@@ -278,6 +281,71 @@ class Gene(GenomicFeature):
                 row.update({'length': aa_feature.end - aa_feature.start})
                 results.append(row.copy())
         results = pd.DataFrame(results)
+        return results
+
+    def null_fraction_per_aa_feature(self, ref_iso_name):
+        """Fraction of aa features that would be affected if they were evenly
+            distributed along the AA sequence of the reference isoform.
+
+        TODO:
+            - too slow:
+                - cache all ones with same length
+
+        Args:
+            ref_iso_name (str)
+
+        """
+        results = []
+        cache = {}
+        ref_iso = self._orf_dict[ref_iso_name]
+        row = {'gene': self.name, 'ref_iso': ref_iso_name}
+        for aa_feature in ref_iso.aa_seq_features:
+            for alt_iso_name, alt_iso in self._orf_dict.items():
+                if alt_iso_name == ref_iso_name:
+                    continue
+                row.update({'alt_iso': alt_iso_name,
+                            'accession': aa_feature.accession})
+                aa_feature_length = aa_feature.end - aa_feature.start
+                if (alt_iso_name, aa_feature_length) in cache:
+                    row['null_fraction_affected'] = cache[(alt_iso_name, aa_feature_length)]
+                    results.append(row.copy())
+                    continue
+                rs = self._null_feature_disruption(ref_iso_name, alt_iso_name, aa_feature_length)
+
+                def is_disrupted(feature_alignment_count):
+                    return any(v > 0 for v in feature_alignment_count.values())
+
+                fraction_affected = sum([int(is_disrupted(r)) for r in rs]) / len(rs)
+                row['null_fraction_affected'] = fraction_affected
+                results.append(row.copy())
+                cache[(alt_iso_name, aa_feature_length)] = fraction_affected
+        results = pd.DataFrame(results)
+        return results
+
+    def _null_feature_disruption(self, ref_iso_name, alt_iso_name, feature_length):
+        algn = self.pairwise_changes_relative_to_reference(ref_iso_name,
+                                                           alt_iso_name)
+        len_ref_iso_aa_seq = len(self._orf_dict[ref_iso_name].aa_seq)
+        if len(algn.replace("I", "")) != len_ref_iso_aa_seq:
+            msg = 'Something is wrong\n'
+            msg += ref_iso_name + ', ' + alt_iso_name
+            raise UserWarning(msg)
+        coords_ref_iso_aa_seq = [
+            "" if c == "I" else len(algn[:j].replace("I", ""))
+            for j, c in enumerate(algn)
+        ]
+        two_mers = {'deletion': [], 'insertion': [], 'frameshift': []}
+        for i in range(len_ref_iso_aa_seq - 1):
+            start = coords_ref_iso_aa_seq.index(i)
+            end = coords_ref_iso_aa_seq.index(i + 1) + 1
+            two_mer = algn[start:end]
+            two_mers['deletion'].append(two_mer.count('D'))
+            two_mers['insertion'].append(two_mer.count('I'))
+            two_mers['frameshift'].append(two_mer.count('F') + two_mer.count('f'))
+        results = [{k: sum(v[:feature_length]) for k, v in two_mers.items()}]
+        for i in range((len_ref_iso_aa_seq - feature_length) - 1):
+            r = {k: (v - two_mers[k][i]) + two_mers[k][i + feature_length] for k, v in results[-1].items()}
+            results.append(r)
         return results
 
     def exon_diagram(self,
