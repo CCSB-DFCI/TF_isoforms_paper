@@ -8,6 +8,7 @@
 
 import itertools
 
+import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 import pandas as pd
@@ -343,6 +344,39 @@ class Gene(GenomicFeature):
         for i in range((len_ref_iso_aa_seq - feature_length) - 1):
             r = {k: (v - two_mers[k][i]) + two_mers[k][i + feature_length] for k, v in results[-1].items()}
             results.append(r)
+        return results
+
+    def random_aa_seq_feature_shuffle(self, ref_iso_name, n, subset=None):
+        """Pick random, non-overlapping, aa sequence locations for the features.
+
+        Args:
+            ref_iso_name (str):
+            n (int): number of randomizations
+            subset (set(str), optional): [description]. Defaults to None.
+        """
+        results = []
+        ref_iso = self._orf_dict[ref_iso_name]
+        row = {'gene': self.name, 'ref_iso': ref_iso_name}
+        for i in range(n):
+            row['random_sample'] = i
+            for aa_feature in ref_iso.aa_seq_features:
+
+                rnd_start = np.random.choice(range((len(ref_iso.aa_seq) - len(aa_feature)) + 1))
+                rnd_end = rnd_start + len(aa_feature)
+                # TODO: add overlap check
+
+                for alt_iso_name, alt_iso in self._orf_dict.items():
+                    if alt_iso_name == ref_iso_name:
+                        continue
+                    row.update({'alt_iso': alt_iso_name})
+                    row.update({'accession': aa_feature.accession})
+                    r = self.aa_seq_disruption(
+                        ref_iso_name, alt_iso_name, rnd_start, rnd_end
+                    )
+                    row.update(r)
+                    row.update({'length': aa_feature.end - aa_feature.start})
+                    results.append(row.copy())
+        results = pd.DataFrame(results)
         return results
 
     def exon_diagram(self,
