@@ -82,12 +82,13 @@ class Gene(GenomicFeature):
     def __init__(self, name, orfs):
         chroms = [orf.chrom for orf in orfs]
         strands = [orf.strand for orf in orfs]
+        msg = '{} - {}'.format(name, ', '.join([orf.name for orf in orfs]))
         if len(orfs) == 0:
-            raise ValueError("Need at least one ORF to define a gene")
+            raise ValueError("Need at least one ORF to define a gene\n" + msg)
         if len(set(chroms)) > 1:
-            raise ValueError("All ORFs must be on same chromosome")
+            raise ValueError("All ORFs must be on same chromosome\n" + msg)
         if len(set(strands)) > 1:
-            raise ValueError("All ORFs must be same strand")
+            raise ValueError("All ORFs must be same strand\n" + msg)
         # de-duplicate exons
         gene_exons = {}
         for orf in orfs:
@@ -99,7 +100,7 @@ class Gene(GenomicFeature):
         self.number_of_isoforms = len(orfs)
         self.name = name
         self.orfs = list(
-            sorted(orfs, key=lambda x: int(x.name.split("|")[1].split("/")[0]))
+            sorted(orfs, key=lambda x: int(x.name.split("-")[-1]))
         )
         self._orf_dict = {orf.name: orf for orf in self.orfs}
         self._pairwise_changes = {}
@@ -287,10 +288,6 @@ class Gene(GenomicFeature):
         """Fraction of aa features that would be affected if they were evenly
             distributed along the AA sequence of the reference isoform.
 
-        TODO:
-            - too slow:
-                - cache all ones with same length
-
         Args:
             ref_iso_name (str)
 
@@ -461,7 +458,12 @@ class Gene(GenomicFeature):
         return list(itertools.combinations(self.orfs, 2))
 
     def __getitem__(self, orf_id):
-        return self._orf_dict[orf_id]
+        if orf_id in self._orf_dict:
+            return self._orf_dict[orf_id]
+        for orf in self.orfs:
+            if orf_id == orf.clone_acc:
+                return orf
+        raise KeyError()
 
     def __contains__(self, orf_id):
         return orf_id in self._orf_dict
@@ -487,27 +489,31 @@ class ORF(GenomicFeature):
         name,
         exons,
         nt_seq,
-        ensembl_transcipt_id=None,
+        aa_seq=None,
+        ensembl_transcript_id=None,
         ensembl_protein_id=None,
-        orf_id=None,
+        clone_acc=None,
     ):
         self.name = name
-        self.ensembl_transcipt_id = ensembl_transcipt_id
+        self.ensembl_transcript_id = ensembl_transcript_id
         self.ensembl_protein_id = ensembl_protein_id
-        self.orf_id = orf_id
+        self.clone_acc = clone_acc
         if len(exons) == 0:
-            raise ValueError("Need at least one exon to define a gene")
+            raise ValueError(self.name + " - Need at least one exon to define a gene")
         chroms = [exon.chrom for exon in exons]
         strands = [exon.strand for exon in exons]
         if len(set(chroms)) > 1:
-            raise ValueError("All exons must be on same chromosome")
+            raise ValueError(self.name + " - All exons must be on same chromosome")
         if len(set(strands)) > 1:
-            raise ValueError("All exons must be same strand")
+            raise ValueError(self.name + " - All exons must be same strand")
         is_neg_strand = strands[0] == "-"
         self.exons = sorted(exons, key=lambda x: x.start, reverse=is_neg_strand)
+        if aa_seq is not None:
+            self.aa_seq = aa_seq
         if isinstance(nt_seq, str):
             self.nt_seq = nt_seq
-            self.aa_seq = str(Seq(self.nt_seq).translate(to_stop=True))
+            if aa_seq is None:
+                self.aa_seq = str(Seq(self.nt_seq).translate(to_stop=True))
             self.codons = [
                 self.nt_seq[i:i + 3] for i in range(0, len(self.aa_seq) * 3, 3)
             ]
@@ -519,9 +525,20 @@ class ORF(GenomicFeature):
                                                              genomic_coords[1::3],
                                                              genomic_coords[2::3])
                                 ]
-        if ((sum(len(e) for e in self.exons) != len(self.aa_seq) * 3)
-           and (len(self.nt_seq) != sum(len(e) for e in self.exons))):
-            raise UserWarning('Genome alignment issues for ' + self.name)
+        len_all_exons = sum(len(e) for e in self.exons)
+        if ((len_all_exons != len(self.aa_seq) * 3)
+           and (len_all_exons != len(self.nt_seq))):
+            msg = """Genome alignment issues for {}\n
+                     {} exons with cumulative length: {}\n
+                     length aa seq: {}\n
+                     length nt seq: {}\n
+                  """
+            msg = msg.format(self.name,
+                             len(self.exons),
+                             len_all_exons,
+                             len(self.aa_seq),
+                             len(self.nt_seq))
+            raise UserWarning(msg)
         for aa, codon, codon_coords in zip(
             self.aa_seq, self.codons, codon_genomic_coords
         ):
@@ -542,6 +559,17 @@ class ORF(GenomicFeature):
         self.aa_seq_features.append(
             ProteinSequenceFeature(category, accession, name, start, end)
         )
+
+    def remove_aa_seq_feature(self, accession, start, end):
+        idx = [i for i, f in enumerate(self.aa_seq_features)
+               if f.accession == accession
+               and f.start == start
+               and f.end == end]
+        if len(idx) == 0:
+            raise ValueError('Feature not present')
+        if len(idx) > 1:
+            raise UserWarning('Unexpected duplicate domains')
+        del self.aa_seq_features[idx[0]]
 
 
 class Exon(GenomicFeature):
