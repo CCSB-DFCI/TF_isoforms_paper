@@ -354,27 +354,44 @@ class Gene(GenomicFeature):
             n (int): number of randomizations
             subset (set(str), optional): [description]. Defaults to None.
         """
+        if len(self._orf_dict) == 1:
+            return pd.DataFrame([])
+
+        def _overlap_any(positions):
+            positions_ordered = list(sorted(positions, key=lambda x: x[0]))
+            for i in range(len(positions_ordered) - 1):
+                (start_a, end_a),  (start_b, end_b) = positions_ordered[i: i + 2]
+                if end_a > start_b:
+                    return True
+            return False
+
+        def _non_overlapping_random_feature_positons(len_aa_seq, len_features):
+            if sum([v[1] for v in len_features]) > len_aa_seq:
+                raise UserWarning('Impossible: ' + str(ref_iso_name))
+            while True:
+                rnd_starts = [np.random.choice(range((len_aa_seq - len_f) + 1)) for acc, len_f in len_features]
+                rnd_pos = [(f_acc, (s, s + len_f)) for s, (f_acc, len_f) in zip(rnd_starts, len_features)]
+                if not _overlap_any([v[1] for v in rnd_pos]):
+                    return rnd_pos
+
         results = []
         ref_iso = self._orf_dict[ref_iso_name]
         row = {'gene': self.name, 'ref_iso': ref_iso_name}
         for i in range(n):
             row['random_sample'] = i
-            for aa_feature in ref_iso.aa_seq_features:
-
-                rnd_start = np.random.choice(range((len(ref_iso.aa_seq) - len(aa_feature)) + 1))
-                rnd_end = rnd_start + len(aa_feature)
-                # TODO: add overlap check
-
+            rnd_pos = _non_overlapping_random_feature_positons(len(ref_iso.aa_seq),
+                                                               [(f.accession, len(f)) for f in ref_iso.aa_seq_features if subset is None or f.accession in subset])
+            for accession, (rnd_start, rnd_end) in rnd_pos:
                 for alt_iso_name, alt_iso in self._orf_dict.items():
                     if alt_iso_name == ref_iso_name:
                         continue
                     row.update({'alt_iso': alt_iso_name})
-                    row.update({'accession': aa_feature.accession})
+                    row.update({'accession': accession})
                     r = self.aa_seq_disruption(
                         ref_iso_name, alt_iso_name, rnd_start, rnd_end
                     )
                     row.update(r)
-                    row.update({'length': aa_feature.end - aa_feature.start})
+                    row.update({'length': rnd_end - rnd_start})
                     results.append(row.copy())
         results = pd.DataFrame(results)
         return results
