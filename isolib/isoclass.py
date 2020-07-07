@@ -7,6 +7,7 @@
 # ==============================================================================
 
 import itertools
+import random
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -357,22 +358,20 @@ class Gene(GenomicFeature):
         if len(self._orf_dict) == 1:
             return pd.DataFrame([])
 
-        def _overlap_any(positions):
-            positions_ordered = list(sorted(positions, key=lambda x: x[0]))
-            for i in range(len(positions_ordered) - 1):
-                (start_a, end_a),  (start_b, end_b) = positions_ordered[i: i + 2]
-                if end_a > start_b:
-                    return True
-            return False
-
-        def _non_overlapping_random_feature_positons(len_aa_seq, len_features):
-            if sum([v[1] for v in len_features]) > len_aa_seq:
+        # inspired by: https://stackoverflow.com/questions/18641272
+        def _non_overlapping_random_feature_positons(len_aa_seq, feature_and_len):
+            if sum([v[1] for v in feature_and_len]) > len_aa_seq:
                 raise UserWarning('Impossible: ' + str(ref_iso_name))
-            while True:
-                rnd_starts = [np.random.choice(range((len_aa_seq - len_f) + 1)) for acc, len_f in len_features]
-                rnd_pos = [(f_acc, (s, s + len_f)) for s, (f_acc, len_f) in zip(rnd_starts, len_features)]
-                if not _overlap_any([v[1] for v in rnd_pos]):
-                    return rnd_pos
+            indices = range(len_aa_seq - sum(v[1] - 1 for v in feature_and_len))
+            result = []
+            offset = 0
+            n = len(feature_and_len)
+            for (acc, l), i in zip(random.sample(feature_and_len, n),
+                                   sorted(random.sample(indices, n))):
+                i += offset
+                result.append((acc, (i, i + l)))
+                offset += l - 1
+            return result
 
         results = []
         ref_iso = self._orf_dict[ref_iso_name]
