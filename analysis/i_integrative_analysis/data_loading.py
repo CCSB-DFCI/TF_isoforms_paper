@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import itertools
 import warnings
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -13,6 +14,7 @@ sys.path.append('../..')
 import isolib
 
 DATA_DIR = Path(__file__).resolve().parents[2] / 'data'
+CACHE_DIR = Path(__file__).resolve().parents[2] / 'cache'
 
 sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), '../..'))
 from isomodules import isocreate, isofunc
@@ -351,6 +353,7 @@ def load_tf_families():
     tf_fam = tf_fam.set_index('HGNC symbol')['DBD']
     return tf_fam
 
+
 def convert_old_id_to_new_id(old_id):
     if len(old_id.split('xxx')) != 3:
         raise UserWarning('Unrecognized old isoform clone ID')
@@ -410,13 +413,35 @@ def read_hmmer3_domtab(filepath):
     return df
 
 
-def load_pfam_domains_for_6k(remove_overlapping=True, cutoff=1E-5):
-    fpath = DATA_DIR / 'processed/6K_hmmer_2020-04-16_domtabl.txt'
+def _load_pfam_domains(fpath, remove_overlapping=True, cutoff=1E-5):
     pfam = read_hmmer3_domtab(fpath)
     pfam['pfam_ac'] = pfam['target accession'].str.replace(r'\..*', '')
-    pfam['query name'] = pfam['query name'].map(convert_old_id_to_new_id)
     pfam = pfam.loc[pfam['E-value'] < cutoff, :]
     pfam = _remove_overlapping_domains_from_same_clan(pfam)
+    return pfam
+
+
+def load_pfam_domains_6k():
+    filtered_pfam_path = CACHE_DIR / 'pfam_6K.tsv'
+    if filtered_pfam_path.exists():
+        return pd.read_csv(filtered_pfam_path, sep='\t')
+    pfam = _load_pfam_domains(DATA_DIR / 'processed/6K_hmmer_2020-04-16_domtabl.txt')
+    pfam['query name'] = pfam['query name'].map(convert_old_id_to_new_id)
+    pfam.to_csv(filtered_pfam_path, index=False, sep='\t')
+    return pfam
+
+
+def load_pfam_domains_gencode():
+    filtered_pfam_path = CACHE_DIR / 'pfam_gencode.v30.tsv'
+    if filtered_pfam_path.exists():
+        pfam = pd.read_csv(filtered_pfam_path, sep='\t')
+        pfam['query name'] = pfam['query name'].str.slice(8)
+        pfam['query name'] = pfam['query name'].apply(lambda x: '|'.join(sorted(x.split('|'))))
+        return pfam
+    pfam = _load_pfam_domains(DATA_DIR / 'processed/2020-04-23_GC30_6K_domtabl.txt')
+    pfam.to_csv(filtered_pfam_path, index=False, sep='\t')
+    pfam['query name'] = pfam['query name'].str.slice(8)  # remove 'GC_grp:_'
+    pfam['query name'] = pfam['query name'].apply(lambda x: '|'.join(sorted(x.split('|'))))
     return pfam
 
 
@@ -427,17 +452,22 @@ def _is_overlapping(dom_a, dom_b):
         return True
 
 
-def _remove_overlapping_domains_from_same_clan(pfam_in):
-    """
-    Trying to follow the method in the pfam_scan pearl script from EBI.
-    """
-    pfam = pfam_in.copy()
+def load_pfam_clans():
     clans = pd.read_csv(DATA_DIR / 'external/Pfam-A.clans.tsv',
                         sep='\t',
                         header=None)
     if clans.loc[:, 0].duplicated().any():
         raise UserWarning()
     clans = clans.iloc[:, [0, 1]].dropna().set_index(0)[1].to_dict()
+    return clans
+
+
+def _remove_overlapping_domains_from_same_clan(pfam_in):
+    """
+    Trying to follow the method in the pfam_scan pearl script from EBI.
+    """
+    pfam = pfam_in.copy()
+    clans = load_pfam_clans()
     to_remove = set()
     pfam = pfam.sort_values(['query name', 'E-value'])
     # This is a bit slow
@@ -469,8 +499,7 @@ def load_annotated_6k_collection():
     algn = pyranges.read_gtf(path_6k_gtf).df
     algn = algn.loc[algn['Start'] < algn['End'], :]  # filter out problematic rows
     nt_seq = {r.name: r for r in SeqIO.parse(path_6k_fa, format='fasta')}
-    pfam = load_pfam_domains_for_6k()
-    dbd = load_DNA_binding_domains()
+    pfam = load_pfam_domains_6k()
     clones = load_valid_isoform_clones()
     algn = algn.loc[algn['transcript_id'].isin(clones['clone_acc'].unique()), :]
     genes = {}
@@ -490,7 +519,11 @@ def load_annotated_6k_collection():
             columns = ['gene_id', 'transcript_id', 'Chromosome', 'Strand', 'Start', 'End']
             for _i, row in algn.loc[algn['transcript_id'] == orf_id, columns].iterrows():
                 exons.append(isolib.Exon(*row.values))
-            isoforms.append(isolib.ORF(orf_id, exons, str(nt_seq[orf_id].seq)))
+            orf_name = orf_id.split("|")[0] + '-' + orf_id.split("|")[1].split("/")[0]
+            isoforms.append(isolib.ORF(orf_name,
+                                       exons,
+                                       str(nt_seq[orf_id].seq),
+                                       clone_acc=orf_id))
         genes[gene_name] = isolib.Gene(gene_name, isoforms)
     pfam['gene_name'] = pfam['query name'].apply(lambda x: x.split('|')[0])
     for _i, row in pfam.iterrows():
@@ -503,4 +536,131 @@ def load_annotated_6k_collection():
                                                                     accession=row['pfam_ac'],
                                                                     start=row['env_coord_from'] - 1,
                                                                     end=row['env_coord_to'])
+    _make_c2h2_zf_arrays(genes)
     return genes
+
+
+def _filter_gencode_gtf(out_file_path, genes_subset):
+    print('Filtering GENCODE .gtf file. Takes a few minutes but only needs to be done once.')
+    import pyranges
+    path_gencode_gtf = DATA_DIR / 'external/gencode.v30.annotation.gtf'
+    algn = pyranges.read_gtf(path_gencode_gtf, duplicate_attr=True)
+    algn = algn[(algn.Feature == 'CDS') &
+                (algn.gene_type == 'protein_coding') &
+                (algn.transcript_type == 'protein_coding')]
+    algn = algn[algn.tag.str.contains('basic')]
+    algn = algn[algn.gene_id.str.replace(r'\..*', '', regex=True).isin(genes_subset)]
+    algn.to_gtf(out_file_path)
+
+
+def _filter_gencode_fasta(out_file_path, genes_subset):
+    path_gencode_fa = DATA_DIR / 'external/gencode.v30.pc_transcripts.fa'
+    out_records = filter(lambda x: x.name.split('|')[1].split('.')[0] in genes_subset,
+                         SeqIO.parse(path_gencode_fa, format='fasta'))
+    SeqIO.write(out_records, out_file_path, 'fasta')
+
+
+def load_annotated_gencode_tfs():
+    import pyranges  # this import is hidden as it's causing installation problems
+    path_filtered_gencode_gtf = CACHE_DIR / 'filtered_CDS_PC_basic_TFs.gencode.v30.annotation.gtf'
+    path_filtered_gencode_fa = CACHE_DIR / 'filtered_only_TFs.gencode.v30.pc_transcripts.fa'
+    path_gencode_aa_seq = DATA_DIR / 'external/gencode.v30.pc_translations.fa'
+    tf_ensembl_gene_ids = set(pd.read_csv(DATA_DIR / 'external/Human_TF_DB_v_1.01.csv')['Ensembl ID'].values)
+    if not path_filtered_gencode_gtf.exists():
+        _filter_gencode_gtf(path_filtered_gencode_gtf, tf_ensembl_gene_ids)
+    if not path_filtered_gencode_fa.exists():
+        _filter_gencode_fasta(path_filtered_gencode_fa, tf_ensembl_gene_ids)
+    # note that pyranges switches the indexing to python 0-indexed, half-open interval
+    algn = pyranges.read_gtf(path_filtered_gencode_gtf, duplicate_attr=True).df
+    algn['gene_id'] = algn['gene_id'].str.replace(r'\..*', '', regex=True)
+    algn['transcript_id'] = algn['transcript_id'].str.replace(r'\..*', '', regex=True)
+    # remove Y-chromosome copies of PAR region, leaving the X copies
+    algn = algn.loc[~(algn['tag'].str.contains('PAR')), :]
+    nt_seq = {r.name.split('|')[0].split('.')[0]: r for r in SeqIO.parse(path_filtered_gencode_fa, format='fasta')}
+    if not algn['transcript_id'].isin(nt_seq).all():
+        missing = algn.loc[~algn['transcript_id'].isin(nt_seq), 'transcript_id'].values
+        raise ValueError(', '.join(missing) + ' not in ' + path_filtered_gencode_fa)
+
+    tf_gene_names = set(algn['gene_name'].unique())
+    valid_transcipts = set(algn['transcript_name'].unique())
+    aa_seqs = defaultdict(dict)
+    duplicates = {}
+    for record in SeqIO.parse(path_gencode_aa_seq, 'fasta'):
+        transcript_name, gene_name = record.name.split('|')[5:7]
+        if gene_name not in tf_gene_names or transcript_name not in valid_transcipts:
+            continue
+        aa_seqs[gene_name][transcript_name] = record.seq
+    for gene_transcripts in aa_seqs.values():
+        for transcript_name, seq in gene_transcripts.items():
+            duplicates[transcript_name] = '|'.join(sorted([k for k, v in gene_transcripts.items()
+                                                           if v == seq]))
+    unique_pc_transcripts = set([v.split('|')[0] for v in duplicates.values()])
+
+    pfam = load_pfam_domains_gencode()
+    genes = {}
+    for gene_id in tqdm.tqdm(algn['gene_id'].unique()):
+        if gene_id == 'ENSG00000163602':
+            continue  # RYBP has a sequencing error so don't have full CDS coordinates
+        transcript_ids = algn.loc[algn['gene_id'] == gene_id, 'transcript_id'].unique()
+        isoforms = []
+        for transcript_id in transcript_ids:
+            transcript_name, gene_name = nt_seq[transcript_id].name.split('|')[4:6]
+            if transcript_name not in unique_pc_transcripts:
+                continue
+            exons = []
+            columns = ['gene_id', 'transcript_id', 'Chromosome', 'Strand', 'Start', 'End']
+            for _i, row in algn.loc[algn['transcript_id'] == transcript_id, columns].iterrows():
+                exons.append(isolib.Exon(*row.values))
+            isoforms.append(isolib.ORF(transcript_name,
+                                       exons,
+                                       str(nt_seq[transcript_id].seq),
+                                       aa_seq=str(aa_seqs[gene_name][transcript_name]),
+                                       ensembl_transcript_id=transcript_id))
+        genes[gene_name] = isolib.Gene(gene_name, isoforms)
+    pfam['gene_name'] = pfam['query name'].apply(lambda x: '-'.join(x.split('|')[0].split('-')[:-1]))
+    for _i, row in pfam.iterrows():
+        gene_name = row['gene_name']
+        transcript_name = row['query name'].split('|')[0]
+        if gene_name not in genes or transcript_name not in genes[gene_name]:
+            continue
+        genes[gene_name][transcript_name].add_aa_seq_feature(category='Pfam_domain',
+                                                             name=row['target name'],
+                                                             accession=row['pfam_ac'],
+                                                             start=row['env_coord_from'] - 1,
+                                                             end=row['env_coord_to'])
+    _make_c2h2_zf_arrays(genes)
+    return genes
+
+
+def _make_c2h2_zf_arrays(tfs, MAX_NUM_AA_C2H2_ZF_SEPERATION=10):
+    clans = load_pfam_clans()
+    C2H2_ZF_PFAM_CLAN_AC = 'CL0361'
+    c2h2_zf_pfam_ids = {k for k, v in clans.items() if v == C2H2_ZF_PFAM_CLAN_AC}
+    for gene in tfs.values():
+        for orf in gene.orfs:
+            zfs = [d for d in orf.aa_seq_features if d.accession in c2h2_zf_pfam_ids]
+            if len(zfs) < 2:
+                continue
+            zfs = sorted(zfs, key=lambda x: x.start)
+            array = [zfs[0]]
+            for zf in zfs[1:]:
+                if zf.start <= (array[-1].end - 1) + MAX_NUM_AA_C2H2_ZF_SEPERATION:
+                    array.append(zf)
+                else:
+                    if len(array) > 1:
+                        orf.add_aa_seq_feature('ZF_array',
+                                                'C2H2_ZF_array_' + str(len(array)),
+                                                'C2H2_ZF_array_' + str(len(array)),
+                                                array[0].start,
+                                                array[-1].end)
+                        for dom in array:
+                            orf.remove_aa_seq_feature(dom.accession, dom.start, dom.end)
+                    array = [zf]
+            if len(array) > 1:
+                orf.add_aa_seq_feature('ZF_array',
+                                        'C2H2_ZF_array_' + str(len(array)),
+                                        'C2H2_ZF_array_' + str(len(array)),
+                                        array[0].start,
+                                        array[-1].end)
+                for dom in array:
+                    orf.remove_aa_seq_feature(dom.accession, dom.start, dom.end)

@@ -7,7 +7,9 @@
 # ==============================================================================
 
 import itertools
+import random
 
+import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 import pandas as pd
@@ -82,12 +84,13 @@ class Gene(GenomicFeature):
     def __init__(self, name, orfs):
         chroms = [orf.chrom for orf in orfs]
         strands = [orf.strand for orf in orfs]
+        msg = '{} - {}'.format(name, ', '.join([orf.name for orf in orfs]))
         if len(orfs) == 0:
-            raise ValueError("Need at least one ORF to define a gene")
+            raise ValueError("Need at least one ORF to define a gene\n" + msg)
         if len(set(chroms)) > 1:
-            raise ValueError("All ORFs must be on same chromosome")
+            raise ValueError("All ORFs must be on same chromosome\n" + msg)
         if len(set(strands)) > 1:
-            raise ValueError("All ORFs must be same strand")
+            raise ValueError("All ORFs must be same strand\n" + msg)
         # de-duplicate exons
         gene_exons = {}
         for orf in orfs:
@@ -99,9 +102,10 @@ class Gene(GenomicFeature):
         self.number_of_isoforms = len(orfs)
         self.name = name
         self.orfs = list(
-            sorted(orfs, key=lambda x: int(x.name.split("|")[1].split("/")[0]))
+            sorted(orfs, key=lambda x: int(x.name.split("-")[-1]))
         )
         self._orf_dict = {orf.name: orf for orf in self.orfs}
+        self._pairwise_changes = {}
         GenomicFeature.__init__(
             self,
             chroms[0],
@@ -140,6 +144,9 @@ class Gene(GenomicFeature):
         Doesn't currently do substitutions
 
         """
+        key = (ref_iso_name, alt_iso_name)
+        if key in self._pairwise_changes:  # check cache
+            return self._pairwise_changes[key]
         alignment = ''
         ref_iter = iter(self._orf_dict[ref_iso_name].residues)
         alt_iter = iter(self._orf_dict[alt_iso_name].residues)
@@ -223,6 +230,7 @@ class Gene(GenomicFeature):
                     for _remaining in ref_iter:
                         alignment += 'D'
                     break
+        self._pairwise_changes[key] = alignment   # cache result
         return alignment
 
     def aa_seq_disruption(self, ref_iso_name, alt_iso_name, domain_start, domain_end):
@@ -254,8 +262,6 @@ class Gene(GenomicFeature):
     def aa_feature_disruption(self, ref_iso_name):
         """
 
-        TODO: turn into a pandas table
-
         Args:
             ref_iso_name (str): [description]
 
@@ -277,6 +283,115 @@ class Gene(GenomicFeature):
                 row.update(r)
                 row.update({'length': aa_feature.end - aa_feature.start})
                 results.append(row.copy())
+        results = pd.DataFrame(results)
+        return results
+
+    def null_fraction_per_aa_feature(self, ref_iso_name):
+        """Fraction of aa features that would be affected if they were evenly
+            distributed along the AA sequence of the reference isoform.
+
+        Args:
+            ref_iso_name (str)
+
+        """
+        results = []
+        cache = {}
+        ref_iso = self._orf_dict[ref_iso_name]
+        row = {'gene': self.name, 'ref_iso': ref_iso_name}
+        for aa_feature in ref_iso.aa_seq_features:
+            for alt_iso_name, alt_iso in self._orf_dict.items():
+                if alt_iso_name == ref_iso_name:
+                    continue
+                row.update({'alt_iso': alt_iso_name,
+                            'accession': aa_feature.accession})
+                aa_feature_length = aa_feature.end - aa_feature.start
+                if (alt_iso_name, aa_feature_length) in cache:
+                    row['null_fraction_affected'] = cache[(alt_iso_name, aa_feature_length)]
+                    results.append(row.copy())
+                    continue
+                rs = self._null_feature_disruption(ref_iso_name, alt_iso_name, aa_feature_length)
+
+                def is_disrupted(feature_alignment_count):
+                    return any(v > 0 for v in feature_alignment_count.values())
+
+                fraction_affected = sum([int(is_disrupted(r)) for r in rs]) / len(rs)
+                row['null_fraction_affected'] = fraction_affected
+                results.append(row.copy())
+                cache[(alt_iso_name, aa_feature_length)] = fraction_affected
+        results = pd.DataFrame(results)
+        return results
+
+    def _null_feature_disruption(self, ref_iso_name, alt_iso_name, feature_length):
+        algn = self.pairwise_changes_relative_to_reference(ref_iso_name,
+                                                           alt_iso_name)
+        len_ref_iso_aa_seq = len(self._orf_dict[ref_iso_name].aa_seq)
+        if len(algn.replace("I", "")) != len_ref_iso_aa_seq:
+            msg = 'Something is wrong\n'
+            msg += ref_iso_name + ', ' + alt_iso_name
+            raise UserWarning(msg)
+        coords_ref_iso_aa_seq = [
+            "" if c == "I" else len(algn[:j].replace("I", ""))
+            for j, c in enumerate(algn)
+        ]
+        two_mers = {'deletion': [], 'insertion': [], 'frameshift': []}
+        for i in range(len_ref_iso_aa_seq - 1):
+            start = coords_ref_iso_aa_seq.index(i)
+            end = coords_ref_iso_aa_seq.index(i + 1) + 1
+            two_mer = algn[start:end]
+            two_mers['deletion'].append(two_mer.count('D'))
+            two_mers['insertion'].append(two_mer.count('I'))
+            two_mers['frameshift'].append(two_mer.count('F') + two_mer.count('f'))
+        results = [{k: sum(v[:feature_length]) for k, v in two_mers.items()}]
+        for i in range((len_ref_iso_aa_seq - feature_length) - 1):
+            r = {k: (v - two_mers[k][i]) + two_mers[k][i + feature_length] for k, v in results[-1].items()}
+            results.append(r)
+        return results
+
+    def random_aa_seq_feature_shuffle(self, ref_iso_name, n, subset=None):
+        """Pick random, non-overlapping, aa sequence locations for the features.
+
+        Args:
+            ref_iso_name (str):
+            n (int): number of randomizations
+            subset (set(str), optional): [description]. Defaults to None.
+        """
+        if len(self._orf_dict) == 1:
+            return pd.DataFrame([])
+
+        # inspired by: https://stackoverflow.com/questions/18641272
+        def _non_overlapping_random_feature_positons(len_aa_seq, feature_and_len):
+            if sum([v[1] for v in feature_and_len]) > len_aa_seq:
+                raise UserWarning('Impossible: ' + str(ref_iso_name))
+            indices = range(len_aa_seq - sum(v[1] - 1 for v in feature_and_len))
+            result = []
+            offset = 0
+            n = len(feature_and_len)
+            for (acc, l), i in zip(random.sample(feature_and_len, n),
+                                   sorted(random.sample(indices, n))):
+                i += offset
+                result.append((acc, (i, i + l)))
+                offset += l - 1
+            return result
+
+        results = []
+        ref_iso = self._orf_dict[ref_iso_name]
+        row = {'gene': self.name, 'ref_iso': ref_iso_name}
+        for i in range(n):
+            row['random_sample'] = i
+            rnd_pos = _non_overlapping_random_feature_positons(len(ref_iso.aa_seq),
+                                                               [(f.accession, len(f)) for f in ref_iso.aa_seq_features if subset is None or f.accession in subset])
+            for accession, (rnd_start, rnd_end) in rnd_pos:
+                for alt_iso_name, alt_iso in self._orf_dict.items():
+                    if alt_iso_name == ref_iso_name:
+                        continue
+                    row.update({'alt_iso': alt_iso_name})
+                    row.update({'accession': accession})
+                    r = self.aa_seq_disruption(
+                        ref_iso_name, alt_iso_name, rnd_start, rnd_end
+                    )
+                    row.update(r)
+                    row.update({'length': rnd_end - rnd_start})
+                    results.append(row.copy())
         results = pd.DataFrame(results)
         return results
 
@@ -393,7 +508,12 @@ class Gene(GenomicFeature):
         return list(itertools.combinations(self.orfs, 2))
 
     def __getitem__(self, orf_id):
-        return self._orf_dict[orf_id]
+        if orf_id in self._orf_dict:
+            return self._orf_dict[orf_id]
+        for orf in self.orfs:
+            if orf_id == orf.clone_acc:
+                return orf
+        raise KeyError()
 
     def __contains__(self, orf_id):
         return orf_id in self._orf_dict
@@ -419,27 +539,31 @@ class ORF(GenomicFeature):
         name,
         exons,
         nt_seq,
-        ensembl_transcipt_id=None,
+        aa_seq=None,
+        ensembl_transcript_id=None,
         ensembl_protein_id=None,
-        orf_id=None,
+        clone_acc=None,
     ):
         self.name = name
-        self.ensembl_transcipt_id = ensembl_transcipt_id
+        self.ensembl_transcript_id = ensembl_transcript_id
         self.ensembl_protein_id = ensembl_protein_id
-        self.orf_id = orf_id
+        self.clone_acc = clone_acc
         if len(exons) == 0:
-            raise ValueError("Need at least one exon to define a gene")
+            raise ValueError(self.name + " - Need at least one exon to define a gene")
         chroms = [exon.chrom for exon in exons]
         strands = [exon.strand for exon in exons]
         if len(set(chroms)) > 1:
-            raise ValueError("All exons must be on same chromosome")
+            raise ValueError(self.name + " - All exons must be on same chromosome")
         if len(set(strands)) > 1:
-            raise ValueError("All exons must be same strand")
+            raise ValueError(self.name + " - All exons must be same strand")
         is_neg_strand = strands[0] == "-"
         self.exons = sorted(exons, key=lambda x: x.start, reverse=is_neg_strand)
+        if aa_seq is not None:
+            self.aa_seq = aa_seq
         if isinstance(nt_seq, str):
             self.nt_seq = nt_seq
-            self.aa_seq = str(Seq(self.nt_seq).translate(to_stop=True))
+            if aa_seq is None:
+                self.aa_seq = str(Seq(self.nt_seq).translate(to_stop=True))
             self.codons = [
                 self.nt_seq[i:i + 3] for i in range(0, len(self.aa_seq) * 3, 3)
             ]
@@ -451,9 +575,20 @@ class ORF(GenomicFeature):
                                                              genomic_coords[1::3],
                                                              genomic_coords[2::3])
                                 ]
-        if ((sum(len(e) for e in self.exons) != len(self.aa_seq) * 3)
-           and (len(self.nt_seq) != sum(len(e) for e in self.exons))):
-            raise UserWarning('Genome alignment issues for ' + self.name)
+        len_all_exons = sum(len(e) for e in self.exons)
+        if ((len_all_exons != len(self.aa_seq) * 3)
+           and (len_all_exons != len(self.nt_seq))):
+            msg = """Genome alignment issues for {}\n
+                     {} exons with cumulative length: {}\n
+                     length aa seq: {}\n
+                     length nt seq: {}\n
+                  """
+            msg = msg.format(self.name,
+                             len(self.exons),
+                             len_all_exons,
+                             len(self.aa_seq),
+                             len(self.nt_seq))
+            raise UserWarning(msg)
         for aa, codon, codon_coords in zip(
             self.aa_seq, self.codons, codon_genomic_coords
         ):
@@ -474,6 +609,17 @@ class ORF(GenomicFeature):
         self.aa_seq_features.append(
             ProteinSequenceFeature(category, accession, name, start, end)
         )
+
+    def remove_aa_seq_feature(self, accession, start, end):
+        idx = [i for i, f in enumerate(self.aa_seq_features)
+               if f.accession == accession
+               and f.start == start
+               and f.end == end]
+        if len(idx) == 0:
+            raise ValueError('Feature not present')
+        if len(idx) > 1:
+            raise UserWarning('Unexpected duplicate domains')
+        del self.aa_seq_features[idx[0]]
 
 
 class Exon(GenomicFeature):

@@ -3,6 +3,7 @@ data
 figures
 misc
 tmp
+cache
 
 # ignore gloria's auxiliary analysis folder for now
 analysis2
