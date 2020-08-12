@@ -4,13 +4,13 @@ from pathlib import Path
 import itertools
 import warnings
 from collections import defaultdict
+import functools
 
 import numpy as np
 import pandas as pd
 from Bio import SeqIO
 import tqdm
 
-sys.path.append('../..')
 import isolib
 
 DATA_DIR = Path(__file__).resolve().parents[2] / 'data'
@@ -56,6 +56,10 @@ def load_valid_isoform_clones():
 
 
 def load_aligned_aa_seqs(gene_name):
+    """
+    TODO: this should be deleted, in favour of the genomic_alignment_of_aa_seqs method. Check for uses first
+
+    """
     data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             '../../data')
     path_6k_gtf = os.path.join(data_dir,
@@ -486,9 +490,41 @@ def _remove_overlapping_domains_from_same_clan(pfam_in):
     return pfam
 
 
-def load_DNA_binding_domains():
-    return pd.read_csv(DATA_DIR / 'internal/a2_final_list_of_dbd_pfam_and_names_ZF_marked.txt',
-                       sep='\t')
+def load_DNA_binding_domains(add_additional_domains=True):
+    dbd = pd.read_csv(DATA_DIR / 'internal/a2_final_list_of_dbd_pfam_and_names_ZF_marked.txt',
+                      sep='\t')
+    clans = load_pfam_clans()
+    dbd['clan'] = dbd['pfam'].map(clans)
+    if not add_additional_domains:
+        return dbd
+
+    # hand adding missing domain see issue #61
+    dbd = dbd.append({'dbd': 'BTD',
+                      'pfam': 'PF09270',
+                      'clan': clans.get('PF09270', np.nan)},
+                     ignore_index=True)
+
+    dbd_clans = {'CL0361',  # C2H2-ZF
+                'CL0012',  # Histone (mostly DNA binding...)
+                'CL0274',  # WRKY-GCM1
+                'CL0114',  # HMG-box
+                'CL0081',  # MBD-like
+                'CL0073',  # P53-like
+                'CL0407',  # TATA-Binding Protein like
+                'CL0018'}  # bZIP
+    for pfam_id in (pfam_id for pfam_id, clan_id in clans.items() if clan_id in dbd_clans):
+        if pfam_id not in dbd['pfam'].values:
+            dbd = dbd.append({'dbd': pfam_id,
+                              'pfam': pfam_id,
+                              'clan': clans.get(pfam_id, np.nan)},
+                             ignore_index=True)
+    return dbd
+
+
+@functools.lru_cache()
+def load_dbd_accessions():
+    dbd = load_DNA_binding_domains()
+    return set(dbd['pfam'].values).union({'C2H2_ZF_array_' + str(i) for i in range(2, 30)})
 
 
 def load_annotated_6k_collection():
@@ -528,15 +564,17 @@ def load_annotated_6k_collection():
     pfam['gene_name'] = pfam['query name'].apply(lambda x: x.split('|')[0])
     for _i, row in pfam.iterrows():
         gene_name = row['gene_name']
-        iso_name = row['query name']
+        iso_name = (row['query name'].split('|')[0] + '-' +
+                    row['query name'].split('|')[1].split('/')[0])
         if gene_name not in genes or iso_name not in genes[gene_name]:
             continue
-        genes[gene_name][iso_name].add_aa_seq_feature(category='Pfam_domain', 
-                                                                    name=row['target name'],
-                                                                    accession=row['pfam_ac'],
-                                                                    start=row['env_coord_from'] - 1,
-                                                                    end=row['env_coord_to'])
+        genes[gene_name][iso_name].add_aa_seq_feature(category='Pfam_domain',
+                                                      name=row['target name'],
+                                                      accession=row['pfam_ac'],
+                                                      start=row['env_coord_from'] - 1,
+                                                      end=row['env_coord_to'])
     _make_c2h2_zf_arrays(genes)
+    _add_dbd_flanks(genes)
     return genes
 
 
@@ -629,6 +667,7 @@ def load_annotated_gencode_tfs():
                                                              start=row['env_coord_from'] - 1,
                                                              end=row['env_coord_to'])
     _make_c2h2_zf_arrays(genes)
+    _add_dbd_flanks(genes)
     return genes
 
 
@@ -664,3 +703,25 @@ def _make_c2h2_zf_arrays(tfs, MAX_NUM_AA_C2H2_ZF_SEPERATION=10):
                                         array[-1].end)
                 for dom in array:
                     orf.remove_aa_seq_feature(dom.accession, dom.start, dom.end)
+
+
+def _add_dbd_flanks(genes):
+    for gene in genes.values():
+        for isoform in gene.orfs:
+            for dbd in isoform.dna_binding_domains:
+                start_n = max(0, dbd.start - 15)
+                end_n = dbd.start
+                start_c = dbd.end
+                end_c = min(len(isoform.aa_seq), dbd.end + 15)
+                if dbd.start > 0:
+                    isoform.add_aa_seq_feature('DBD_flank',
+                                               dbd.accession + '_flank_N',
+                                               'N_DBD_flank',
+                                               start_n,
+                                               end_n)
+                if dbd.end < len(isoform.aa_seq):
+                    isoform.add_aa_seq_feature('DBD_flank',
+                                               dbd.accession + '_flank_C',
+                                               'C_DBD_flank',
+                                               start_c,
+                                               end_c)

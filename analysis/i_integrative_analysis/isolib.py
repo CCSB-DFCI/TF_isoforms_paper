@@ -10,9 +10,12 @@ import itertools
 import random
 
 from matplotlib import pyplot as plt
-import matplotlib.patches as mpatches
+import matplotlib.patches as patches
+import matplotlib.gridspec as gridspec
 import pandas as pd
+import seaborn as sns
 from Bio.Seq import Seq
+from Bio import Align
 
 
 class GenomicFeature:
@@ -394,6 +397,28 @@ class Gene(GenomicFeature):
         results = pd.DataFrame(results)
         return results
 
+    def _get_exon_colors(self):
+        exon_bounds = [(exon.start, exon.end) for exon in self.exons]
+        if self.strand == "-":
+            exon_bounds = exon_bounds[::-1]
+        merged_exon_bounds = []
+        for i in range(len(exon_bounds) - 1):
+            # they're sorted so start_a <= start_b
+            start_a, end_a = exon_bounds[i]
+            start_b, end_b = exon_bounds[i + 1]
+            if end_a < start_b:
+                merged_exon_bounds.append(exon_bounds[i])
+            else:  # overlapping exons
+                exon_bounds[i + 1] = (start_a, max(end_a, end_b))
+        merged_exon_bounds.append(exon_bounds[-1])
+        exon_colors = {}
+        for color, (start, _stop) in zip(sns.cubehelix_palette(len(merged_exon_bounds)),
+                                         merged_exon_bounds):
+            for exon in self.exons:
+                if exon.start >= start:
+                    exon_colors[exon.start] = color
+        return exon_colors
+
     def exon_diagram(self,
                      intron_nt_space=30,
                      height=0.5,
@@ -442,19 +467,21 @@ class Gene(GenomicFeature):
             msg += "position: {}\nboundaries: {}\n".format(pos, bounds_in)
             raise ValueError(msg)
 
+        exon_colors = self._get_exon_colors()
         xmin = _map_position(merged_exon_bounds[0][0])
         xmax = _map_position(merged_exon_bounds[-1][1] - 1)
         for i, orf in enumerate(self.orfs):
             for exon in orf.exons:
                 x_start = _map_position(exon.start)
                 x_stop = _map_position(exon.end - 1)
-                box = mpatches.Rectangle(
+                box = patches.Rectangle(
                     [x_start, i],
                     x_stop - x_start,
                     height,
                     lw=1,
                     ec="k",
-                    fc="mediumpurple",
+                    #fc="mediumpurple",
+                    fc=exon_colors[exon.start],
                     joinstyle="round",
                 )
                 ax.add_patch(box)
@@ -472,13 +499,15 @@ class Gene(GenomicFeature):
                     if num_nt_diff <= subtle_splice_threshold:
                         ax.text(_map_position(exon.end - 1),
                                 i + height + 0.03,
-                                '{} nt'.format(diff_exon_ends[num_nt_diff]),
+                                '{} nt'.format(num_nt_diff),
                                 ha='left',
                                 va='top',
                                 fontsize=subtle_splice_font_size)
             if not draw_domains:
                 continue
             for dom in orf.aa_seq_features:
+                if dom.name.endswith('_DBD_flank'):
+                    continue
                 dom_x_start = _map_position(orf.residues[dom.start].coords[0])
                 dom_x_stop = _map_position(orf.residues[dom.end - 1].coords[2])
                 dom_x_center = (dom_x_stop - dom_x_start) / 2 + dom_x_start
@@ -527,6 +556,119 @@ class Gene(GenomicFeature):
         ax.set_ylim(len(self.orfs), height - 1)
         for spine in ax.spines.values():
             spine.set_visible(False)
+
+    def protein_diagram(self, ax=None, protein_color='pink', domain_label_rotation=0):
+        # deal with overlaps
+        # dimensions
+        if ax is None:
+            ax = plt.gca()
+        gs = gridspec.GridSpecFromSubplotSpec(len(self.orfs), 1,
+                                              subplot_spec=ax.get_subplotspec(),
+                                              hspace=2)
+        max_seq_len = max(len(iso.aa_seq) for iso in self.orfs)
+
+        aligner = Align.PairwiseAligner()
+        aligner.mode = 'global'
+        aligner.open_gap_score = -99999
+        aligner.extend_gap_score = -1
+        aligner.target_end_gap_score = 0
+        aligner.query_end_gap_score = 0
+
+        def _get_offset(algn):
+            t = algn.__str__().splitlines()[0]
+            q = algn.__str__().splitlines()[2]
+            target_end_gap = len(t.partition(t.strip('-'))[0])
+            query_end_gap = len(q.partition(q.strip('-'))[0])
+            return query_end_gap - target_end_gap
+
+        aa_seqs = [x.aa_seq for x in self.orfs]
+        offsets = [0,]
+        for i in range(1, len(aa_seqs)):
+            alignments = [aligner.align(aa_seqs[j], aa_seqs[i])[0] for j in range(i)]
+            i_best_alignment = max(range(len(alignments)), key=lambda x: alignments[x].score)
+            offsets.append(_get_offset(alignments[i_best_alignment]) + offsets[i_best_alignment])
+        offsets
+        x_max = max(len(iso.aa_seq) + x for iso, x in zip(self.orfs, offsets))
+
+        exon_colors = self._get_exon_colors()
+
+        for i, isoform in enumerate(self.orfs):
+            ax = plt.subplot(gs.new_subplotspec((i, 0), rowspan=1, colspan=1))
+            seq_len = len(isoform.aa_seq)
+            domains = [d for d in isoform.aa_seq_features
+                       if not (d.accession.endswith('_flank_N') or
+                               d.accession.endswith('_flank_C'))]
+            ax.set_ylim(0, 1)
+            ax.set_xlim(0.5 - min(offsets), x_max + 0.5)
+            height = 1
+            prot = patches.Rectangle((0.5 + offsets[i],
+                                      0.5 - height / 2),
+                                     width=seq_len,
+                                     height=height,
+                                     clip_on=False,
+                                     #facecolor=protein_color,
+                                     facecolor=None,
+                                     edgecolor='grey',
+                                     linewidth=1.5)
+            ax.add_patch(prot)
+
+            exon_pos = 0
+            for exon in isoform.exons:
+                n_aa_exon = (exon.end - exon.start) / 3
+                exon = patches.Rectangle((0.5 + offsets[i] + exon_pos,
+                                          0.5 - height / 2),
+                                         width=n_aa_exon,
+                                         height=height,
+                                         clip_on=False,
+                                         facecolor=exon_colors[exon.start],
+                                         edgecolor=None,
+                                         linewidth=0)
+                ax.add_patch(exon)
+                exon_pos += n_aa_exon
+
+            for domain in domains:
+                start, stop = domain.start, domain.end
+                color = 'none'  #'orange'
+                ax.add_patch(patches.FancyBboxPatch(((start - 0.5) + offsets[i],
+                                                     0.5 - (height * 0.95) / 2),
+                                            width=(stop - start) + 1,
+                                            height=height*0.95,
+                                            clip_on=False,
+                                            facecolor=color,
+                                            boxstyle='round,pad=0,rounding_size=10',
+                                            mutation_aspect=1/seq_len,
+                                            edgecolor='black',
+                                            linewidth=2,
+                                            linestyle='--'
+                                            ))
+                if i == 0:
+                    ax.text(x=(start + (stop - start) / 2) + offsets[i],
+                            y=0.5,
+                            s=domain.name,
+                            url='http://pfam.xfam.org/family/' + domain.accession,
+                            ha='center',
+                            va='center',
+                            fontweight='bold',
+                            fontsize=7,
+                            rotation=domain_label_rotation,)
+
+            ax.text(x=-0.5,
+                    y=0.5,
+                    s=isoform.name,
+                    horizontalalignment='right',
+                    verticalalignment='center')
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['bottom'].set_position(('data', 0.5 - height / 2))
+            domain_pos = [(d.start, d.end) for d in domains]
+            xticks = [1] + [i for ij in domain_pos for i in ij] + [seq_len]
+            ax.set_xticks([x + offsets[i] for x in xticks])
+            ax.set_xticklabels([str(x) for x in xticks])
+            ax.xaxis.set_tick_params(rotation=90)
+            ax.set_yticks([])
+
 
     def orf_pairs(self):
         return list(itertools.combinations(self.orfs, 2))
@@ -644,6 +786,13 @@ class ORF(GenomicFeature):
         if len(idx) > 1:
             raise UserWarning('Unexpected duplicate domains')
         del self.aa_seq_features[idx[0]]
+
+    @property
+    def dna_binding_domains(self):
+        # hiding import to avoid circular imports
+        from data_loading import load_dbd_accessions
+        dbd_acc = load_dbd_accessions()
+        return [dom for dom in self.aa_seq_features if dom.accession in dbd_acc]
 
 
 class Exon(GenomicFeature):
