@@ -179,6 +179,8 @@ def y2h_ppi_per_paralog_pair_plot(tf_gene_a,
                 fontsize=30,
                 fontweight='bold',
                 color='grey')
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
         return
     binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels([strikethrough(name) if all_na else name
@@ -204,6 +206,8 @@ def y1h_pdi_per_tf_gene_plot(gene_name,
                 fontsize=30,
                 fontweight='bold',
                 color='grey')
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
         return
     binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels([strikethrough(name) if all_na else name
@@ -223,6 +227,8 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):
                 fontsize=30,
                 fontweight='bold',
                 color='grey')
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
         return
     clones = [isoform_display_name(acc) for acc in data.loc[data['gene'] == tf_gene_name, 'clone_acc'].values
               for __ in range(len(rep_columns))]

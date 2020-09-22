@@ -193,9 +193,11 @@ def load_y1h_pdi_data(add_missing_data=False):
     if add_missing_data:
         isoforms = load_valid_isoform_clones()
         df = (pd.merge(df,
-               isoforms.rename(columns={'gene': 'tf', 'clone_acc': 'unique_acc'}),
-               on=['tf', 'unique_acc'],
-               how='outer'))
+                       isoforms.loc[:, ['gene', 'clone_acc']]
+                               .rename(columns={'gene': 'tf',
+                                                'clone_acc': 'unique_acc'}),
+                       on=['tf', 'unique_acc'],
+                       how='outer'))
     df = df.sort_values(['tf', 'unique_acc'])
     return df
 

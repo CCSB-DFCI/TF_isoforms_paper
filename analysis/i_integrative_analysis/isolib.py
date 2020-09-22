@@ -1,13 +1,9 @@
-# title           :isoclass.py
-# description     :Classes representing isoform-related objects.
-# author          :Gloria Sheynkman
-# date            :May 1st, 2019
-# version         :1
-# python_version  :2.7.15
-# ==============================================================================
-
+"""
+authors: Gloria Sheynkman, Luke Lambourne
+"""
 import itertools
 import random
+import collections
 
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
@@ -93,14 +89,34 @@ class Gene(GenomicFeature):
             raise ValueError("All ORFs must be on same chromosome\n" + msg)
         if len(set(strands)) > 1:
             raise ValueError("All ORFs must be same strand\n" + msg)
+        chrom = chroms[0]
+        strand = strands[0]
+
         # de-duplicate exons
-        gene_exons = {}
-        for orf in orfs:
-            for exon in orf.exons:
-                gene_exons[(exon.start, exon.end)] = exon
-        self.exons = sorted(
-            gene_exons.values(), key=lambda x: x.start, reverse=(strands[0] == "-")
-        )
+        exon_bounds = {(exon.start, exon.end) for iso in orfs for exon in iso.exons}
+        exon_bounds = list(sorted(exon_bounds, key=lambda x: x[0]))
+        merged_exon_bounds = []
+        for i in range(len(exon_bounds) - 1):
+            start_a, end_a = exon_bounds[i]
+            start_b, end_b = exon_bounds[i + 1]
+            if end_a < start_b:
+                merged_exon_bounds.append(exon_bounds[i])
+            else:  # overlapping exons
+                exon_bounds[i + 1] = (start_a, max(end_a, end_b))
+        merged_exon_bounds.append(exon_bounds[-1])
+        if strand == "-":
+            merged_exon_bounds = merged_exon_bounds[::-1]
+        self.exons = []
+        for start, end in merged_exon_bounds:
+            self.exons.append(Exon(name, name, chrom, strand, start, end))
+        # set exon number by gene of each isoform
+        for iso in orfs:
+            for isoform_exon in iso.exons:
+                for i, gene_exon in enumerate(self.exons):
+                    if isoform_exon.start >= gene_exon.start and isoform_exon.end <= gene_exon.end:
+                        isoform_exon.exon_number_on_gene = i + 1
+                        break
+
         self.number_of_isoforms = len(orfs)
         self.name = name
         self.orfs = list(
@@ -110,11 +126,69 @@ class Gene(GenomicFeature):
         self._pairwise_changes = {}
         GenomicFeature.__init__(
             self,
-            chroms[0],
-            strands[0],
+            chrom,
+            strand,
             min([orf.start for orf in orfs]),
             max([orf.end for orf in orfs]),
         )
+
+    def alternative_start(self, isoform_a, isoform_b):
+
+        def _start_pos(iso):
+            return iso.exons[0].start if self.strand == '+' else iso.exons[0].end
+
+        a = _start_pos(self._orf_dict[isoform_a])
+        b = _start_pos(self._orf_dict[isoform_b])
+        return a != b
+
+    def alternative_stop(self, isoform_a, isoform_b):
+
+        def _stop_pos(iso):
+            # TODO: is this correct? as there might be untranslated region in exon?
+            return iso.exons[-1].end if self.strand == '+' else iso.exons[-1].start
+
+        a = _stop_pos(self._orf_dict[isoform_a])
+        b = _stop_pos(self._orf_dict[isoform_b])
+        return a != b
+
+    def alternative_internal_exon(self, isoform_a, isoform_b):
+        a = [e.exon_number_on_gene for e in self._orf_dict[isoform_a].exons]
+        b = [e.exon_number_on_gene for e in self._orf_dict[isoform_b].exons]
+        start = min(min(a), min(b))
+        stop = min(max(a), max(b))
+        internal_a = {e for e in a if e > start and e < stop}
+        internal_b = {e for e in b if e > start and e < stop}
+        return internal_a != internal_b
+
+    def alternative_3prime(self, isoform_a, isoform_b):
+        for exon_a in self._orf_dict[isoform_a].exons:
+            for exon_b in self._orf_dict[isoform_b].exons:
+                if exon_a.exon_number_on_gene == exon_b.exon_number_on_gene:
+                    if self.strand == '+':
+                        if exon_a.start != exon_b.start:
+                            return True
+                    else:
+                        if exon_a.end != exon_b.end:
+                            return True
+        return False
+
+    def alternative_5prime(self, isoform_a, isoform_b):
+        for exon_a in self._orf_dict[isoform_a].exons:
+            for exon_b in self._orf_dict[isoform_b].exons:
+                if exon_a.exon_number_on_gene == exon_b.exon_number_on_gene:
+                    if self.strand == '+':
+                        if exon_a.end != exon_b.end:
+                            return True
+                    else:
+                        if exon_a.start != exon_b.start:
+                            return True
+        return False
+
+    def exon_skipping(self, isoform_a, isoform_b):
+        raise NotImplementedError()
+
+    def exon_switching(self, isoform_a, isoform_b):
+        raise NotImplementedError()
 
     def genomic_alignment_of_aa_seqs(self, subset=None):
         """genomic co-ordinates of translated regions"""
@@ -398,55 +472,73 @@ class Gene(GenomicFeature):
         return results
 
     def _get_exon_colors(self):
-        exon_bounds = [(exon.start, exon.end) for exon in self.exons]
-        if self.strand == "-":
-            exon_bounds = exon_bounds[::-1]
-        merged_exon_bounds = []
-        for i in range(len(exon_bounds) - 1):
-            # they're sorted so start_a <= start_b
-            start_a, end_a = exon_bounds[i]
-            start_b, end_b = exon_bounds[i + 1]
-            if end_a < start_b:
-                merged_exon_bounds.append(exon_bounds[i])
-            else:  # overlapping exons
-                exon_bounds[i + 1] = (start_a, max(end_a, end_b))
-        merged_exon_bounds.append(exon_bounds[-1])
+        """
+        """
+        merged_exon_bounds = [(exon.start, exon.end) for exon in self.exons]
+        colors_frame_1 = sns.cubehelix_palette(len(merged_exon_bounds),
+                                               start=2.3,
+                                               rot=0.9,
+                                               light=0.7,
+                                               dark=0.3,
+                                               hue=1)
+        colors_frame_2 = sns.cubehelix_palette(len(merged_exon_bounds),
+                                               start=0.8,
+                                               rot=0.9,
+                                               light=0.7,
+                                               dark=0.3,
+                                               hue=1)
+        colors_frame_3 = sns.cubehelix_palette(len(merged_exon_bounds),
+                                               start=2.9,
+                                               rot=0.9,
+                                               light=0.7,
+                                               dark=0.3,
+                                               hue=1)
+
+        def _pick_representative_cat(s):
+            if s == '':
+                return ''
+            # reverse so returns f in case of e.g. s = 'Mf'
+            return collections.Counter(s[::-1]).most_common(1)[0][0]
+
         exon_colors = {}
-        for color, (start, _stop) in zip(sns.cubehelix_palette(len(merged_exon_bounds)),
-                                         merged_exon_bounds):
-            for exon in self.exons:
-                if exon.start >= start:
-                    exon_colors[exon.start] = color
+        for orf in self.orfs:
+            algn = self.pairwise_changes_relative_to_reference(self.orfs[0].name, orf.name)
+            algn = algn.replace('D', '')
+            split_algn = [algn[sum(len(e) for e in orf.exons[:i]) // 3:
+                               sum(len(e) for e in orf.exons[:i + 1]) // 3] for i in range(len(orf.exons))]
+            change_cats = [_pick_representative_cat(s) for s in split_algn]
+            for exon, cat in zip(orf.exons, change_cats):
+                merge_exon_idx = exon.exon_number_on_gene - 1
+                if cat == 'f':
+                    exon_colors[(orf.name, exon.start, exon.end)] = colors_frame_3[merge_exon_idx]
+                elif cat == 'F':
+                    exon_colors[(orf.name, exon.start, exon.end)] = colors_frame_2[merge_exon_idx]
+                else:
+                    exon_colors[(orf.name, exon.start, exon.end)] = colors_frame_1[merge_exon_idx]
         return exon_colors
 
     def exon_diagram(self,
                      intron_nt_space=30,
                      height=0.5,
-                     draw_domains=True,
+                     draw_domains=False,
                      ax=None,
                      domain_font_size=6,
                      subtle_splice_font_size=6,
                      subtle_splice_threshold=20):
         if ax is None:
             ax = plt.gca()
-        exon_bounds = [(exon.start, exon.end) for exon in self.exons]
-        if self.strand == "-":
-            exon_bounds = exon_bounds[::-1]
-        merged_exon_bounds = []
+
+        merged_exon_bounds = [(exon.start, exon.end) for exon in self.exons]
         diff_exon_ends = {}
-        for i in range(len(exon_bounds) - 1):
-            # they're sorted above so start_a <= start_b
-            start_a, end_a = exon_bounds[i]
-            start_b, end_b = exon_bounds[i + 1]
-            if end_a < start_b:
-                merged_exon_bounds.append(exon_bounds[i])
-            else:  # overlapping exons
-                exon_bounds[i + 1] = (start_a, max(end_a, end_b))
-                if start_a != start_b:
-                    diff_exon_ends[start_b] = start_b - start_a
-                if end_a != end_b:
-                    diff_exon_ends[min(end_a, end_b)] = abs(end_a - end_b)
-        merged_exon_bounds.append(exon_bounds[-1])
+        for orf in self.orfs:
+            for exon in orf.exons:
+                merged_start, merged_end = merged_exon_bounds[exon.exon_number_on_gene - 1]
+                if exon.start != merged_start:
+                    diff_exon_ends[exon.start] = exon.start - merged_start
+                if exon.end != merged_end:
+                    diff_exon_ends[exon.end] = merged_end - exon.end
+        if self.strand == "-":
+            merged_exon_bounds = merged_exon_bounds[::-1]
         mapped_exon_bounds = [merged_exon_bounds[0]]
         for i in range(1, len(merged_exon_bounds)):
             a = mapped_exon_bounds[i - 1][1] + intron_nt_space
@@ -480,11 +572,12 @@ class Gene(GenomicFeature):
                     height,
                     lw=1,
                     ec="k",
-                    #fc="mediumpurple",
-                    fc=exon_colors[exon.start],
+                    fc=exon_colors[(orf.name, exon.start, exon.end)],
                     joinstyle="round",
                 )
                 ax.add_patch(box)
+    
+                # draw number of NT for small exon boundary changes
                 if exon.start in diff_exon_ends:
                     num_nt_diff = diff_exon_ends[exon.start]
                     if num_nt_diff <= subtle_splice_threshold:
@@ -503,6 +596,7 @@ class Gene(GenomicFeature):
                                 ha='left',
                                 va='top',
                                 fontsize=subtle_splice_font_size)
+
             if not draw_domains:
                 continue
             for dom in orf.aa_seq_features:
@@ -557,9 +651,17 @@ class Gene(GenomicFeature):
         for spine in ax.spines.values():
             spine.set_visible(False)
 
-    def protein_diagram(self, ax=None, protein_color='pink', domain_label_rotation=0):
-        # deal with overlaps
-        # dimensions
+    def protein_diagram(self, ax=None, isoform_order=None, protein_color='pink', domain_label_rotation=0):
+
+        def _remove_overlapping_domains(domains):
+            """Keep longest domains"""
+            non_overlapping = []
+            for dom in sorted(domains, key=lambda x: len(x), reverse=True):
+                if any(dom.start < d.end and dom.end > d.start for d in non_overlapping):
+                    continue
+                non_overlapping.append(dom)
+            return non_overlapping
+
         if ax is None:
             ax = plt.gca()
         gs = gridspec.GridSpecFromSubplotSpec(len(self.orfs), 1,
@@ -592,12 +694,17 @@ class Gene(GenomicFeature):
 
         exon_colors = self._get_exon_colors()
 
-        for i, isoform in enumerate(self.orfs):
+        domains = [d for d in self.orfs[0].aa_seq_features
+                    if not (d.accession.endswith('_flank_N') or
+                            d.accession.endswith('_flank_C'))]
+        domains = _remove_overlapping_domains(domains)
+        if isoform_order is not None:
+            isoforms = [self[iso_id] for iso_id in isoform_order]
+        else:
+            isoforms = self.orfs
+        for i, isoform in enumerate(isoforms):
             ax = plt.subplot(gs.new_subplotspec((i, 0), rowspan=1, colspan=1))
             seq_len = len(isoform.aa_seq)
-            domains = [d for d in isoform.aa_seq_features
-                       if not (d.accession.endswith('_flank_N') or
-                               d.accession.endswith('_flank_C'))]
             ax.set_ylim(0, 1)
             ax.set_xlim(0.5 - min(offsets), x_max + 0.5)
             height = 1
@@ -615,12 +722,16 @@ class Gene(GenomicFeature):
             exon_pos = 0
             for exon in isoform.exons:
                 n_aa_exon = (exon.end - exon.start) / 3
+                n_aa_exon = min(n_aa_exon,
+                                seq_len - exon_pos)
                 exon = patches.Rectangle((0.5 + offsets[i] + exon_pos,
                                           0.5 - height / 2),
                                          width=n_aa_exon,
                                          height=height,
                                          clip_on=False,
-                                         facecolor=exon_colors[exon.start],
+                                         facecolor=exon_colors[(isoform.name,
+                                                                exon.start,
+                                                                exon.end)],
                                          edgecolor=None,
                                          linewidth=0)
                 ax.add_patch(exon)
@@ -628,26 +739,28 @@ class Gene(GenomicFeature):
 
             for domain in domains:
                 start, stop = domain.start, domain.end
-                color = 'none'  #'orange'
-                ax.add_patch(patches.FancyBboxPatch(((start - 0.5) + offsets[i],
-                                                     0.5 - (height * 0.95) / 2),
-                                            width=(stop - start) + 1,
-                                            height=height*0.95,
-                                            clip_on=False,
-                                            facecolor=color,
-                                            boxstyle='round,pad=0,rounding_size=10',
-                                            mutation_aspect=1/seq_len,
-                                            edgecolor='black',
-                                            linewidth=2,
-                                            linestyle='--'
-                                            ))
+                ax.axvline(x=(start - 0.5) + offsets[0],
+                           ymin=-1,
+                           ymax=2,
+                           clip_on=False,
+                           linestyle='--',
+                           linewidth=2,
+                           color='green')
+                ax.axvline(x=(stop + 0.5) + offsets[0],
+                           ymin=-1,
+                           ymax=2,
+                           clip_on=False,
+                           linestyle='--',
+                           linewidth=1.5,
+                           color='green')
                 if i == 0:
                     ax.text(x=(start + (stop - start) / 2) + offsets[i],
-                            y=0.5,
+                            y=1.2,
                             s=domain.name,
                             url='http://pfam.xfam.org/family/' + domain.accession,
                             ha='center',
-                            va='center',
+                            va='bottom',
+                            color='green',
                             fontweight='bold',
                             fontsize=7,
                             rotation=domain_label_rotation,)
@@ -662,13 +775,13 @@ class Gene(GenomicFeature):
             ax.spines['left'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.spines['bottom'].set_position(('data', 0.5 - height / 2))
-            domain_pos = [(d.start, d.end) for d in domains]
-            xticks = [1] + [i for ij in domain_pos for i in ij] + [seq_len]
+            #domain_pos = [(d.start, d.end) for d in domains]
+            #xticks = [1] + [i for ij in domain_pos for i in ij] + [seq_len]
+            xticks = [1, seq_len]
             ax.set_xticks([x + offsets[i] for x in xticks])
             ax.set_xticklabels([str(x) for x in xticks])
             ax.xaxis.set_tick_params(rotation=90)
             ax.set_yticks([])
-
 
     def orf_pairs(self):
         return list(itertools.combinations(self.orfs, 2))
@@ -679,7 +792,7 @@ class Gene(GenomicFeature):
         for orf in self.orfs:
             if orf_id == orf.clone_acc:
                 return orf
-        raise KeyError()
+        raise KeyError(orf_id)
 
     def __contains__(self, orf_id):
         return orf_id in self._orf_dict
