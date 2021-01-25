@@ -120,29 +120,90 @@ def load_y2h_isoform_data(require_at_least_one_ppi_per_isoform=True,
     """
     y2h = load_isoform_and_paralog_y2h_data(add_missing_data, filter_for_valid_clones)
     ppi = y2h.loc[(y2h['category'] == 'tf_isoform_ppis'),
-                ['ad_clone_acc',
-                'ad_gene_symbol',
-                'db_gene_symbol',
-                'score']].copy()
+                  ['ad_clone_acc',
+                   'ad_orf_id',
+                   'ad_gene_symbol',
+                   'db_gene_symbol',
+                   'db_orf_id',
+                   'score']].copy()
+    # at least one positive with an isoform per partner, for each TF gene
     ppi = ppi.loc[ppi.groupby(['ad_gene_symbol', 'db_gene_symbol'])
-                    ['score']
-                    .transform(lambda row: (row == '1').any()),
-                :]
+                  ['score']
+                  .transform(lambda row: (row == '1').any()),
+                  :]
+    # at least one succussful test per isoform
     ppi = ppi.loc[ppi.groupby('ad_clone_acc')
-                    ['score']
-                    .transform(lambda x: (x.isin(['0', '1']).any())),
-                :]
+                  ['score']
+                  .transform(lambda x: (x.isin(['0', '1']).any())),
+                  :]
     if require_at_least_one_ppi_per_isoform:
-        ppi = ppi.loc[ppi.groupby('ad_clone_acc')['score'].transform(lambda x: (x == '1').any()),
-                    :]
+        ppi = ppi.loc[ppi.groupby('ad_clone_acc')
+                      ['score']
+                      .transform(lambda x: (x == '1').any()),
+                      :]
+    # at least two isoforms per TF gene
     ppi = ppi.loc[ppi.groupby('ad_gene_symbol')
-                    ['ad_clone_acc']
-                    .transform(lambda x: x.nunique() >= 2),
-                :]
+                  ['ad_clone_acc']
+                  .transform(lambda x: x.nunique() >= 2),
+                  :]
+    # successful tests with at least two isoforms of a TF gene, per partner
+    ppi = ppi.loc[ppi.groupby(['ad_gene_symbol', 'db_gene_symbol'])['score']
+                  .transform(lambda x: x.isin(['0', '1']).sum() >= 2),
+                  :]
+    # require at least two successfully tested partners per TF gene
+    ppi = ppi.loc[ppi['ad_gene_symbol'].map((ppi.loc[ppi['score'].isin(['0', '1'])]
+                  .groupby(['ad_gene_symbol', 'db_gene_symbol']).size() >= 2)
+                  .groupby('ad_gene_symbol').sum() >= 2),
+                  :]
     return ppi
 
 
-def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_clones=True):
+def load_y2h_paralogs_additional_data():
+    """Pairs tested in Y2H for the paralogs data, in addition to isoform pairs.
+
+    """
+    y2h = load_isoform_and_paralog_y2h_data()
+    pairs = load_paralog_pairs()
+    y2h_paralog = y2h.loc[y2h['category'].isin(['tf_paralog_ppis',
+                                                'paralog_with_PDI',
+                                                'non_paralog_control']), :].copy()
+    pair_map = defaultdict(set)
+    for _i, row in pairs.iterrows():
+        a, b = row['tf_gene_a'], row['tf_gene_b']
+        pair_map[a].add(b)
+        pair_map[b].add(a)
+
+    def find_matching_gene(row):
+        matches = pair_map[row['ad_gene_symbol']]
+        matches = set(y2h.loc[(y2h['category'] == 'tf_isoform_ppis') &
+                              y2h['ad_gene_symbol'].isin(matches) &
+                              (y2h['db_gene_symbol'] == row['db_gene_symbol']), 
+                              'ad_gene_symbol'].unique())
+        if len(matches) == 0:
+            return np.nan
+        else:
+            return '|'.join(matches)
+
+    y2h_paralog['paired_tf_gene'] = y2h_paralog.apply(find_matching_gene, axis=1)
+
+    gte2iso = (y2h.loc[y2h['category'] == 'tf_isoform_ppis', :]
+                  .groupby('ad_gene_symbol')['ad_clone_acc']
+                  .nunique() >= 2)
+    gte2iso = set(gte2iso.index[gte2iso])
+    y2h_paralog['at_least_2_isoforms'] = (y2h_paralog['ad_gene_symbol'].isin(gte2iso) &
+                                          y2h_paralog['paired_tf_gene'].apply(lambda x: any(g in gte2iso for g in x.split('|')) if pd.notnull(x) else False))
+
+    gte2partner = (y2h.loc[y2h['category'] == 'tf_isoform_ppis', :]
+                    .groupby('ad_gene_symbol')['db_gene_symbol']
+                    .nunique() >= 2)
+    gte2partner = set(gte2partner.index[gte2partner])
+    y2h_paralog['at_least_2_partners'] = (y2h_paralog['ad_gene_symbol'].isin(gte2partner) &
+                                          y2h_paralog['paired_tf_gene'].apply(lambda x: any(g in gte2partner for g in x.split('|')) if pd.notnull(x) else False))
+
+    return y2h_paralog
+
+
+def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_clones=True, add_partner_cateogories=False):
     """
     - NS: sequencing failed
     - NC: no call (e.g., mis-spotting)
@@ -172,13 +233,14 @@ def load_isoform_and_paralog_y2h_data(add_missing_data=False, filter_for_valid_c
                       on=['ad_gene_symbol', 'db_gene_symbol', 'ad_clone_acc', 'category'],
                       how='outer')
         df['score'] = df['score'].fillna('NA')
-    cat_info = load_ppi_partner_categories()
-    cats = cat_info.groupby('category')['partner'].apply(set).to_dict()
-    for cat, members in cats.items():
-        df['is_partner_category_' + '_'.join(cat.split())] = df['db_gene_symbol'].isin(members)
-    cofac_type = cat_info.groupby('cofactor_type')['partner'].apply(set).to_dict()
-    for subtype, members in cofac_type.items():
-        df['is_cofactor_subtype_' + subtype] = df['db_gene_symbol'].isin(members)
+    if add_partner_cateogories:
+        cat_info = load_ppi_partner_categories()
+        cats = cat_info.groupby('category')['partner'].apply(set).to_dict()
+        for cat, members in cats.items():
+            df['is_partner_category_' + '_'.join(cat.split())] = df['db_gene_symbol'].isin(members)
+        cofac_type = cat_info.groupby('cofactor_type')['partner'].apply(set).to_dict()
+        for subtype, members in cofac_type.items():
+            df['is_cofactor_subtype_' + subtype] = df['db_gene_symbol'].isin(members)
     return df
 
 
@@ -278,8 +340,11 @@ def load_seq_comparison_data():
     return df['aa_seq_pct_id']
 
 
-def load_paralog_pairs():
-    """Pairs of TF gene paralogs and non-paralogs that were tested
+def load_paralog_pairs(filter_for_valid_clones=True):
+    """Pairs of TF gene paralogs and non-paralogs that were tested in Y2H pairwise tests.
+
+    WARNING: the aa sequence identity is just whatever is first in the file.
+    Need to settle on which one to use.
 
     Returns:
         pandas.DataFrame: one row for each pair
@@ -300,10 +365,25 @@ def load_paralog_pairs():
                              'tf2': 'tf_gene_b',
                              'AAseq_identity%': 'pct_aa_seq_identity'}))
     df = df.drop_duplicates()
+    if filter_for_valid_clones:
+        valid_clones = load_valid_isoform_clones()
+        df = df.loc[df['tf_gene_a'].isin(valid_clones['gene']) &
+                    df['tf_gene_b'].isin(valid_clones['gene']), :]
+    if (df['tf_gene_a'] == df['tf_gene_b']).any():
+        raise ValueError('Same gene twice, should be two different genes')
     return df
 
 
 def load_isoforms_of_paralogs_pairs(pairs, isoforms):
+    """[summary]
+
+    Args:
+        pairs ([type]): [description]
+        isoforms (bool): [description]
+
+    Returns:
+        [type]: [description]
+    """
     pairs = pd.merge(pairs.loc[:, ['tf_gene_a', 'tf_gene_b', 'is_paralog_pair']],
                      isoforms.loc[:, ['gene', 'clone_acc', 'aa_seq']],
                      how='inner',
