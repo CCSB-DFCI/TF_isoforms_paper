@@ -42,6 +42,12 @@ def load_valid_isoform_clones():
     df = df.sort_values(['gene', 'in_m1h', 'in_y2h', 'in_y1h'], ascending=[True] + [False] * 3)
     df = (df.loc[~df['dup_idx'].duplicated() | df['dup_idx'].isnull(), ['gene', 'clone_acc']]
             .sort_values(['gene', 'clone_acc']))
+
+
+    nt_seq_file = DATA_DIR / 'internal/j2_6k_unique_isoacc_and_nt_seqs.fa'
+    nt = {r.id: str(r.seq) for r in SeqIO.parse(nt_seq_file, format='fasta')}
+    df['cds'] = df['clone_acc'].map(nt)
+
     aa_seq_file = DATA_DIR / 'internal/j2_6k_unique_isoacc_and_prot_seqs.fa'
     aa = {r.id.split('xxx')[1]: str(r.seq) for r in
           SeqIO.parse(aa_seq_file, format='fasta')}
@@ -620,6 +626,7 @@ def load_annotated_6k_collection():
     pfam = load_pfam_domains_6k()
     clones = load_valid_isoform_clones()
     algn = algn.loc[algn['transcript_id'].isin(clones['clone_acc'].unique()), :]
+    nt_seq = {k: v for k, v in nt_seq.items() if k in clones['clone_acc'].unique()}
     genes = {}
     for gene_name in algn['gene_id'].unique():
         if gene_name == 'PCGF6':  # has a 6nt insertion that doesn't map to reference genome
@@ -638,10 +645,10 @@ def load_annotated_6k_collection():
             for _i, row in algn.loc[algn['transcript_id'] == orf_id, columns].iterrows():
                 exons.append(isolib.Exon(*row.values))
             orf_name = orf_id.split("|")[0] + '-' + orf_id.split("|")[1].split("/")[0]
-            isoforms.append(isolib.ORF(orf_name,
-                                       exons,
-                                       str(nt_seq[orf_id].seq),
-                                       clone_acc=orf_id))
+            isoforms.append(isolib.Cloned_Isoform(clone_name=orf_name,
+                                                  exons=exons,
+                                                  clone_nt_seq=str(nt_seq[orf_id].seq),
+                                                  clone_acc=orf_id))
         genes[gene_name] = isolib.Gene(gene_name, isoforms)
     pfam['gene_name'] = pfam['query name'].apply(lambda x: x.split('|')[0])
     for _i, row in pfam.iterrows():
@@ -727,15 +734,20 @@ def load_annotated_gencode_tfs():
             transcript_name, gene_name = nt_seq[transcript_id].name.split('|')[4:6]
             if transcript_name not in unique_pc_transcripts:
                 continue
+            cds = _extract_region(nt_seq[transcript_id], 'CDS', raise_error=True)
+            utr5 = _extract_region(nt_seq[transcript_id], 'UTR5', raise_error=False)
+            utr3 = _extract_region(nt_seq[transcript_id], 'UTR3', raise_error=False)
             exons = []
             columns = ['gene_id', 'transcript_id', 'Chromosome', 'Strand', 'Start', 'End']
             for _i, row in algn.loc[algn['transcript_id'] == transcript_id, columns].iterrows():
                 exons.append(isolib.Exon(*row.values))
-            isoforms.append(isolib.ORF(transcript_name,
-                                       exons,
-                                       str(nt_seq[transcript_id].seq),
-                                       aa_seq=str(aa_seqs[gene_name][transcript_name]),
-                                       ensembl_transcript_id=transcript_id))
+            isoforms.append(isolib.Isoform(transcript_name,
+                                           exons,
+                                           CDS_nt_seq=cds,
+                                           aa_seq=str(aa_seqs[gene_name][transcript_name]),
+                                           UTR_5prime_nt_seq=utr5,
+                                           UTR_3prime_nt_seq=utr3,
+                                           ensembl_transcript_id=transcript_id))
         genes[gene_name] = isolib.Gene(gene_name, isoforms)
     pfam['gene_name'] = pfam['query name'].apply(lambda x: '-'.join(x.split('|')[0].split('-')[:-1]))
     for _i, row in pfam.iterrows():
@@ -751,6 +763,25 @@ def load_annotated_gencode_tfs():
     _make_c2h2_zf_arrays(genes)
     _add_dbd_flanks(genes)
     return genes
+
+
+def _extract_region(rec, region, raise_error=True):
+    """
+    Get subset of nucleotide sequence that correpsonds to different
+    regions (e.g. CDS, 3'UTR) when bounds of regions are specified
+    in desciption in fasta file, like this:
+    >HES4-204|HES4|667|UTR5:1-8|CDS:9-578|UTR3:579-667|
+    """
+    bounds = [x for x in rec.name.split('|') if x.startswith(region + ':')]
+    if len(bounds) == 0:
+        if raise_error:
+            raise UserWarning('Missing {} coordinates\n'.format(region) + rec.name)
+        else:
+            return None
+    if len(bounds) > 1:
+        raise UserWarning('More than one set of {} coordinates\n'.format(region) + rec.name)
+    start, stop = bounds[0][len(region) + 1:].split('-')
+    return str(rec.seq)[int(start) - 1:int(stop)]
 
 
 def _make_c2h2_zf_arrays(tfs, MAX_NUM_AA_C2H2_ZF_SEPERATION=10):

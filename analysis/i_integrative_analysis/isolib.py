@@ -21,7 +21,9 @@ class GenomicFeature:
         chrom (str): chromosome identifier
         strand (str): must be '+'/'-'
         start/end (int): chromosomal coordinates, follows python indexing
-            convention of 0-indexed half-open interval, start must be before end
+            convention of 0-indexed half-open interval, start must be a 
+            lower number than end, i.e. it is not the 'start'/'end' in
+            the reading direction if it's on the negative strand.
 
     """
 
@@ -75,7 +77,7 @@ class Gene(GenomicFeature):
 
     Attributes:
         name (str): gene symbol
-        orfs (list(isolib.ORF)): protein coding isoforms of gene
+        orfs (list(isolib.Isoform)): protein coding isoforms of gene
 
     """
 
@@ -84,11 +86,11 @@ class Gene(GenomicFeature):
         strands = [orf.strand for orf in orfs]
         msg = '{} - {}'.format(name, ', '.join([orf.name for orf in orfs]))
         if len(orfs) == 0:
-            raise ValueError("Need at least one ORF to define a gene\n" + msg)
+            raise ValueError("Need at least one isoform to define a gene\n" + msg)
         if len(set(chroms)) > 1:
-            raise ValueError("All ORFs must be on same chromosome\n" + msg)
+            raise ValueError("All isoforms must be on same chromosome\n" + msg)
         if len(set(strands)) > 1:
-            raise ValueError("All ORFs must be same strand\n" + msg)
+            raise ValueError("All isoforms must be same strand\n" + msg)
         chrom = chroms[0]
         strand = strands[0]
 
@@ -119,9 +121,11 @@ class Gene(GenomicFeature):
 
         self.number_of_isoforms = len(orfs)
         self.name = name
+
         self.orfs = list(
             sorted(orfs, key=lambda x: int(x.name.split("-")[-1]))
         )
+
         self._orf_dict = {orf.name: orf for orf in self.orfs}
         self._pairwise_changes = {}
         GenomicFeature.__init__(
@@ -197,7 +201,7 @@ class Gene(GenomicFeature):
             subset = all_orf_names
         orfs = [orf for orf in self.orfs if orf.name in subset]
         if len(orfs) != len(subset):
-            msg = "Missing ORFs: "
+            msg = "Missing isoforms: "
             msg += "/".join([s for s in subset if s not in all_orf_names])
             raise ValueError(msg)
         gene_coords = sorted(
@@ -322,7 +326,7 @@ class Gene(GenomicFeature):
 
         def _coords_transform_aa_seq_to_alignment(i, alignment):
             if i > len(alignment.replace("I", "")):
-                raise ValueError("position is not in ORF AA sequence")
+                raise ValueError("position is not in isoform AA sequence")
             aa_seq_indices = [
                 "" if c == "I" else len(alignment[:j].replace("I", ""))
                 for j, c in enumerate(alignment)
@@ -803,13 +807,13 @@ class Gene(GenomicFeature):
         return s
 
 
-class ORF(GenomicFeature):
+class Isoform(GenomicFeature):
     """Protein coding isoform of a gene
 
     Attributes:
         name (str): isoform name
         exons (list(isolib.Exon)): exons in isoform
-        nt_seq (str): nucleotide sequence
+        nt_seq (str): nucleotide sequence of CDS, excluding stop codon
 
     """
 
@@ -817,69 +821,78 @@ class ORF(GenomicFeature):
         self,
         name,
         exons,
-        nt_seq,
+        CDS_nt_seq,
         aa_seq=None,
+        UTR_5prime_nt_seq=None,
+        UTR_3prime_nt_seq=None,
         ensembl_transcript_id=None,
         ensembl_protein_id=None,
-        clone_acc=None,
     ):
         self.name = name
         self.ensembl_transcript_id = ensembl_transcript_id
         self.ensembl_protein_id = ensembl_protein_id
-        self.clone_acc = clone_acc
-        if len(exons) == 0:
-            raise ValueError(self.name + " - Need at least one exon to define a gene")
-        chroms = [exon.chrom for exon in exons]
-        strands = [exon.strand for exon in exons]
-        if len(set(chroms)) > 1:
-            raise ValueError(self.name + " - All exons must be on same chromosome")
-        if len(set(strands)) > 1:
-            raise ValueError(self.name + " - All exons must be same strand")
-        is_neg_strand = strands[0] == "-"
-        self.exons = sorted(exons, key=lambda x: x.start, reverse=is_neg_strand)
-        if aa_seq is not None:
-            self.aa_seq = aa_seq
-        if isinstance(nt_seq, str):
-            self.nt_seq = nt_seq
-            if aa_seq is None:
+
+        if isinstance(CDS_nt_seq, str):
+            if len(CDS_nt_seq) % 3 != 0:
+                raise ValueError('CDS sequence length must be multiple of 3')
+            stop_codons = {'TAG', 'TAA', 'TGA'}
+            codons = [CDS_nt_seq[i:i + 3] for i in range(0, len(CDS_nt_seq), 3)]
+            if any(codon in stop_codons for codon in codons[:-1]):
+                raise ValueError('CDS sequnce must not contain early stop codon')
+            self.CDS_nt_seq = CDS_nt_seq
+            if CDS_nt_seq[-3:] in stop_codons:
+                self.nt_seq = CDS_nt_seq[:-3]
+            else:
+                self.nt_seq = CDS_nt_seq
+            if aa_seq is not None:
+                self.aa_seq = aa_seq
+            else:
                 self.aa_seq = str(Seq(self.nt_seq).translate(to_stop=True))
             self.codons = [
                 self.nt_seq[i:i + 3] for i in range(0, len(self.aa_seq) * 3, 3)
             ]
         else:
             raise NotImplementedError()
+        if len(self.nt_seq) != len(self.aa_seq) * 3:
+            raise UserWarning('Inconsistent DNA and AA sequences – ' + self.name)
+
+        if len(exons) == 0:
+            raise ValueError(self.name + " - Need at least one exon to define an isoform")
+        chroms = [exon.chrom for exon in exons]
+        strands = [exon.strand for exon in exons]
+        if len(set(chroms)) > 1:
+            raise ValueError(self.name + " - All exons must be on same chromosome")
+        if len(set(strands)) > 1:
+            raise ValueError(self.name + " - All exons must be same strand")
+        len_all_exons = sum(len(e) for e in exons)
+        if len_all_exons != len(self.nt_seq):
+            msg = 'exons not same length as CDS sequence minus stop\n'
+            msg += 'exons = {} nt, CDS = {} nt\n'.format(len_all_exons, len(self.nt_seq))
+            msg += self.name
+            raise UserWarning(msg)
+        is_neg_strand = strands[0] == "-"
+        self.exons = sorted(exons, key=lambda x: x.start, reverse=is_neg_strand)
+
         residues = []
         genomic_coords = [i for exon in self.exons for i in exon.genomic_coords()]
         codon_genomic_coords = [(a, b, c) for a, b, c in zip(genomic_coords[0::3],
                                                              genomic_coords[1::3],
                                                              genomic_coords[2::3])
                                 ]
-        len_all_exons = sum(len(e) for e in self.exons)
-        if ((len_all_exons != len(self.aa_seq) * 3)
-           and (len_all_exons != len(self.nt_seq))):
-            msg = """Genome alignment issues for {}\n
-                     {} exons with cumulative length: {}\n
-                     length aa seq: {}\n
-                     length nt seq: {}\n
-                  """
-            msg = msg.format(self.name,
-                             len(self.exons),
-                             len_all_exons,
-                             len(self.aa_seq),
-                             len(self.nt_seq))
-            raise UserWarning(msg)
         for aa, codon, codon_coords in zip(
             self.aa_seq, self.codons, codon_genomic_coords
         ):
             residues.append(Residue(aa, codon, chroms[0], strands[0], codon_coords))
         self.residues = residues
+        self.UTR_5prime_nt_seq = UTR_5prime_nt_seq
+        self.UTR_3prime_nt_seq = UTR_3prime_nt_seq
         self.aa_seq_features = []
         GenomicFeature.__init__(
             self,
             chroms[0],
             strands[0],
-            min([exon.start for exon in exons]),
-            max([exon.end for exon in exons]),
+            min([exon.start for exon in self.exons]),
+            max([exon.end for exon in self.exons]),
         )
 
     def add_aa_seq_feature(self, category, accession, name, start, end):
@@ -906,6 +919,81 @@ class ORF(GenomicFeature):
         from data_loading import load_dbd_accessions
         dbd_acc = load_dbd_accessions()
         return [dom for dom in self.aa_seq_features if dom.accession in dbd_acc]
+
+    def __repr__(self):
+        """
+        
+        TODO: clone ID, gencode ID
+        
+        """
+        s = "Isoform: {}\n, {} aa".format(self.name, len(self.aa_seq))
+        return s
+
+
+class Cloned_Isoform(Isoform):
+    def __init__(
+        self,
+        clone_name,
+        exons,
+        clone_nt_seq,
+        clone_acc=None,
+        aa_seq=None,
+        UTR_5prime_nt_seq=None,
+        UTR_3prime_nt_seq=None,
+        ensembl_transcript_id=None,
+        ensembl_protein_id=None,
+    ):
+        self.clone_name = clone_name
+        self.clone_acc = clone_acc
+        self.clone_nt_seq = clone_nt_seq
+
+        def _trim_clone_nt_seq_to_CDS_and_strip_stop_codon(clone_seq):
+            """
+            The clones can have untranslated regions at the 3' end, for example
+            if there's a inclusion of an exon containing a stop codon, in between 
+            the primers. There is also sometimes a stop codon at the end and sometimes
+            not. Also not all sequences have length a multiple of 3. This function 
+            normalizes the nucleotide sequence to just be the coding sequence without
+            the stop codon.
+            """
+            stop_codons = {'TAG', 'TAA', 'TGA'}
+            codons = [clone_seq[i:i + 3] for i in range(0, len(clone_seq), 3)]
+            if any(codon in stop_codons for codon in codons):
+                return ''.join(codons[:min(codons.index(stop) for stop in stop_codons if stop in codons)])
+            elif len(clone_seq) % 3 == 0:
+                return clone_seq
+            else:
+                return clone_seq[:-(len(clone_seq) % 3)]
+
+        cds_nt_seq = _trim_clone_nt_seq_to_CDS_and_strip_stop_codon(clone_nt_seq)
+        is_neg_strand = exons[0].strand == "-"
+        ordered_exons = sorted(exons, key=lambda x: x.start, reverse=is_neg_strand)
+        if sum(len(e) for e in exons) != len(cds_nt_seq):
+            # removing non-coding sequence from exons
+            trimmed_exons = []
+            cummulative_n_nt = 0
+            for exon in ordered_exons:
+                if cummulative_n_nt < len(cds_nt_seq):
+                    trimmed_exons.append(exon)
+                cummulative_n_nt += len(exon)
+            if is_neg_strand:
+                trimmed_exons[-1].start = trimmed_exons[-1].end - (len(cds_nt_seq) - sum(len(e) for e in trimmed_exons[:-1]))
+            else:
+                trimmed_exons[-1].end = trimmed_exons[-1].start + (len(cds_nt_seq) - sum(len(e) for e in trimmed_exons[:-1]))
+            if sum(len(e) for e in trimmed_exons) != len(cds_nt_seq):
+                raise UserWarning(self.name, ' - problem with reducing exons to coding-only')
+        else:
+            trimmed_exons = exons
+
+        Isoform.__init__(self,
+                         name=clone_name,
+                         exons=trimmed_exons,
+                         CDS_nt_seq=cds_nt_seq,
+                         aa_seq=aa_seq,
+                         UTR_5prime_nt_seq=UTR_5prime_nt_seq,
+                         UTR_3prime_nt_seq=UTR_3prime_nt_seq,
+                         ensembl_transcript_id=ensembl_transcript_id,
+                         ensembl_protein_id=ensembl_protein_id)
 
 
 class Exon(GenomicFeature):
@@ -938,6 +1026,10 @@ class Exon(GenomicFeature):
             return reversed(range(self.start, self.end))
         else:
             raise UserWarning("Strand not set correctly (+/-)")
+
+    def __repr__(self):
+        s = "Exon of {} {} nt\n".format(self.transcript_id, len(self))
+        return s
 
 
 class Residue:
