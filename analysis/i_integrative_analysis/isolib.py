@@ -825,12 +825,15 @@ class Isoform(GenomicFeature):
         aa_seq=None,
         UTR_5prime_nt_seq=None,
         UTR_3prime_nt_seq=None,
-        ensembl_transcript_id=None,
-        ensembl_protein_id=None,
+        ensembl_protein_ids=None,
+        ensembl_transcript_ids=None,
+        ensembl_transcript_names=None
     ):
         self.name = name
-        self.ensembl_transcript_id = ensembl_transcript_id
-        self.ensembl_protein_id = ensembl_protein_id
+        self.ensembl_protein_ids = ensembl_protein_ids
+        self.ensembl_transcript_names = ensembl_transcript_names
+        self.ensembl_transcript_ids = ensembl_transcript_ids
+
 
         if isinstance(CDS_nt_seq, str):
             if len(CDS_nt_seq) % 3 != 0:
@@ -921,12 +924,13 @@ class Isoform(GenomicFeature):
         return [dom for dom in self.aa_seq_features if dom.accession in dbd_acc]
 
     def __repr__(self):
-        """
-        
-        TODO: clone ID, gencode ID
-        
-        """
-        s = "Isoform: {}\n, {} aa".format(self.name, len(self.aa_seq))
+        if self.ensembl_protein_ids is not None:
+            ids = ' / '.join(['|'.join(self.ensembl_transcript_names),
+                            '|'.join(self.ensembl_protein_ids),
+                            '|'.join(self.ensembl_transcript_ids)])
+        else:
+            ids = self.name
+        s = "Isoform: {}\nlength: {} aa".format(ids, len(self.aa_seq))
         return s
 
 
@@ -940,8 +944,9 @@ class Cloned_Isoform(Isoform):
         aa_seq=None,
         UTR_5prime_nt_seq=None,
         UTR_3prime_nt_seq=None,
-        ensembl_transcript_id=None,
-        ensembl_protein_id=None,
+        ensembl_transcript_ids=None,
+        ensembl_transcript_names=None,
+        ensembl_protein_ids=None,
     ):
         self.clone_name = clone_name
         self.clone_acc = clone_acc
@@ -992,8 +997,14 @@ class Cloned_Isoform(Isoform):
                          aa_seq=aa_seq,
                          UTR_5prime_nt_seq=UTR_5prime_nt_seq,
                          UTR_3prime_nt_seq=UTR_3prime_nt_seq,
-                         ensembl_transcript_id=ensembl_transcript_id,
-                         ensembl_protein_id=ensembl_protein_id)
+                         ensembl_protein_ids=ensembl_protein_ids,
+                         ensembl_transcript_ids=ensembl_transcript_ids,
+                         ensembl_transcript_names=ensembl_transcript_ids)
+
+    def __repr__(self):
+        s = 'Clone acc: {}\n'.format(self.clone_acc)
+        s += Isoform.__repr__(self)
+        return s
 
 
 class Exon(GenomicFeature):
