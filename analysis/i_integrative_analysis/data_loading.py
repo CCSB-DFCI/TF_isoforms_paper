@@ -616,9 +616,20 @@ def load_dbd_accessions():
 
 
 def load_annotated_6k_collection():
+    """
+    
+    TODO:
+        - hgnc gene symbol
+        - MANE / APPRIS
+        - activation domains
+        - disorder
+    
+    """
     path_6k_gtf = DATA_DIR / 'internal/c_6k_unique_acc_aligns.gtf'
     path_6k_fa = DATA_DIR / 'internal/j2_6k_unique_isoacc_and_nt_seqs.fa'
     path_gencode_aa_seq = DATA_DIR / 'external/gencode.v30.pc_translations.fa'
+    path_MANE_select = DATA_DIR / 'external/MANE-select-transcripts_human_GRCh38.p13_ensembl104.tsv'
+    path_APPRIS = DATA_DIR / 'external/APPRIS-annotations_human_GRCh38.p13_ensembl104.tsv'
     import pyranges
     # note that pyranges switches the indexing to python 0-indexed, half-open interval
     algn = pyranges.read_gtf(path_6k_gtf).df
@@ -667,25 +678,59 @@ def load_annotated_6k_collection():
     _add_dbd_flanks(genes)
 
     ensembl_proteins = defaultdict(lambda: defaultdict(list))
+    gene_name_to_ensembl_id = {}
     for record in SeqIO.parse(path_gencode_aa_seq, 'fasta'):
         ids = record.id.split('|')
         ensembl_protein_id = ids[0].split('.')[0]
         ensembl_transcript_id = ids[1].split('.')[0]
+        ensembl_gene_id = ids[2].split('.')[0]
         ensembl_trancript_name = ids[5]
         ensembl_gene_name = ids[6]
         ensembl_proteins[ensembl_gene_name][str(record.seq)].append((ensembl_protein_id,
                                                                      ensembl_transcript_id,
                                                                      ensembl_trancript_name))
+        gene_name_to_ensembl_id[ensembl_gene_name] = ensembl_gene_id
     ensembl_proteins['ZNF223'] = ensembl_proteins['AC092072.1']  # HACK fix for gene that has been renamed
+    gene_name_to_ensembl_id['ZNF223'] = gene_name_to_ensembl_id['AC092072.1']  # HACK fix for gene that has been renamed
+
     for tf in genes.values():
         if tf.name not in ensembl_proteins:
             raise UserWarning('{} not in gencode AA sequence file'.format(tf.name))
-        mapping = _match_clones_to_ensembl_transcripts({iso.name: iso.aa_seq for iso in tf.orfs},
+        tf.ensembl_gene_id = gene_name_to_ensembl_id[tf.name]
+        mapping, scores = _match_clones_to_ensembl_transcripts({iso.name: iso.aa_seq for iso in tf.orfs},
                                                        {tuple(v): k for k, v in ensembl_proteins[tf.name].items()})
         for isoform_name, identifiers in mapping.items():
             tf[isoform_name].ensembl_protein_ids = [ids[0] for ids in identifiers]
             tf[isoform_name].ensembl_transcript_ids = [ids[1] for ids in identifiers]
             tf[isoform_name].ensembl_transcript_names = [ids[2] for ids in identifiers]
+            tf[isoform_name].alignment_clone_to_ensembl_score = scores[isoform_name]
+
+    mane = pd.read_csv(path_MANE_select, sep='\t')
+    mane_select = set(mane['Transcript stable ID'].values)
+    for tf in genes.values():
+        if tf.ensembl_gene_id not in mane['Gene stable ID'].values:
+            continue  # not all genes have a MANE select isoform
+        for iso in tf.orfs:
+            if iso.is_novel_isoform():
+                continue
+            iso.is_MANE_select_transcript = any(t in mane_select for t in iso.ensembl_transcript_ids)
+
+    appris = pd.read_csv(path_APPRIS, sep='\t')
+    if appris['Transcript stable ID'].duplicated().any():
+        raise UserWarning('Unexpected duplicate ensembl transcript IDs in {}'.format(path_APPRIS))
+    appris = appris.set_index('Transcript stable ID')['APPRIS annotation'].to_dict()
+
+    def _consolidate_appris_annotations(annotations):
+        return sorted(list(annotations), key=lambda x: int(x[-1]) - 99 * x.startswith('principle'))[0]
+
+    for tf in genes.values():
+        for iso in tf.orfs:
+            if iso.is_novel_isoform():
+                continue
+            annotations = {appris[tid] for tid in iso.ensembl_transcript_ids if tid in appris}
+            if len(annotations) > 0:
+                iso.APPRIS_annotation = _consolidate_appris_annotations(annotations)
+
     return genes
 
 
@@ -700,6 +745,29 @@ def _seq_identity(seq_a, seq_b):
     alignment = aligner.align(seq_a, seq_b)[0].__str__().split()[1]
     return alignment.count('|') / len(alignment)
 
+
+def _count_mismatch(seq_a, seq_b):
+    if seq_a == seq_b:
+        return 0.
+    aligner = Align.PairwiseAligner()
+    aligner.mode = 'global'
+    aligner.match_score = 1
+    aligner.mismatch_score = -1
+    aligner.gap_score = -1
+    alignment = aligner.align(seq_a, seq_b)[0].__str__().split()[1]
+    return alignment.count('.')
+
+
+def _count_gaps(seq_a, seq_b):
+    if seq_a == seq_b:
+        return 0.
+    aligner = Align.PairwiseAligner()
+    aligner.mode = 'global'
+    aligner.match_score = 1
+    aligner.mismatch_score = -1
+    aligner.gap_score = -1
+    alignment = aligner.align(seq_a, seq_b)[0].__str__().split()[1]
+    return alignment.count('-')
 
 MIN_AA_SEQ_ID_TO_MATCH_ENSEMBL_TO_CLONE = 0.98
 def _match_clones_to_ensembl_transcripts(clone_seqs, ensembl_seqs, cutoff=MIN_AA_SEQ_ID_TO_MATCH_ENSEMBL_TO_CLONE):
@@ -719,13 +787,21 @@ def _match_clones_to_ensembl_transcripts(clone_seqs, ensembl_seqs, cutoff=MIN_AA
         return ValueError('Empty ensembl sequences')
 
     ids = np.array([[_seq_identity(a, b) for a in clone_seqs.values()] for b in ensembl_seqs.values()])
+    mismatch = np.array([[_count_mismatch(a, b) for a in clone_seqs.values()] for b in ensembl_seqs.values()])
+    gaps = np.array([[_count_gaps(a, b) for a in clone_seqs.values()] for b in ensembl_seqs.values()])
+
     best_match_for_clone = ids == ids.max(axis=0)
     best_match_for_ensembl = ids == ids.max(axis=1).reshape(ids.shape[0], 1)
     matches = best_match_for_clone & best_match_for_ensembl & (ids >= cutoff)
     mapping = {a: b for i, a in enumerate(clone_seqs.keys()) 
                     for j, b in enumerate(ensembl_seqs.keys()) 
                     if matches[j, i]}
-    return mapping
+
+    scores = {a: (ids[j, i], mismatch[j, i], gaps[j, i]) for i, a in enumerate(clone_seqs.keys()) 
+                   for j, _b in enumerate(ensembl_seqs.keys()) 
+                    if matches[j, i]}
+
+    return mapping, scores
 
 
 def _filter_gencode_gtf(out_file_path, genes_subset):

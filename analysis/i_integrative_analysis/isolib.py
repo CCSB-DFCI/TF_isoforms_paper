@@ -479,12 +479,16 @@ class Gene(GenomicFeature):
         """
         """
         merged_exon_bounds = [(exon.start, exon.end) for exon in self.exons]
-        colors_frame_1 = sns.cubehelix_palette(len(merged_exon_bounds),
-                                               start=2.3,
-                                               rot=0.9,
-                                               light=0.7,
-                                               dark=0.3,
-                                               hue=1)
+        #colors_frame_1 = sns.cubehelix_palette(len(merged_exon_bounds),
+        #                                       start=2.3,
+        #                                       rot=0.9,
+        #                                       light=0.7,
+        #                                       dark=0.3,
+        #                                       hue=1)
+        # TODO: will this error if too many exons?
+        colors_frame_1 = sns.color_palette(palette='bright',
+                                           n_colors=len(merged_exon_bounds))
+
         colors_frame_2 = sns.cubehelix_palette(len(merged_exon_bounds),
                                                start=0.8,
                                                rot=0.9,
@@ -1000,6 +1004,10 @@ class Cloned_Isoform(Isoform):
                          ensembl_protein_ids=ensembl_protein_ids,
                          ensembl_transcript_ids=ensembl_transcript_ids,
                          ensembl_transcript_names=ensembl_transcript_ids)
+
+
+    def is_novel_isoform(self):
+        return self.ensembl_transcript_ids is None
 
     def __repr__(self):
         s = 'Clone acc: {}\n'.format(self.clone_acc)
