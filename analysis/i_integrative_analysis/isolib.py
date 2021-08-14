@@ -41,6 +41,15 @@ class GenomicFeature:
     def __len__(self):
         return self.end - self.start
 
+    def __eq__(self, other):
+        return ((self.chrom == other.chrom) and
+                (self.start == other.start) and
+                (self.end == other.end) and
+                (self.strand == other.strand))
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 
 class ProteinSequenceFeature:
     """A contiguous stretch of amino acids within a protein.
@@ -81,7 +90,8 @@ class Gene(GenomicFeature):
 
     """
 
-    def __init__(self, name, orfs):
+    # NOTE: if you change arguments here, also need to change in add_isoforms method
+    def __init__(self, name, orfs, ensembl_gene_id=None):
         chroms = [orf.chrom for orf in orfs]
         strands = [orf.strand for orf in orfs]
         msg = '{} - {}'.format(name, ', '.join([orf.name for orf in orfs]))
@@ -93,6 +103,7 @@ class Gene(GenomicFeature):
             raise ValueError("All isoforms must be same strand\n" + msg)
         chrom = chroms[0]
         strand = strands[0]
+        self.ensembl_gene_id = ensembl_gene_id
 
         # de-duplicate exons
         exon_bounds = {(exon.start, exon.end) for iso in orfs for exon in iso.exons}
@@ -135,6 +146,14 @@ class Gene(GenomicFeature):
             min([orf.start for orf in orfs]),
             max([orf.end for orf in orfs]),
         )
+
+    def add_isoforms(self, isoforms):
+        # NOTE: this is a little dangerous. If new arguments are added to
+        # __init__ then they need to be added here. I couldn't think of a
+        # better way to do it...
+        self.__init__(self.name,
+                      self.orfs + isoforms,
+                      ensembl_gene_id=self.ensembl_gene_id)
 
     def alternative_start(self, isoform_a, isoform_b):
 
@@ -526,10 +545,12 @@ class Gene(GenomicFeature):
         return exon_colors
 
     def exon_diagram(self,
+                     ax=None,
                      intron_nt_space=30,
                      height=0.5,
                      draw_domains=False,
-                     ax=None,
+                     show_matched_transcripts=True,
+                     show_mane_and_appris_annotations=True,
                      domain_font_size=6,
                      subtle_splice_font_size=6,
                      subtle_splice_threshold=20):
@@ -639,6 +660,23 @@ class Gene(GenomicFeature):
         ax.set_yticks([y + height / 2 for y in range(len(self.orfs))])
         ax.set_yticklabels([orf.name for orf in self.orfs])
         ax.yaxis.set_tick_params(length=0)
+        if show_matched_transcripts:
+            ax.set_yticklabels([orf.clone_name if hasattr(orf, 'clone_name') else '' for orf in self.orfs])
+            for orf, y_pos in zip(self.orfs, ax.get_yticks()):
+                if hasattr(orf, 'clone_acc') and orf.is_novel_isoform():
+                    text = '     ' + 'Novel isoform'
+                else:
+                    text = '     ' + '/'.join(orf.ensembl_transcript_names)
+                    if show_mane_and_appris_annotations:
+                        if hasattr(orf, 'is_MANE_select_transcript') and orf.is_MANE_select_transcript:
+                            text += ' – MANE select'
+                        if hasattr(orf, 'APPRIS_annotation') and orf.APPRIS_annotation is not None:
+                            text += ' – APPRIS ' + orf.APPRIS_annotation
+                ax.text(x=xmin if self.strand == '-' else xmax,
+                        y=y_pos,
+                        s=text,
+                        ha='left',
+                        va='center')
         ax.set_xticks([])
         x_pad = intron_nt_space * 3
         # intron dotted lines
@@ -659,7 +697,17 @@ class Gene(GenomicFeature):
         for spine in ax.spines.values():
             spine.set_visible(False)
 
-    def protein_diagram(self, ax=None, isoform_order=None, protein_color='pink', domain_label_rotation=0):
+    def protein_diagram(self,
+                        ax=None,
+                        only_cloned_isoforms=True,
+                        isoform_order=None,
+                        domain_label_rotation=0):
+        if isoform_order is not None:
+            isoforms = [self[iso_id] for iso_id in isoform_order]
+        elif only_cloned_isoforms:
+            isoforms = [iso for iso in self.orfs if hasattr(iso, 'clone_acc')]
+        else:
+            isoforms = self.orfs
 
         def _remove_overlapping_domains(domains):
             """Keep longest domains"""
@@ -672,10 +720,10 @@ class Gene(GenomicFeature):
 
         if ax is None:
             ax = plt.gca()
-        gs = gridspec.GridSpecFromSubplotSpec(len(self.orfs), 1,
+        gs = gridspec.GridSpecFromSubplotSpec(len(isoforms), 1,
                                               subplot_spec=ax.get_subplotspec(),
                                               hspace=2)
-        max_seq_len = max(len(iso.aa_seq) for iso in self.orfs)
+        max_seq_len = max(len(iso.aa_seq) for iso in isoforms)
 
         aligner = Align.PairwiseAligner()
         aligner.mode = 'global'
@@ -691,25 +739,21 @@ class Gene(GenomicFeature):
             query_end_gap = len(q.partition(q.strip('-'))[0])
             return query_end_gap - target_end_gap
 
-        aa_seqs = [x.aa_seq for x in self.orfs]
+        aa_seqs = [x.aa_seq for x in isoforms]
         offsets = [0,]
         for i in range(1, len(aa_seqs)):
             alignments = [aligner.align(aa_seqs[j], aa_seqs[i])[0] for j in range(i)]
             i_best_alignment = max(range(len(alignments)), key=lambda x: alignments[x].score)
             offsets.append(_get_offset(alignments[i_best_alignment]) + offsets[i_best_alignment])
         offsets
-        x_max = max(len(iso.aa_seq) + x for iso, x in zip(self.orfs, offsets))
+        x_max = max(len(iso.aa_seq) + x for iso, x in zip(isoforms, offsets))
 
         exon_colors = self._get_exon_colors()
 
-        domains = [d for d in self.orfs[0].aa_seq_features
+        domains = [d for d in isoforms[0].aa_seq_features
                     if not (d.accession.endswith('_flank_N') or
                             d.accession.endswith('_flank_C'))]
         domains = _remove_overlapping_domains(domains)
-        if isoform_order is not None:
-            isoforms = [self[iso_id] for iso_id in isoform_order]
-        else:
-            isoforms = self.orfs
         for i, isoform in enumerate(isoforms):
             ax = plt.subplot(gs.new_subplotspec((i, 0), rowspan=1, colspan=1))
             seq_len = len(isoform.aa_seq)
