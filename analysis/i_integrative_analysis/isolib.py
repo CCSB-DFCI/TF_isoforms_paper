@@ -760,16 +760,17 @@ class Gene(GenomicFeature):
 
         exon_colors = self._get_exon_colors()
 
-        # TODO: draw domains on further down isoforms if they're not on the top 
+        # TODO: draw domains on further down isoforms if they're not on the top
         # (i.e. same accession and overlap in genomic coords)
         domains_to_draw = []
         for iso_idx, iso in enumerate(isoforms):
             for d in iso.aa_seq_features:
                 if d.accession.endswith('_flank_N') or d.accession.endswith('_flank_C'):
                     continue  # don't show DBD flank regions
-                if iso_idx != 0:
-                    continue  # only show domains for top isoform
-                domains_to_draw.append((iso_idx, d))
+                if iso_idx == 0:
+                    domains_to_draw.append((iso_idx, d))
+                elif d.category == 'effector_domain' and d.accession not in {x[1].accession for x in domains_to_draw}:
+                    domains_to_draw.append((iso_idx, d))  # only show domains for top isoform unless domain not already displayed
 
         if remove_overlapping_domains:  # BUG: THIS NO LONGER WORKS
             domains_to_draw = _remove_overlapping_domains(domains_to_draw)
@@ -861,8 +862,8 @@ class Gene(GenomicFeature):
                         y_pos = (0.5 - height / 2) - height * 0.2
                     else:
                         y_pos = (0.5 + height / 2) + height * 0.2
-                    ax.axhline(xmin=(start + offsets[i]) / x_ax_len,
-                               xmax=(stop + offsets[i]) / x_ax_len,
+                    ax.axhline(xmin=(start + (offsets[i] - min(offsets))) / x_ax_len,
+                               xmax=(stop + (offsets[i] - min(offsets))) / x_ax_len,
                                y=y_pos,
                                clip_on=False,
                                linestyle='-',
