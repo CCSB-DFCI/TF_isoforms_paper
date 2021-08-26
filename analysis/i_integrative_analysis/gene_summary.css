@@ -12,6 +12,11 @@ img {
     margin-left: auto;
     margin-right: auto;
 }
+object {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
 video{
     display: block;
     margin-left: auto;
@@ -29,9 +34,9 @@ button{
     margin-left: 0px;
 }
 
-
 /* by default chrome has a horrible semi-transparent black block on the bottom of the video */
 /* https://stackoverflow.com/questions/51719642/html5-video-player-remove-black-shadow-at-bottom-of-controls-section */
 video::-webkit-media-controls-panel {
     background-image: linear-gradient(transparent, transparent) !important;
+    color: grey !important;
   }

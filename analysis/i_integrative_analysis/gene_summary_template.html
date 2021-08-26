@@ -4,38 +4,44 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="../gene_summary.css">
-    <title>{gene_name} – TF isoform summary</title>
+    <title>{gene_name} isoforms summary</title>
 </head>
 <body>
 
     <!-- 
         TODO:
-            - APPRIS principle / MANE select
-            - activation domains
-
-            - tf family
-            - add human TF DB data?
-            - add legend with links for pfam domains in protein diagram
-            - uniprot id and link
-
-            - make thing expandible and collapsible?
-            - change sizes?
-            - make frameshifts colored better
-
-
+            - make table of tf genes with info
             - expression data
-    -->
 
+            - add the uniprot summary and full gene name?
+            - make frameshifts colored better
+            - improve the subtle splice display
+            - make thing expandible and collapsible?
+
+    -->
+    <a href="../index.html">Home</a>
     <h1>{gene_name}</h1>
     <div style="text-align:center"> 
-        <a href="https://useast.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g={ensembl_gene_id};" target="_blank" rel="noopener noreferrer">{ensembl_gene_id}</a>
+        <a href="https://useast.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g={ensembl_gene_id};"
+           target="_blank"
+           rel="noopener noreferrer">{ensembl_gene_id}</a>
+        <a href="https://www.uniprot.org/uniprot/{uniprot_ac}"
+           target="_blank"
+           rel="noopener noreferrer">{uniprot_ac}</a>
+        <a href="http://humantfs.ccbr.utoronto.ca/myTFPageUniversal.php?user=&eID={ensembl_gene_id}&dbd=&submit_param=submit_value"
+        target="_blank"
+        rel="noopener noreferrer">Human TF DB (motifs)</a>
+        <p>TF family: {tf_family}</p>
     </div>
     <img src='../media/{gene_name}_cloned-plus-ensembl-isoforms_exon-diagram.svg'
          alt='exon digram missing'>
-    <img src='../media/{gene_name}_cloned-isoforms_protein-diagram.svg'
-         alt='protein digram file missing'>
+    <!--Using object for this SVG since it has a link in it, which does not work with img-->
+    <object type='image/svg+xml'
+            data='../media/{gene_name}_cloned-isoforms_protein-diagram.svg'
+            alt='protein digram file missing'>
+    </object>
     <video controls
-           width=720px
+           width=1080px
            loop
            autoplay
            muted>
@@ -49,5 +55,6 @@
          alt='Y2H figure file missing'>
     <img src='../media/{gene_name}_y1h-profile.svg'
          alt='Y1H figure file missing'>
+
 </body>
 </html>

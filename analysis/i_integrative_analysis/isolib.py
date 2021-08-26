@@ -62,7 +62,7 @@ class ProteinSequenceFeature:
 
     """
 
-    def __init__(self, category, accession, name, start, end):
+    def __init__(self, category, accession, name, start, end, description=None):
         if start >= end:
             raise ValueError("start must be before end")
         self.start = start
@@ -70,6 +70,7 @@ class ProteinSequenceFeature:
         self.category = category
         self.name = name
         self.accession = accession
+        self.description = description
 
     def __len__(self):
         return self.end - self.start
@@ -91,7 +92,7 @@ class Gene(GenomicFeature):
     """
 
     # NOTE: if you change arguments here, also need to change in add_isoforms method
-    def __init__(self, name, orfs, ensembl_gene_id=None):
+    def __init__(self, name, orfs, ensembl_gene_id=None, uniprot_ac=None):
         chroms = [orf.chrom for orf in orfs]
         strands = [orf.strand for orf in orfs]
         msg = '{} - {}'.format(name, ', '.join([orf.name for orf in orfs]))
@@ -104,6 +105,7 @@ class Gene(GenomicFeature):
         chrom = chroms[0]
         strand = strands[0]
         self.ensembl_gene_id = ensembl_gene_id
+        self.uniprot_ac = uniprot_ac
 
         # de-duplicate exons
         exon_bounds = {(exon.start, exon.end) for iso in orfs for exon in iso.exons}
@@ -153,7 +155,12 @@ class Gene(GenomicFeature):
         # better way to do it...
         self.__init__(self.name,
                       self.orfs + isoforms,
-                      ensembl_gene_id=self.ensembl_gene_id)
+                      ensembl_gene_id=self.ensembl_gene_id,
+                      uniprot_ac=self.uniprot_ac)
+
+    @property
+    def cloned_isoforms(self):
+        return [iso for iso in self.orfs if hasattr(iso, 'clone_acc')]
 
     def alternative_start(self, isoform_a, isoform_b):
 
@@ -701,7 +708,11 @@ class Gene(GenomicFeature):
                         ax=None,
                         only_cloned_isoforms=True,
                         isoform_order=None,
-                        domain_label_rotation=0):
+                        domain_label_rotation=0,
+                        draw_legend=True,
+                        #remove_overlapping_domains=False  # I broke this by changing the domains to be tuples including the isoform index
+                        draw_vertical_lines_at_domains=False):
+        remove_overlapping_domains = False
         if isoform_order is not None:
             isoforms = [self[iso_id] for iso_id in isoform_order]
         elif only_cloned_isoforms:
@@ -740,32 +751,37 @@ class Gene(GenomicFeature):
             return query_end_gap - target_end_gap
 
         aa_seqs = [x.aa_seq for x in isoforms]
-        offsets = [0,]
+        offsets = [0, ]
         for i in range(1, len(aa_seqs)):
             alignments = [aligner.align(aa_seqs[j], aa_seqs[i])[0] for j in range(i)]
             i_best_alignment = max(range(len(alignments)), key=lambda x: alignments[x].score)
             offsets.append(_get_offset(alignments[i_best_alignment]) + offsets[i_best_alignment])
-        offsets
         x_max = max(len(iso.aa_seq) + x for iso, x in zip(isoforms, offsets))
 
         exon_colors = self._get_exon_colors()
 
-        domains = [d for d in isoforms[0].aa_seq_features
-                    if not (d.accession.endswith('_flank_N') or
-                            d.accession.endswith('_flank_C'))]
-        domains = _remove_overlapping_domains(domains)
+        # TODO: draw domains on further down isoforms if they're not on the top 
+        # (i.e. same accession and overlap in genomic coords)
+        domains_to_draw = []
+        for iso_idx, iso in enumerate(isoforms):
+            for d in iso.aa_seq_features:
+                if d.accession.endswith('_flank_N') or d.accession.endswith('_flank_C'):
+                    continue  # don't show DBD flank regions
+                if iso_idx != 0:
+                    continue  # only show domains for top isoform
+                domains_to_draw.append((iso_idx, d))
+
+        if remove_overlapping_domains:  # BUG: THIS NO LONGER WORKS
+            domains_to_draw = _remove_overlapping_domains(domains_to_draw)
         for i, isoform in enumerate(isoforms):
             ax = plt.subplot(gs.new_subplotspec((i, 0), rowspan=1, colspan=1))
             seq_len = len(isoform.aa_seq)
-            ax.set_ylim(0, 1)
-            ax.set_xlim(0.5 - min(offsets), x_max + 0.5)
             height = 1
             prot = patches.Rectangle((0.5 + offsets[i],
                                       0.5 - height / 2),
                                      width=seq_len,
                                      height=height,
                                      clip_on=False,
-                                     #facecolor=protein_color,
                                      facecolor=None,
                                      edgecolor='grey',
                                      linewidth=1.5)
@@ -789,35 +805,72 @@ class Gene(GenomicFeature):
                 ax.add_patch(exon)
                 exon_pos += n_aa_exon
 
-            for domain in domains:
+            for iso_idx, domain in domains_to_draw:
                 start, stop = domain.start, domain.end
-                ax.axvline(x=(start - 0.5) + offsets[0],
-                           ymin=-1,
-                           ymax=2,
-                           clip_on=False,
-                           linestyle='--',
-                           linewidth=2,
-                           color='green')
-                ax.axvline(x=(stop + 0.5) + offsets[0],
-                           ymin=-1,
-                           ymax=2,
-                           clip_on=False,
-                           linestyle='--',
-                           linewidth=1.5,
-                           color='green')
-                if i == 0:
+                if domain.category == 'Pfam_domain':
+                    if domain in isoform.dna_binding_domains:
+                        dom_color = 'blue'
+                    else:
+                        dom_color = 'purple'
+                elif domain.category == 'effector_domain':
+                    if domain.name == 'AD':
+                        dom_color = 'green'
+                    elif domain.name == 'RD':
+                        dom_color = 'red'
+                    else:
+                        dom_color = 'orange'
+                else:
+                    dom_color = 'purple'
+                if draw_vertical_lines_at_domains:
+                    ax.axvline(x=(start + 0.5) + offsets[iso_idx],
+                               ymin=-1,
+                               ymax=2,
+                               clip_on=False,
+                               linestyle='--',
+                               linewidth=2,
+                               color=dom_color)
+                    ax.axvline(x=(stop + 0.5) + offsets[iso_idx],
+                               ymin=-1,
+                               ymax=2,
+                               clip_on=False,
+                               linestyle='--',
+                               linewidth=1.5,
+                               color=dom_color)
+                if i == iso_idx:
+                    if domain.category == 'effector_domain':
+                        y_pos = (0.5 - height / 2) - height * 0.3
+                        va = 'top'
+                    else:
+                        y_pos = (0.5 + height / 2) + height * 0.3
+                        va = 'bottom'
                     ax.text(x=(start + (stop - start) / 2) + offsets[i],
-                            y=1.2,
+                            y=y_pos,
                             s=domain.name,
                             url='http://pfam.xfam.org/family/' + domain.accession,
                             ha='center',
-                            va='bottom',
-                            color='green',
+                            va=va,
+                            color=dom_color,
                             fontweight='bold',
                             fontsize=7,
-                            rotation=domain_label_rotation,)
+                            rotation=domain_label_rotation,
+                            bbox=dict(url='https://pfam.xfam.org/family/' + domain.accession,
+                                      color='w',
+                                      alpha=0.01))
+                    x_ax_len = x_max - min(offsets)
+                    if domain.category == 'effector_domain':
+                        y_pos = (0.5 - height / 2) - height * 0.2
+                    else:
+                        y_pos = (0.5 + height / 2) + height * 0.2
+                    ax.axhline(xmin=(start + offsets[i]) / x_ax_len,
+                               xmax=(stop + offsets[i]) / x_ax_len,
+                               y=y_pos,
+                               clip_on=False,
+                               linestyle='-',
+                               linewidth=2.5,
+                               color=dom_color,
+                               alpha=0.8)
 
-            ax.text(x=-0.5,
+            ax.text(x=-0.5 + min(offsets),
                     y=0.5,
                     s=isoform.name,
                     horizontalalignment='right',
@@ -827,13 +880,45 @@ class Gene(GenomicFeature):
             ax.spines['left'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.spines['bottom'].set_position(('data', 0.5 - height / 2))
-            #domain_pos = [(d.start, d.end) for d in domains]
+            #domain_pos = [(d.start, d.end) for d in domains_to_draw]
             #xticks = [1] + [i for ij in domain_pos for i in ij] + [seq_len]
             xticks = [1, seq_len]
             ax.set_xticks([x + offsets[i] for x in xticks])
             ax.set_xticklabels([str(x) for x in xticks])
             ax.xaxis.set_tick_params(rotation=90)
             ax.set_yticks([])
+
+            def _extract_pmid(s):
+                return [l[len('PMID: '):] for l in s.splitlines() if l.startswith('PMID: ')][0].split(', ')
+
+            if draw_legend and i == 0:
+                unique_domains = {(d.name, d.description): d for _i, d in domains_to_draw}.values()
+                i = 0
+                for d in unique_domains:
+                    if d.category == 'Pfam_domain':
+                        url = 'https://pfam.xfam.org/family/' + d.accession
+                    elif d.category == 'effector_domain':
+                        pmids = _extract_pmid(d.description)
+                        if len(pmids) == 1:
+                            url = 'https://pubmed.ncbi.nlm.nih.gov/' + pmids[0]
+                        else:
+                            url = 'https://pubmed.ncbi.nlm.nih.gov/?term=' + '+'.join(pmids)
+                    else:
+                        url = ''
+                    ax.text(x=x_max + 0.5 + (ax.get_xlim()[1] - ax.get_xlim()[0]) * 0.05,
+                            y=ax.get_ylim()[1] - i * 0.5,
+                            s=d.name + ' – ' + d.description,
+                            va='top',
+                            ha='left',
+                            fontsize=7,
+                            url=url,
+                            bbox=dict(url=url,
+                                      color='w',
+                                      alpha=0.01)  # if you set alpha to 0 then you're not able to click the link
+                            )
+                    i += (len(d.description.splitlines()) + 1)
+            ax.set_ylim(0, 1)
+            ax.set_xlim(0.5 + min(offsets), x_max + 0.5)
 
     def orf_pairs(self):
         return list(itertools.combinations(self.orfs, 2))
@@ -881,7 +966,6 @@ class Isoform(GenomicFeature):
         self.ensembl_protein_ids = ensembl_protein_ids
         self.ensembl_transcript_names = ensembl_transcript_names
         self.ensembl_transcript_ids = ensembl_transcript_ids
-
 
         if isinstance(CDS_nt_seq, str):
             if len(CDS_nt_seq) % 3 != 0:
@@ -946,11 +1030,11 @@ class Isoform(GenomicFeature):
             max([exon.end for exon in self.exons]),
         )
 
-    def add_aa_seq_feature(self, category, accession, name, start, end):
+    def add_aa_seq_feature(self, category, accession, name, start, end, description=None):
         if end > len(self.aa_seq):
             raise ValueError("Feature bounds outside protein")
         self.aa_seq_features.append(
-            ProteinSequenceFeature(category, accession, name, start, end)
+            ProteinSequenceFeature(category, accession, name, start, end, description)
         )
 
     def remove_aa_seq_feature(self, accession, start, end):

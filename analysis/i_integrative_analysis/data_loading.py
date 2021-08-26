@@ -1,4 +1,3 @@
-from isolib import Cloned_Isoform
 import os
 import sys
 from pathlib import Path
@@ -6,10 +5,11 @@ import itertools
 import warnings
 from collections import defaultdict
 import functools
+import re
 
 import numpy as np
 import pandas as pd
-from Bio import SeqIO, Align
+from Bio import SeqIO
 import tqdm
 
 import isolib
@@ -506,11 +506,14 @@ def read_hmmer3_domtab(filepath):
     return df
 
 
-def _load_pfam_domains(fpath, remove_overlapping=True, cutoff=1E-5):
+def _load_pfam_domains(fpath,
+                       cutoff_seq=0.01,
+                       cutoff_dom=0.01):
     pfam = read_hmmer3_domtab(fpath)
     pfam['pfam_ac'] = pfam['target accession'].str.replace(r'\..*', '')
-    pfam = pfam.loc[pfam['E-value'] < cutoff, :]
-    pfam = _remove_overlapping_domains_from_same_clan(pfam)
+    pfam = pfam.loc[(pfam['E-value'] < cutoff_seq) &
+                    (pfam['c-Evalue'] < cutoff_dom), :]
+    pfam = _remove_overlapping_domains(pfam)
     return pfam
 
 
@@ -579,6 +582,28 @@ def _remove_overlapping_domains_from_same_clan(pfam_in):
     return pfam
 
 
+def _remove_overlapping_domains(pfam_in):
+    """
+    I got a lot of overlaps of domains not in the same clan, so trying
+    removing all overlapping pfam domains.
+    """
+    pfam = pfam_in.copy()
+    to_remove = set()
+    pfam = pfam.sort_values(['query name', 'E-value'])
+    # This is a bit slow
+    for iso_id in tqdm.tqdm(pfam['query name'].unique()):
+        doms = pfam.loc[(pfam['query name'] == iso_id), :]
+        for i, j in itertools.combinations(doms.index, 2):
+            if i in to_remove or j in to_remove:
+                continue
+            dom_a = doms.loc[i, :]
+            dom_b = doms.loc[j, :]
+            if _is_overlapping(dom_a, dom_b):
+                to_remove.add(j)
+    pfam = pfam.drop(to_remove)
+    return pfam
+
+
 def load_DNA_binding_domains(add_additional_domains=True):
     dbd = pd.read_csv(DATA_DIR / 'internal/a2_final_list_of_dbd_pfam_and_names_ZF_marked.txt',
                       sep='\t')
@@ -594,13 +619,13 @@ def load_DNA_binding_domains(add_additional_domains=True):
                      ignore_index=True)
 
     dbd_clans = {'CL0361',  # C2H2-ZF
-                'CL0012',  # Histone (mostly DNA binding...)
-                'CL0274',  # WRKY-GCM1
-                'CL0114',  # HMG-box
-                'CL0081',  # MBD-like
-                'CL0073',  # P53-like
-                'CL0407',  # TATA-Binding Protein like
-                'CL0018'}  # bZIP
+                 'CL0012',  # Histone (mostly DNA binding...)
+                 'CL0274',  # WRKY-GCM1
+                 'CL0114',  # HMG-box
+                 'CL0081',  # MBD-like
+                 'CL0073',  # P53-like
+                 'CL0407',  # TATA-Binding Protein like
+                 'CL0018'}  # bZIP
     for pfam_id in (pfam_id for pfam_id, clan_id in clans.items() if clan_id in dbd_clans):
         if pfam_id not in dbd['pfam'].values:
             dbd = dbd.append({'dbd': pfam_id,
@@ -621,12 +646,10 @@ def load_annotated_6k_collection(
     path_6k_fa=DATA_DIR / 'internal/j2_6k_unique_isoacc_and_nt_seqs.fa',
     path_gencode_aa_seq=DATA_DIR / 'external/gencode.v30.pc_translations.fa',
     path_MANE_select=DATA_DIR / 'external/MANE-select-transcripts_human_GRCh38.p13_ensembl104.tsv',
-    path_APPRIS=DATA_DIR / 'external/APPRIS-annotations_human_GRCh38.p13_ensembl104.tsv'
+    path_APPRIS=DATA_DIR / 'external/APPRIS-annotations_human_GRCh38.p13_ensembl104.tsv',
+    path_effector_domains=DATA_DIR / 'internal/TF_regulatory_domains_unpublished.xlsx'
 ):
     """
-
-    TODO:
-        - activation domains
 
     """
     import pyranges
@@ -640,6 +663,9 @@ def load_annotated_6k_collection(
     nt_seq = {k: v for k, v in nt_seq.items() if k in clones['clone_acc'].unique()}
     tf_db = pd.read_csv(DATA_DIR / 'external/Human_TF_DB_v_1.01.csv')
     hgnc_to_ensembl = tf_db.set_index('HGNC symbol')['Ensembl ID'].to_dict()
+    ensembl_to_uniprot = pd.read_csv(DATA_DIR / 'external/ensembl_to_uniprot_ids_human_tfs.tsv', sep='\t')
+    ensembl_to_uniprot = ensembl_to_uniprot.groupby('ensembl_gene_id')['uniprot_ac'].apply(lambda x: '/'.join(x)).to_dict()
+    tf_family = load_tf_families()
     genes = {}
     for gene_name in algn['gene_id'].unique():
         if gene_name == 'PCGF6':  # has a 6nt insertion that doesn't map to reference genome
@@ -664,7 +690,9 @@ def load_annotated_6k_collection(
                                                   clone_acc=orf_id))
         genes[gene_name] = isolib.Gene(gene_name,
                                        isoforms,
-                                       ensembl_gene_id=hgnc_to_ensembl[gene_name])
+                                       ensembl_gene_id=hgnc_to_ensembl[gene_name],
+                                       uniprot_ac=ensembl_to_uniprot.get(hgnc_to_ensembl[gene_name], None))
+        genes[gene_name].tf_family = tf_family[gene_name]
     pfam['gene_name'] = pfam['query name'].apply(lambda x: x.split('|')[0])
     for _i, row in pfam.iterrows():
         gene_name = row['gene_name']
@@ -676,7 +704,8 @@ def load_annotated_6k_collection(
                                                       name=row['target name'],
                                                       accession=row['pfam_ac'],
                                                       start=row['env_coord_from'] - 1,
-                                                      end=row['env_coord_to'])
+                                                      end=row['env_coord_to'],
+                                                      description=row['description of target'])
     _make_c2h2_zf_arrays(genes)
     _add_dbd_flanks(genes)
 
@@ -724,6 +753,31 @@ def load_annotated_6k_collection(
             annotations = {appris[tid] for tid in iso.ensembl_transcript_ids if tid in appris}
             if len(annotations) > 0:
                 iso.APPRIS_annotation = _consolidate_appris_annotations(annotations)
+
+    reg_dom = pd.read_excel(path_effector_domains, sheet_name='Table S2')
+    domain_type_full = {'AD': 'Activation domain',
+                        'RD': 'Repression domain',
+                        'Bif': 'Bi-functional domain'}
+    if not reg_dom['TF name'].isin(genes.keys()).sum() == reg_dom['ENSEMBL gene ID'].isin({tf.ensembl_gene_id for tf in genes.values()}).sum():
+        raise UserWarning('Problem with inconsistent gene names between effector domain file and cloned TFs')
+    for tf in genes.values():
+        for _i, row in reg_dom.loc[reg_dom['TF name'] == tf.name, :].iterrows():
+            desc = domain_type_full[row['Domain type']]
+            desc += '\nassay: ' + row['Assay']
+            desc += '\nPMID: {}'.format(row['Reference (PMID)'])
+            if pd.notnull(row['Notes']):
+                desc += 'Notes: ' + row['Notes']
+            for iso in tf.orfs:
+                if row['Sequence'] not in iso.aa_seq:
+                    continue
+                if len(re.findall('(?={})'.format(row['Sequence']), iso.aa_seq)) != 1:
+                    raise UserWarning('Problem mapping effector domain: {} {}'.format(row, iso))
+                iso.add_aa_seq_feature(category='effector_domain',
+                                       name=row['Domain type'],
+                                       accession=row['Effector domain ID'],
+                                       start=iso.aa_seq.find(row['Sequence']),
+                                       end=iso.aa_seq.find(row['Sequence']) + len(row['Sequence']),
+                                       description=desc)
 
     return genes
 
@@ -875,7 +929,8 @@ def _make_c2h2_zf_arrays(tfs, MAX_NUM_AA_C2H2_ZF_SEPERATION=10):
                                                 'C2H2_ZF_array_' + str(len(array)),
                                                 'C2H2_ZF_array_' + str(len(array)),
                                                 array[0].start,
-                                                array[-1].end)
+                                                array[-1].end,
+                                                description='{} C2H2 zinc fingers'.format(len(array)))
                         for dom in array:
                             orf.remove_aa_seq_feature(dom.accession, dom.start, dom.end)
                     array = [zf]
@@ -884,7 +939,8 @@ def _make_c2h2_zf_arrays(tfs, MAX_NUM_AA_C2H2_ZF_SEPERATION=10):
                                         'C2H2_ZF_array_' + str(len(array)),
                                         'C2H2_ZF_array_' + str(len(array)),
                                         array[0].start,
-                                        array[-1].end)
+                                        array[-1].end,
+                                        description='{} C2H2 zinc fingers'.format(len(array)))
                 for dom in array:
                     orf.remove_aa_seq_feature(dom.accession, dom.start, dom.end)
 
