@@ -322,6 +322,166 @@ def load_rna_expression_data():
     return df4
 
 
+def load_gtex_gencode():
+    """GTEx mapped to GENCODE v30, i.e. not including our novel isoforms"""
+    df = pd.read_csv('../../data/internal/GTEx-protein-gencode/protein.GC30-basic.txt',
+                     sep='\t')
+    metadata = pd.read_csv('../../data/internal/GTEx-protein-gencode/SRA-filtered.txt',
+                           sep='\t')
+    if metadata['UID'].duplicated().any():
+        raise UserWarning('Unexpected duplicates')
+    metadata = metadata.set_index('UID')
+    if df.columns.duplicated().any():
+        raise UserWarning('Unexpected duplicates')
+    if df['UID'].duplicated().any():
+        raise UserWarning('Unexpected duplicates')
+    df = df.set_index('UID')
+    df = (df + 1.).apply(np.log2)
+    genes = pd.Series(index=df.index,
+                      data=df.index.str.replace('\|.*', '', regex=True)
+                      .str.extract(r'GC grp\: (.*)-2[0-9]{2}', expand=False).values)
+    return df, metadata, genes
+
+
+def load_gtex_remapped():
+    """Load the GTEx data mapped to gencode v30 + our novel isoform clones
+
+    Transcripts with identical amino acid sequences are merged.
+
+    Requires a lot of processing because of problems with the mapping file
+        - there are some clones that are no longer in our list
+        - some cloned isoform + gencode isoform matched pairs are not merged
+        - the identification is a mess
+
+    """
+    df = pd.read_csv('../../data/processed/Nathans_analysis/protein-gene-GTEx-CG30-6k-TFs/protein.Gtex-GC30_6k-selected-tissues-TFs.txt',
+                     sep='\t')
+    metadata = pd.read_csv('../../data/internal/GTEx-protein-gencode/SRA-filtered.txt',
+                           sep='\t')
+    if metadata['UID'].duplicated().any():
+        raise UserWarning('Unexpected duplicates')
+    metadata = metadata.set_index('UID')
+    if df.columns.duplicated().any():
+        raise UserWarning('Unexpected duplicates')
+    if df['UID'].duplicated().any():
+        raise UserWarning('Unexpected duplicates')
+    df = df.set_index('UID')
+    df = (df + 1.).apply(np.log2)
+
+    def extract_gene_name(s):
+        if s.startswith('GC grp: '):
+            clone_acc = s.split('|')[0][len('GC grp: '):]
+            return clone_acc[0:clone_acc.rfind('-')]
+        else:
+            return s.split('|')[0]
+
+    genes = pd.Series(index=df.index,
+                      data=df.index.map(extract_gene_name).values)
+    tfs = load_annotated_6k_collection()
+
+    def clean_ids(s):
+        if s.startswith('GC grp: '):
+            return '|'.join(sorted(s[len('GC grp: '):].split('|')))
+        else:
+            if s.count('_') == 1:
+                return s.split('_')[0]
+            else:
+                # TODO: deal with cases with multiple clone IDs
+                n_char_ensembl_id = 15
+                clone_ids = [s.split('_')[0]] + [x[n_char_ensembl_id + 1:] for x in s.split('_')[1:-1]]
+                return '_'.join(clone_ids)
+
+    to_merge = {}
+    clones_to_remove = []
+    for tf in tfs.values():
+        if len(tf.orfs) > (genes == tf.name).sum():
+            raise UserWarning('unknown issue')
+        if len(tf.orfs) < (genes == tf.name).sum():
+            gtex_ids = genes.loc[genes == tf.name].index.values
+            gtex_ids = {clean_ids(x): x for x in gtex_ids}
+            our_ids = [iso.clone_acc if hasattr(iso, 'clone_acc') else '|'.join(iso.ensembl_transcript_names) for iso in tf.orfs]
+            unmatched = set(gtex_ids.keys()).difference(set(our_ids))
+            matched_one = []
+            for iso in unmatched:
+                if any(x in set(our_ids) for x in iso.split('_')):
+                    matched_one.append(iso)
+            for iso in matched_one:
+                unmatched.remove(iso)
+            for missing in unmatched:
+                if '/' in missing:
+                    if gtex_ids[missing].endswith('_NA_NA'):
+                        clones_to_remove.append(gtex_ids[missing])
+                    else:
+                        print('something wrong', missing)
+                        #raise UserWarning('Unexpected removed clones')
+                else:
+                    match = False
+                    for iso in tf.orfs:
+                        if not hasattr(iso, 'clone_acc') or iso.is_novel_isoform():
+                            continue
+                        if missing == '|'.join(sorted(iso.ensembl_transcript_names)):
+                            to_merge[iso.clone_acc] = gtex_ids[missing]
+                            match = True
+                            break
+                    if not match:
+                        print('couldnt find match:', tf.name, missing)
+    # fixing bug where three clones map to same AA sequence
+    to_merge['LHX6|3/4|02B12_ENSP00000362860|LHX6|4/4|11G11_ENSP00000362860'] = 'LHX6|2/4|02C12_ENSP00000362860|LHX6|3/4|02B12_ENSP00000362860'
+    for keep, remove in to_merge.items():
+        row_to_keep = df.index.str.contains(keep, regex=False)
+        if row_to_keep.sum() == 0:
+            raise UserWarning('unexpected missing match')
+        if row_to_keep.sum() > 1:
+            raise UserWarning('unexpected more than one match')
+        df.loc[row_to_keep, :] = df.loc[row_to_keep, :] + df.loc[remove, :]
+    df = df.loc[~df.index.isin(set(to_merge.values())), :]
+    df = df.loc[~df.index.isin(set(clones_to_remove)), :]
+
+    def clone_plus_ensembl_id(s):
+        if s.startswith('GC grp: '):
+            return 'noclone ' + '_'.join(sorted(s[len('GC grp: '):].split('|')))
+        else:
+            clone_accs = sorted(re.split('(?:_ENSP[0-9]{11}|_NA_NA)\|{0,1}', s)[:-1])
+            gene = clone_accs[0].split('|')[0]
+            ensembl_ids = None
+            for clone_acc in clone_accs:
+                clone_name = gene + '-' + clone_acc.split('|')[1].split('/')[0]
+                if gene not in tfs:
+                    if '_NA' in s:
+                        ensembl_ids = ['nomatch']
+                    else:
+                        raise UserWarning('couldnt map iso of gene: '  + gene)
+                elif clone_name in tfs[gene]:
+                    if tfs[gene][clone_name].is_novel_isoform():
+                        ensembl_ids = ['nomatch']
+                    else:
+                        ensembl_ids = sorted(tfs[gene][clone_acc].ensembl_transcript_names)
+            if ensembl_ids is None:
+                if '_NA_NA' in s:
+                    return 'remove_me:' + '_'.join(clone_accs)
+                else:
+                    raise UserWarning('Need to match ENSP')
+            return '_'.join(clone_accs) + ' ' + '_'.join(ensembl_ids)
+
+    df = df.loc[genes.isin(load_valid_isoform_clones()['gene'].unique()), :]
+    df.index = df.index.map(clone_plus_ensembl_id)
+    df = df.loc[~df.index.str.startswith('remove_me'), :]
+
+    def extract_gene_name(s):
+        if s.startswith('noclone'):
+            return s.split(' ')[1].split('-')[0]
+        else:
+            return s.split(' ')[0].split('|')[0]
+
+    genes = pd.Series(index=df.index,
+                      data=df.index.map(extract_gene_name).values)
+    for tf in tfs.values():
+        if len(tf.orfs) != (genes == tf.name).sum():
+            print(tf.name, ' problem mapping gene')
+
+    return df, metadata, genes
+
+
 def load_seq_comparison_data():
     """
     Pairwise sequence comparisons of AA.
