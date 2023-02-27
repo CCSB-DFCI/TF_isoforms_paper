@@ -1203,8 +1203,19 @@ def load_DNA_binding_domains(add_additional_domains=True):
         return dbd
 
     # hand adding missing domain see issue #61
-    dbd = dbd.append(
-        {"dbd": "BTD", "pfam": "PF09270", "clan": clans.get("PF09270", np.nan)},
+    dbd = pd.concat(
+        [
+            dbd,
+            pd.DataFrame(
+                data=[
+                    {
+                        "dbd": "BTD",
+                        "pfam": "PF09270",
+                        "clan": clans.get("PF09270", np.nan),
+                    }
+                ]
+            ),
+        ],
         ignore_index=True,
     )
 
@@ -1229,8 +1240,19 @@ def load_DNA_binding_domains(add_additional_domains=True):
         if clan_id not in dbd_clans:
             continue
         if pfam_id not in dbd["pfam"].values:
-            dbd = dbd.append(
-                {"dbd": pfam_ac_to_name[pfam_id], "pfam": pfam_id, "clan": clan_id},
+            dbd = pd.concat(
+                [
+                    dbd,
+                    pd.DataFrame(
+                        data=[
+                            {
+                                "dbd": pfam_ac_to_name[pfam_id],
+                                "pfam": pfam_id,
+                                "clan": clan_id,
+                            }
+                        ]
+                    ),
+                ],
                 ignore_index=True,
             )
 
