@@ -116,15 +116,17 @@ def y2h_ppi_per_tf_gene_plot(gene_name,
                              min_n_partners=1):
     tf = data.loc[(data['category'] == 'tf_isoform_ppis') &
                 (data['ad_gene_symbol'] == gene_name),
-                ['ad_clone_acc', 'db_gene_symbol', 'score']].copy()
-    tf['score'] = tf['score'].map({'1': True,
-                                   '0': False,
-                                   'AA': np.nan,
-                                   'NC': np.nan})
+                ['ad_clone_acc', 'db_gene_symbol', 'Y2H_result']].copy()
+    #tf['score'] = tf['score'].map({'1': True,
+    #                               '0': False,
+    #                               'AA': np.nan,
+    #                               'NC': np.nan})
     tf['ad_clone_acc'] = tf['ad_clone_acc'].apply(isoform_display_name)
     tf = tf.pivot(index='ad_clone_acc',
                   columns='db_gene_symbol',
-                  values='score')
+                  values='Y2H_result')
+    # remove partners with no positives
+    tf = tf.loc[:, tf.any(axis=0)]
     if ax is None:
         ax = plt.gca()
     if tf.shape[0] < min_n_isoforms or tf.shape[1] < min_n_partners:
@@ -233,18 +235,26 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):
     clones = [isoform_display_name(acc) for acc in data.loc[data['gene'] == tf_gene_name, 'clone_acc'].values
               for __ in range(len(rep_columns))]
     values = data.loc[data['gene'] == tf_gene_name, rep_columns].values.flatten()
+    n_reps = len(rep_columns)
+    ax.barh(y=clones[::n_reps],
+            width=data.loc[data['gene'] == tf_gene_name, rep_columns].mean(axis=1).values,
+            edgecolor='black', color='grey', alpha=0.5, height=0.6)
     ax.scatter(
         y=clones,
         x=values,
-        alpha=0.5
+        alpha=0.5,
+        color='C0'
         )
-    n_reps = len(rep_columns)
     ax.set_yticks(clones[::n_reps])  # needed to avoid truncating clones with missing data
     ax.set_yticklabels([c if not np.isnan(v) else strikethrough(c)
                         for c, v in zip(clones[::n_reps], values[::n_reps])])
     ax.set_xlim(-3, 12)
+    ax.set_ylim(-0.5, len(clones[::n_reps]) - 0.5)
     ax.set_xlabel('Log2 M1H readout')
-    ax.axvline(0, linestyle='-', color='grey')
-    ax.axvline(-1, linestyle='--', color='grey')
-    ax.axvline(1, linestyle='--', color='grey')
+    ax.axvline(0, linestyle='-', color='black')
+    ax.axvline(-1, linestyle='--', color='black')
+    ax.axvline(1, linestyle='--', color='black')
     ax.invert_yaxis()
+    for pos in ['top', 'left', 'right']:
+        ax.spines[pos].set_visible(False)
+    ax.yaxis.set_tick_params(length=0)
