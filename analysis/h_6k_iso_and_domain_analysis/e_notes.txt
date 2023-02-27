@@ -1,7 +1,0 @@
-Processed DBD mapping to 6K isoforms.
-
-Note - isssue with NANOG clones
-
-One clone maps to NANOG locus.
-The other clone, an at-length match to gencode, maps to the NANOGP8 locus.
-So they are both isoforms and derived from different loci.

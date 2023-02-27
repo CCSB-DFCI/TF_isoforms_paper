@@ -1,3 +1,0 @@
-ref_orf         MAVRRGIGEPDEGPEEPGEKFRRLAVQAAPQYPAAPAMPSPPGCDPSGLPAAPKAGPPGLVHPLFSPS
-alt_orf         MAVRRGIGLDGPELEEPGEKFRRTGCTSCPPYPAAPAMPSP-DVVYGALPP-PGCDPSGLTS--KTP-
-clustal_aln     ********  .   ********* .  :.* ********** .   ..**. * ..*.**.    :* 

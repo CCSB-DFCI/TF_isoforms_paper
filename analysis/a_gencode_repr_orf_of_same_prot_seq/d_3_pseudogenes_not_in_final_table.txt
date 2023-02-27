@@ -1,8 +1,0 @@
-These three genes are in gencode30, but were not processed and didn't make it to the final table d_gen*tsv, because they are pseudogenes with no protein-coding products.
-
-ZNF812P
-ZNF788P
-ZSCAN5DP
-
-Also, the DUX genes did not make it to the final table, because they reside on acrochromosomes and are not in gencode.
-I emailed gencode to make sure (190528).

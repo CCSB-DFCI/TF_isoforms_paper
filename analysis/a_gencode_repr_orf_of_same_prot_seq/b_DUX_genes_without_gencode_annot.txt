@@ -1,9 +1,0 @@
-orig_genename	presence	sachi	gloria	lambert	new_genename
-DUX4L7	absent	0	1	0	-
-DUX4L6	absent	0	1	0	-
-DUX4L5	absent	0	1	0	-
-DUX4L4	absent	0	1	0	-
-DUX4L3	absent	0	1	0	-
-DUX4L2	absent	0	1	0	-
-DUX1	absent	0	0	1	-
-DUX3	absent	0	0	1	-

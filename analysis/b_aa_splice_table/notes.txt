@@ -1,1 +1,0 @@
-Script to make alignment object between ref-alt combinations in GENCODE, I think.

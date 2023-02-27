@@ -1,6 +1,0 @@
-Revisiting the pipeline for domain mapping and analysis.
-
-e_* got OOP code working to make DBD affected calls using UniProt-derived domains and OOP code
-But, it was inefficient, and I didn't get ZF working, nor non-DBD domains.
-
-Here, revisiting this code and trying to make it more efficient.
