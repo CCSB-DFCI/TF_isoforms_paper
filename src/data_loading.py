@@ -19,7 +19,7 @@ import pandas as pd
 from Bio import SeqIO
 import tqdm
 
-from ccsblib import paros_connection  # TMP
+#from ccsblib import paros_connection  # TMP
 
 import isolib
 
