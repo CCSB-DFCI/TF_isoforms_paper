@@ -4,8 +4,6 @@ which leads to 13 cases where the gene and transcript names aren't consistent
 E.g. ZZZ3 has transcripts AC118549.1-202 and AC118549.1-204
 """
 
-import os
-import sys
 from pathlib import Path
 import itertools
 import warnings
@@ -70,7 +68,7 @@ def load_valid_isoform_clones():
         na_values=[""],
         keep_default_na=False,
     )
-    y1h = load_y1h_pdi_data()
+    y1h = load_y1h_pdi_data(include_pY1H_data=False)
     m1h = load_m1h_activation_data()
     df["in_m1h"] = df["clone_acc"].isin(m1h["clone_acc"])
     df["in_y1h"] = df["clone_acc"].isin(y1h["unique_acc"])
@@ -326,7 +324,7 @@ def load_isoform_and_paralog_y2h_data(
     return df
 
 
-def load_y1h_pdi_data(add_missing_data=False):
+def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
     df = pd.read_csv(DATA_DIR / "internal/a2_juan_pdi_w_unique_isoacc.tsv", sep="\t")
     df = (
         pd.concat([df.loc[:, ["tf", "unique_acc"]], pd.get_dummies(df["bait"])], axis=1)
@@ -346,7 +344,46 @@ def load_y1h_pdi_data(add_missing_data=False):
             on=["tf", "unique_acc"],
             how="outer",
         )
+    df[df.columns[2:]] = df[df.columns[2:]].astype("boolean")
+    if include_pY1H_data:
+        pY1H = load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment()
+        df = pd.merge(df, pY1H, on=["tf", "unique_acc"], how="outer")
     df = df.sort_values(["tf", "unique_acc"])
+    return df
+
+
+def load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment():
+    clones = load_valid_isoform_clones().set_index("clone_name")["clone_acc"]
+
+    tested_genes = ["MAX", "PPARG", "RARG", "RXRG", "STAT1", "STAT3"]
+    df = pd.concat(
+        pd.read_excel(
+            DATA_DIR / "internal/pY1H isoform single-TF results v2.xlsx",
+            sheet_name=gene,
+            usecols=[4, 5, 6, 7],
+        )
+        for gene in tested_genes
+    )
+    df["interaction"] = (
+        df["interaction"]
+        .fillna("False")
+        .map(
+            {
+                "False": False,
+                "moderate/strong": True,
+                "very strong": True,
+                "inconclusive": np.nan,
+            }
+        )
+    )
+    if (df.groupby("bait gene")["bait #"].nunique() != 1).any():
+        raise UserWarning("unexpected multiple baits per gene")
+    df["isoform"] = df["isoform"].map(lambda x: {"MAX": "MAX-1"}.get(x, x))
+    df["tf"] = df["isoform"].apply(lambda x: x.split("-")[0])
+    df["unique_acc"] = df["isoform"].map(clones)
+    df = df.pivot(index=["tf", "unique_acc"], columns="bait gene", values="interaction")
+    df = df.astype("boolean")
+    df = df.reset_index()
     return df
 
 
