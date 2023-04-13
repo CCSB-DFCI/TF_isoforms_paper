@@ -275,10 +275,17 @@ def load_y2h_paralogs_additional_data():
 
 
 def load_isoform_and_paralog_y2h_data(
-    add_missing_data=False, add_partner_cateogories=False
+    add_missing_data=False,
+    add_partner_cateogories=False,
+    remove_keratin_associated_proteins=True,
 ):
     """
     TODO: add_missing_data doesn't seem to do anything......
+
+    remove_keratin_associated_proteins (bool): kertin associated proteins and
+        the related late cornified envelope proteins are expressed in hair and
+        skin, respectively. They bind many partners, and so their interactions
+        are less likely to be relevant.
 
     """
     df = pd.read_csv(
@@ -291,6 +298,16 @@ def load_isoform_and_paralog_y2h_data(
     df["ad_clone_acc"] = df["ad_clone_name"].map(
         valid_clones.set_index("clone_name")["clone_acc"]
     )
+
+    if remove_keratin_associated_proteins:
+        df = df.loc[
+            ~(
+                df["db_gene_symbol"].str.startswith("KRTAP")
+                | df["db_gene_symbol"].str.startswith("LCE")
+            ),
+            :,
+        ]
+
     if add_missing_data:
         all_possible_ints = (
             pd.merge(
