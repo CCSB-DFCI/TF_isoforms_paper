@@ -1398,6 +1398,8 @@ def load_annotated_6k_collection(
                     cloned_isoform.ensembl_transcript_names = (
                         gencode_isoform.ensembl_transcript_names
                     )
+                    cloned_isoform.aa_seq_GENCODE = gencode_isoform.aa_seq
+                    cloned_isoform.nt_seq_CDS_GENCODE = gencode_isoform.nt_seq
                     clone_match = True
             if not clone_match:
                 uncloned_orfs[tf.name].append(gencode_isoform)

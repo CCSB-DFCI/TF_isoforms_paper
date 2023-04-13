@@ -1588,6 +1588,30 @@ class Cloned_Isoform(Isoform):
     def is_novel_isoform(self):
         return self.ensembl_transcript_ids is None
 
+    def aa_seq_differences_from_GENCODE(self):
+        if self.is_novel_isoform():
+            raise UserWarning("Novel isoform doesn't match to GENCODE")
+        if self.aa_seq == self.aa_seq_GENCODE:
+            return None
+        msg = []
+        for i, (aa_clone, aa_gc) in enumerate(zip(self.aa_seq, self.aa_seq_GENCODE)):
+            if aa_clone != aa_gc:
+                msg.append(aa_gc + str(i + 1) + aa_clone)
+        return ", ".join(msg)
+
+    def nt_seq_differences_from_GENCODE_CDS(self):
+        if self.is_novel_isoform():
+            raise UserWarning("Novel isoform doesn't match to GENCODE")
+        if self.clone_nt_seq == self.nt_seq_CDS_GENCODE:
+            return None
+        msg = []
+        for i, (nt_clone, nt_gc) in enumerate(
+            zip(self.clone_nt_seq, self.nt_seq_CDS_GENCODE)
+        ):
+            if nt_clone != nt_gc:
+                msg.append(str(i + 1) + nt_gc + ">" + nt_clone)
+        return ", ".join(msg)
+
     def __repr__(self):
         s = "Clone acc: {}\n".format(self.clone_acc)
         s += Isoform.__repr__(self)
