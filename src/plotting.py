@@ -3,8 +3,10 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib import patches
+from scipy.stats import mannwhitneyu
 import pandas as pd
 
 sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../.."))
@@ -292,3 +294,124 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):
     for pos in ["top", "left", "right"]:
         ax.spines[pos].set_visible(False)
     ax.yaxis.set_tick_params(length=0)
+
+## kaia's added code
+PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+                "rc": {"font.size":7,"axes.titlesize":7,
+                       "axes.labelsize":7, 'axes.linewidth':0.5,
+                       "legend.fontsize":6, "xtick.labelsize":6,
+                       "ytick.labelsize":6, "xtick.major.size": 3.0,
+                       "ytick.major.size": 3.0, "axes.edgecolor": "black",
+                       "xtick.major.pad": 3.0, "ytick.major.pad": 3.0}}
+PAPER_FONTSIZE = 7
+
+def mimic_r_boxplot(ax):
+    for i, patch in enumerate(ax.artists):
+        r, g, b, a = patch.get_facecolor()
+        col = (r, g, b, 1)
+        patch.set_facecolor((r, g, b, .5))
+        patch.set_edgecolor((r, g, b, 1))
+
+        # Each box has 6 associated Line2D objects (to make the whiskers, fliers, etc.)
+        # Loop over them here, and use the same colour as above
+        line_order = ["lower", "upper", "whisker_1", "whisker_2", "med", "fliers"]
+        for j in range(i*6,i*6+6):
+            elem = line_order[j%6]
+            line = ax.lines[j]
+            if "whisker" in elem:
+                line.set_visible(False)
+            line.set_color(col)
+            line.set_mfc(col)
+            line.set_mec(col)
+            if "fliers" in elem:
+                line.set_alpha(0.5)
+
+def annotate_pval(ax, x1, x2, y, h, text_y, val, fontsize):
+    from decimal import Decimal
+    ax.plot([x1, x1, x2, x2], [y, y+h, y+h, y], lw=1, c="black", linewidth=0.5)
+    if val < 0.0001:
+        text = "{:.2e}".format(Decimal(val))
+        #text = "**"
+    elif val < 0.05:
+        text = "%.4f" % val
+        #text = "*"
+    else:
+        text = "%.4f" % val
+        #text = "n.s."
+    ax.text((x1+x2)*.5, text_y, text, ha='center', va='bottom', color="black", size=fontsize)
+    
+def nice_boxplot(df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylabel, log_scale, ylim, title, figf):
+    fig = plt.figure(figsize=(2,2.5))
+
+    ax = sns.boxplot(data=df, y=ycat, x=xcat,
+                     order=xorder, palette=pal,
+                     fliersize=0)
+
+    sns.swarmplot(data=df, y=ycat, x=xcat,
+                  order=xorder, palette=pal, ax=ax,
+                  size=4, edgecolor="black", linewidth=0.5, alpha=0.5)
+
+    # calculate differences
+    for comp, xs, y, d_y in zip([(xorder[0], xorder[1]), (xorder[0], xorder[2]), 
+                                 (xorder[0], xorder[3]), (xorder[1], xorder[2])],
+                                [(0, 1), (0, 2), (0, 3), (1, 2)], pys, [0, 0, 0, 0]):
+        cat_a = comp[0]
+        cat_b = comp[1]
+        dist_a = list(df[(df[xcat] == cat_a)][ycat])
+        dist_b = list(df[(df[xcat] == cat_b)][ycat])
+
+        u, p = mannwhitneyu(dist_a, dist_b, alternative="two-sided")
+        print(p)
+
+        annotate_pval(ax, xs[0], xs[1], y, 0, y-(y*d_y), p, PAPER_FONTSIZE)
+        
+def nice_violinplot(df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylabel, log_scale, ylim, title, figf):
+    fig = plt.figure(figsize=(2,2))
+
+    ax = sns.violinplot(data=df, y=ycat, x=xcat,
+                        order=xorder, palette=pal,
+                        cut=0, inner="quartiles", scale="width")
+    
+    # edit quartile lines
+    for l in ax.lines:
+        l.set_linestyle('--')
+        l.set_linewidth(0.6)
+        l.set_color('black')
+        l.set_alpha(0.5)
+    for l in ax.lines[1::3]:
+        l.set_linestyle('-')
+        l.set_linewidth(1.0)
+        l.set_color('black')
+        l.set_alpha(1)
+
+    # calculate differences
+    for comp, xs, y, d_y in zip([(xorder[0], xorder[1]), (xorder[0], xorder[2]), 
+                                 (xorder[0], xorder[3]), (xorder[1], xorder[2])],
+                                [(0, 1), (0, 2), (0, 3), (1, 2)], pys, [0, 0, 0, 0]):
+        cat_a = comp[0]
+        cat_b = comp[1]
+        dist_a = list(df[(df[xcat] == cat_a)][ycat])
+        dist_b = list(df[(df[xcat] == cat_b)][ycat])
+
+        u, p = mannwhitneyu(dist_a, dist_b, alternative="two-sided")
+        print(p)
+
+        annotate_pval(ax, xs[0], xs[1], y, 0, y-(y*d_y), p, PAPER_FONTSIZE)
+
+    # add N to plot
+    for i, label in enumerate(xorder):
+        n = len(df[(df[xcat] == label) & (~pd.isnull(ycat))])
+        print(n)
+        ax.annotate(str(n), xy=(i, ay), xycoords="data", xytext=(0, 0), textcoords="offset pixels",
+                    ha="center", va="top", color=pal[label], size=PAPER_FONTSIZE)
+
+    ax.set_xlabel(xlabel)
+    ax.set_xticklabels(xticklabels, ha="right", va="top", rotation=30)
+    ax.set_ylabel(ylabel)
+    if log_scale:
+        ax.set_yscale("log")
+    ax.set_ylim(ylim)
+
+    ax.set_title(title)
+
+    fig.savefig(figf, dpi="figure", bbox_inches="tight")
