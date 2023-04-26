@@ -56,6 +56,7 @@ dn_f = "../data/processed/TF-iso_ref-vs-alt.bug_fix.tsv"
 # In[6]:
 
 
+# ask luke to update this to include Y1H data
 dn = pd.read_table(dn_f)
 dn
 
@@ -550,17 +551,17 @@ df["rw_cumsum"] = np.cumsum(df["rewire"])
 df
 
 
-# In[25]:
+# In[38]:
 
 
 colors = met_brewer.met_brew(name="Hokusai3", n=4, brew_type="discrete")
 sns.palplot(colors)
 
 
-# In[26]:
+# In[49]:
 
 
-fig, ax = plt.subplots(figsize=(2.1, 1.5))
+fig, ax = plt.subplots(figsize=(0.85, 1.5))
 
 xs = ["negative regulator", "rewirer"]
 y1 = list(df[["DN", "rewire"]].loc["pdi_change"])
@@ -580,10 +581,155 @@ handles, labels = ax.get_legend_handles_labels()
 ax.legend(handles[::-1], labels[::-1], loc='upper left', bbox_to_anchor=(1.01, 1))
 
 ax.set_ylabel("percent prevalence")
-ax.set_xticklabels(["negative regulator", "rewirer"])
+ax.set_xticklabels(["negative\nregulator", "rewirer"])
 
 fig.savefig("../figures/dn_stacked_bar.pdf", dpi="figure", bbox_inches="tight")
 
+
+# In[40]:
+
+
+# make stacked barchart situation of all assays (to compare)
+tmp = dn[dn["dn_short"] != "NA"]
+pdi_assessed = len(tmp[tmp["y1h_cat"] != "NA"])
+ppi_assessed = len(tmp[tmp["y2h_cat"] != "NA"])
+activ_assessed = len(tmp[tmp["m1h_cat"] != "NA"])
+
+tot_assessed = pdi_assessed + ppi_assessed + activ_assessed
+
+nc = pd.DataFrame.from_dict({"assessed": {"pdi": pdi_assessed/tot_assessed*100, 
+                                    "ppi": ppi_assessed/tot_assessed*100,
+                                    "activ": activ_assessed/tot_assessed*100}})
+nc["assessed_cumsum"] = np.cumsum(nc["assessed"])
+nc
+
+
+# In[44]:
+
+
+fig, ax = plt.subplots(figsize=(0.25, 1.5))
+
+xs = ["assessed"]
+y1 = list(nc[["assessed"]].loc["pdi"])
+y2 = list(nc[["assessed"]].loc["ppi"])
+b2 = np.add(y1, y2)
+y3 = list(nc[["assessed"]].loc["activ"])
+
+ax.bar(xs, y1, color=colors[0], label="PDIs")
+ax.bar(xs, y2, bottom=y1, color=colors[1], label="PPIs")
+ax.bar(xs, y3, bottom=b2, color=colors[2], label="activity")
+
+# add legend
+handles, labels = ax.get_legend_handles_labels()
+ax.legend(handles[::-1], labels[::-1], loc='upper left', bbox_to_anchor=(1.01, 1))
+
+ax.set_ylabel("percent prevalence")
+ax.set_xticklabels(["total assessed"])
+
+fig.savefig("../figures/dn_stacked_bar.nc.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[60]:
+
+
+genes_w_dn = dn[dn["dn_short"] == "DN"][["gene_symbol", "family"]].drop_duplicates()
+genes_w_rw = dn[dn["dn_short"] == "rewire"][["gene_symbol", "family"]].drop_duplicates()
+tot_genes = dn[["gene_symbol", "family"]].drop_duplicates()
+
+tot_genes_per_f = tot_genes.groupby("family")["gene_symbol"].agg("count").reset_index()
+dn_genes_per_f = genes_w_dn.groupby("family")["gene_symbol"].agg("count").reset_index()
+rw_genes_per_f = genes_w_rw.groupby("family")["gene_symbol"].agg("count").reset_index()
+
+family_cats = tot_genes_per_f.merge(dn_genes_per_f, 
+                                    on="family", how="left").merge(rw_genes_per_f, on="family", how="left")
+family_cats.fillna(0, inplace=True)
+family_cats.columns = ["family", "tot", "dn", "rw"]
+
+family_cats["tot_p"] = family_cats["tot"]/family_cats["tot"].sum(axis=0)*100
+family_cats["dn_p"] = family_cats["dn"]/family_cats["dn"].sum(axis=0)*100
+family_cats["rw_p"] = family_cats["rw"]/family_cats["rw"].sum(axis=0)*100
+family_cats.sort_values(by="tot", ascending=False).head(11)
+
+
+# In[61]:
+
+
+colors = met_brewer.met_brew(name="Renoir", n=11, brew_type="discrete")
+sns.palplot(colors)
+
+
+# In[63]:
+
+
+fig, ax = plt.subplots(figsize=(2.75, 2))
+
+xs = ["total", "negative regulator", "rewirer"]
+
+b = np.zeros(3)
+c = 0
+for i, row in family_cats.sort_values(by="tot", ascending=False).head(11).iterrows():
+    y = list(row[["tot_p", "dn_p", "rw_p"]])
+    ax.bar(xs, y, bottom=b, label=row.family, color=colors[c])
+    b = np.add(b, y)
+    c += 1
+
+ax.bar(xs, np.subtract([100, 100, 100], b), bottom=b, label="smaller families", color="lightgray")
+
+# add legend
+handles, labels = ax.get_legend_handles_labels()
+ax.legend(handles[::-1], labels[::-1], loc='upper left', bbox_to_anchor=(1.01, 1))
+
+fig.savefig("../figures/dn_families_stacked_bar.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[72]:
+
+
+family_cats["dn_fc"] = family_cats["dn_p"]/family_cats["tot_p"]
+family_cats["rw_fc"] = family_cats["rw_p"]/family_cats["tot_p"]
+family_cats_sorted = family_cats.sort_values(by="tot", ascending=False).head(11)
+family_cats_sorted
+
+
+# In[79]:
+
+
+to_plot = pd.melt(family_cats_sorted, id_vars="family", value_vars=["dn_fc", "rw_fc"])
+
+fig = plt.figure(figsize=(2, 2))
+ax = sns.stripplot(data=to_plot[to_plot["variable"] == "dn_fc"], y="family", x="value", color=pal["DN"],
+                   edgecolor="black", linewidth=0.5)
+ax.axvline(x=1, linestyle="dashed", color="gray")
+
+y = 0
+for i, row in to_plot[to_plot["variable"] == "dn_fc"].iterrows():
+    ax.plot([1, row.value], [y, y], '-', color=pal["DN"])
+    y += 1
+
+ax.set_title("negative regulators")
+ax.set_xlabel("enrichment over total")
+ax.set_ylabel("")
+
+
+# In[80]:
+
+
+fig = plt.figure(figsize=(2, 2))
+ax = sns.stripplot(data=to_plot[to_plot["variable"] == "rw_fc"], y="family", x="value", color=pal["rewire"],
+                   edgecolor="black", linewidth=0.5)
+ax.axvline(x=1, linestyle="dashed", color="gray")
+
+y = 0
+for i, row in to_plot[to_plot["variable"] == "rw_fc"].iterrows():
+    ax.plot([1, row.value], [y, y], '-', color=pal["rewire"])
+    y += 1
+
+ax.set_title("rewirers")
+ax.set_xlabel("enrichment over total")
+ax.set_ylabel("")
+
+
+# ## write file
 
 # In[27]:
 

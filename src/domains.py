@@ -6,7 +6,7 @@
 # - add the other DBDs from the same clan
 # - About 1700 out of 2700 have PFam hits in the file (~60%)
 
-# In[1]:
+# In[6]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -16,6 +16,7 @@ import tqdm
 import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
+import seaborn as sns
 
 from poibin import PoiBin
 
@@ -27,7 +28,33 @@ tfs = load_annotated_gencode_tfs()
 clans = load_pfam_clans()
 
 
-# In[90]:
+# In[8]:
+
+
+np.random.seed(2023)
+
+
+# In[9]:
+
+
+PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+                "rc": {"font.size":7,"axes.titlesize":7,
+                       "axes.labelsize":7, 'axes.linewidth':0.5,
+                       "legend.fontsize":6, "xtick.labelsize":6,
+                       "ytick.labelsize":6, "xtick.major.size": 3.0,
+                       "ytick.major.size": 3.0, "axes.edgecolor": "black",
+                       "xtick.major.pad": 3.0, "ytick.major.pad": 3.0}}
+PAPER_FONTSIZE = 7
+
+
+# In[10]:
+
+
+sns.set(**PAPER_PRESET)
+fontsize = PAPER_FONTSIZE
+
+
+# In[11]:
 
 
 fig, axs = plt.subplots(2, 1, sharex=True)
@@ -54,7 +81,7 @@ fig.savefig('../figures/n-aa-per-isoform_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[96]:
+# In[12]:
 
 
 # exons per isoform
@@ -82,7 +109,7 @@ fig.savefig('../figures/n-exons-per-isoform_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[123]:
+# In[13]:
 
 
 # size of exons
@@ -104,7 +131,7 @@ fig.savefig('../figures/n-aa-per-exon_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[6]:
+# In[14]:
 
 
 # size of domains split by DBD, other pfam and effector
@@ -134,7 +161,7 @@ fig.savefig('../figures/n_aa_per_domain_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[2]:
+# In[ ]:
 
 
 # linking domains to exons
@@ -156,7 +183,7 @@ def f_exon_per_domain(iso, dom):
     return f
 
 
-# In[7]:
+# In[15]:
 
 
 n_exon_dbd = [n_exon_per_domain(tf.reference_isoform, dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if is_DBD(dom)]
@@ -206,7 +233,7 @@ fig.savefig('../figures/f_exon_per_domain_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[20]:
+# In[16]:
 
 
 from collections import Counter
@@ -226,7 +253,9 @@ Counter([d.name for d in single_exon_doms])
 pd.set_option('display.max_columns', 100)
 
 
-# In[5]:
+# ### note: kaia started here
+
+# In[17]:
 
 
 # TODO change to reference isoform
@@ -246,13 +275,13 @@ dbd_acc = set(dbd['pfam'].values).union(
             )
 
 
-# In[4]:
+# In[18]:
 
 
 get_ipython().run_cell_magic('time', '', "df_null = pd.concat([g.null_fraction_per_aa_feature(g.orfs[0].name) for g in tfs.values()])\ndf = pd.merge(df, df_null, how='left', on=['gene', 'ref_iso', 'alt_iso', 'length'])")
 
 
-# In[8]:
+# In[19]:
 
 
 for name, tf in tfs.items():
@@ -263,19 +292,19 @@ for name, tf in tfs.items():
         break
 
 
-# In[10]:
+# In[20]:
 
 
 print(len({d for d in dbd_acc if not d.startswith('C2H2_ZF_array_')}) + 1, 'different DNA binding domain types')
 
 
-# In[9]:
+# In[21]:
 
 
 len({k for k, v in clans.items() if v in dbd['clan'].values})
 
 
-# In[19]:
+# In[22]:
 
 
 # random shuffle
@@ -286,14 +315,14 @@ for g in tqdm.tqdm(tfs.values()):
 rnd = pd.concat(rnd)
 
 
-# In[141]:
+# In[23]:
 
 
 rnd['is_DBD'] = rnd['accession'].isin(dbd['pfam'].values) | rnd['accession'].str.startswith('C2H2_ZF_array')
 rnd['is_affected'] = (rnd['deletion'] + rnd['insertion'] + rnd['frameshift']) > 0
 
 
-# In[10]:
+# In[24]:
 
 
 print(df.loc[df['is_DBD'], :].groupby('alt_iso')['is_affected'].any().value_counts())

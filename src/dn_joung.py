@@ -435,8 +435,10 @@ for tf in tfs:
         except AttributeError:
             continue
 
-        
-        iso_seq_aa = iso.aa_seq_GENCODE
+        try:
+            iso_seq_aa = iso.aa_seq_GENCODE
+        except AttributeError:
+            iso_seq_aa = iso.aa_seq
         iso_ensts = iso.ensembl_transcript_ids
 
         
@@ -886,6 +888,12 @@ orf_enr_dn_filt["dn_cat_s"] = pd.Categorical(orf_enr_dn_filt["dn_cat"], ["ref", 
 orf_enr_dn_filt = orf_enr_dn_filt.sort_values(by=["gene_name", "dn_cat_s"])
 
 
+# In[70]:
+
+
+cell_cnt[cell_cnt["TF"].str.contains("PBX1")]
+
+
 # In[63]:
 
 
@@ -901,6 +909,40 @@ idx["Isoform type"] = idx.dn_cat.map(pal)
 g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform type"],
                figsize=(4, 2.5), yticklabels=True, cbar_pos=(0, 1, 0.05, 0.2))
 g.savefig("../figures/Joung_KLF7_hm.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[67]:
+
+
+tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("PBX1")].pivot(index="tf1p0_id", 
+                                                                              columns="predicted.id", 
+                                                                              values="perc_cells_of_tot_tf")
+tmp.fillna(0, inplace=True)
+
+idx = pd.DataFrame(tmp.index)
+idx = idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id").drop_duplicates().set_index("tf1p0_id")
+idx["Isoform type"] = idx.dn_cat.map(pal)
+
+g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform type"],
+               figsize=(4, 2.5), yticklabels=True, cbar_pos=(0, 1, 0.05, 0.2))
+g.savefig("../figures/Joung_PBX1_hm.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[75]:
+
+
+tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("ATF2")].pivot(index="tf1p0_id", 
+                                                                              columns="predicted.id", 
+                                                                              values="perc_cells_of_tot_tf")
+tmp.fillna(0, inplace=True)
+
+idx = pd.DataFrame(tmp.index)
+idx = idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id").drop_duplicates().set_index("tf1p0_id")
+idx["Isoform type"] = idx.dn_cat.map(pal)
+
+g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform type"],
+               figsize=(4, 2.5), yticklabels=True, cbar_pos=(0, 1, 0.05, 0.2))
+# g.savefig("../figures/Joung_HOXA1_hm.pdf", bbox_inches="tight", dpi="figure")
 
 
 # In[64]:

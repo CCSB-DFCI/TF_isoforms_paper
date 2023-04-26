@@ -330,13 +330,13 @@ def annotate_pval(ax, x1, x2, y, h, text_y, val, fontsize):
     from decimal import Decimal
     ax.plot([x1, x1, x2, x2], [y, y+h, y+h, y], lw=1, c="black", linewidth=0.5)
     if val < 0.0001:
-        text = "{:.2e}".format(Decimal(val))
+        text = "{:.1e}".format(Decimal(val))
         #text = "**"
     elif val < 0.05:
-        text = "%.4f" % val
+        text = "%.3f" % val
         #text = "*"
     else:
-        text = "%.4f" % val
+        text = "%.2f" % val
         #text = "n.s."
     ax.text((x1+x2)*.5, text_y, text, ha='center', va='bottom', color="black", size=fontsize)
     
@@ -346,6 +346,7 @@ def nice_boxplot(df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylab
     ax = sns.boxplot(data=df, y=ycat, x=xcat,
                      order=xorder, palette=pal,
                      fliersize=0)
+    mimic_r_boxplot(ax)
 
     sns.swarmplot(data=df, y=ycat, x=xcat,
                   order=xorder, palette=pal, ax=ax,
@@ -364,9 +365,27 @@ def nice_boxplot(df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylab
         print(p)
 
         annotate_pval(ax, xs[0], xs[1], y, 0, y-(y*d_y), p, PAPER_FONTSIZE)
+    
+    # add N to plot
+    for i, label in enumerate(xorder):
+        n = len(df[(df[xcat] == label) & (~pd.isnull(ycat))])
+        print(n)
+        ax.annotate(str(n), xy=(i, ay), xycoords="data", xytext=(0, 0), textcoords="offset pixels",
+                    ha="center", va="top", color=pal[label], size=PAPER_FONTSIZE)
+
+    ax.set_xlabel(xlabel)
+    ax.set_xticklabels(xticklabels, ha="right", va="top", rotation=30)
+    ax.set_ylabel(ylabel)
+    if log_scale:
+        ax.set_yscale("log")
+    ax.set_ylim(ylim)
+
+    ax.set_title(title)
+
+    fig.savefig(figf, dpi="figure", bbox_inches="tight")
         
-def nice_violinplot(df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylabel, log_scale, ylim, title, figf):
-    fig = plt.figure(figsize=(2,2))
+def nice_violinplot(figsize, df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylabel, log_scale, ylim, title, figf):
+    fig = plt.figure(figsize=figsize)
 
     ax = sns.violinplot(data=df, y=ycat, x=xcat,
                         order=xorder, palette=pal,

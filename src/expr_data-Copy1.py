@@ -8,7 +8,7 @@
 # - compare adult tissues in GTEx and development
 # - can we do some statistics???
 
-# In[1]:
+# In[215]:
 
 
 import os
@@ -34,7 +34,7 @@ from data_loading import (load_isoform_and_paralog_y2h_data,
                           load_developmental_tissue_expression_gencode)
 
 
-# In[2]:
+# In[216]:
 
 
 tfs = load_annotated_gencode_tfs()
@@ -89,50 +89,50 @@ ref_isos = {'|'.join(sorted(orf.ensembl_transcript_names))
             if tf.has_MANE_select_isoform and orf.is_MANE_select_transcript}
 
 
-# In[3]:
+# In[217]:
 
 
 metadata_dev.shape
 
 
-# In[4]:
+# In[218]:
 
 
 metadata_gtex.shape
 
 
-# In[5]:
+# In[219]:
 
 
 # compare GTEx and dev datasets
 df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).value_counts().rename('# samples').value_counts().sort_index().to_frame()
 
 
-# In[6]:
+# In[220]:
 
 
 metadata_dev.groupby(['organism_part'])['dev_stage'].nunique().to_frame()
 
 
-# In[7]:
+# In[221]:
 
 
 df_gtex.columns.map(metadata_gtex['body_site']).value_counts().rename('# samples').to_frame()
 
 
-# In[8]:
+# In[222]:
 
 
 (means_gtex > 1).any(axis=1).value_counts()
 
 
-# In[9]:
+# In[223]:
 
 
 (means_gtex.loc[means_gtex.index.isin(alt_isos), :].sum(axis=1) >= 1).sum()
 
 
-# In[10]:
+# In[224]:
 
 
 # plot number of isoforms above 1 TPM
@@ -172,7 +172,7 @@ fig.savefig('../figures/n-isoforms-per-gene_by-1TPM-cutoff_hist.pdf',
             bbox_inches='tight')
 
 
-# In[11]:
+# In[225]:
 
 
 # plot 2D
@@ -197,26 +197,26 @@ fig.savefig('../figures/n_isoforms-vs-n-gte1TPM_circle-plot.pdf',
             bbox_inches='tight')
 
 
-# In[12]:
+# In[226]:
 
 
 # fraction of alternative isoforms
 sum(hasattr(tf.orfs[0], 'is_MANE_select_transcript') for tf in tfs.values())
 
 
-# In[13]:
+# In[227]:
 
 
 n_iso = (means_gtex > 1).any(axis=1).groupby(genes_gtex).sum()
 
 
-# In[14]:
+# In[228]:
 
 
 means_gtex.loc[~means_gtex.index.isin(all_isos), :]
 
 
-# In[15]:
+# In[229]:
 
 
 p = (means_gtex.loc[means_gtex.index.isin(alt_isos), :] >= 1).any(axis=1).sum()
@@ -258,7 +258,7 @@ fig.savefig('../figures/GTEx-max-expression_by-reference-vs-alternative_pie.pdf'
             bbox_inches='tight')
 
 
-# In[16]:
+# In[230]:
 
 
 # Exlclude testis
@@ -302,7 +302,7 @@ fig.savefig('../figures/GTEx-max-expression_by-reference-vs-alternative_no-testi
             bbox_inches='tight')
 
 
-# In[17]:
+# In[231]:
 
 
 p = (means_dev.loc[means_dev.index.isin(alt_isos), :] >= 1).any(axis=1).sum()
@@ -344,14 +344,14 @@ fig.savefig('../figures/developmental-max-expression_by-reference-vs-alternative
             bbox_inches='tight')
 
 
-# In[18]:
+# In[232]:
 
 
 # TODO: move this cell
 #means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean()
 
 
-# In[19]:
+# In[233]:
 
 
 # p = (means_gtex_downsample.loc[means_gtex_downsample.index.isin(alt_isos), :] >= 1).any(axis=1).sum()
@@ -393,7 +393,7 @@ fig.savefig('../figures/developmental-max-expression_by-reference-vs-alternative
 #             bbox_inches='tight')
 
 
-# In[20]:
+# In[234]:
 
 
 # Apologies for the confusing code here
@@ -410,13 +410,13 @@ third_dev = (df_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + '
                      .apply(lambda x: x.apply(third_highest, axis=1)))
 
 
-# In[21]:
+# In[235]:
 
 
 third_dev.notnull().sum(axis=1)
 
 
-# In[22]:
+# In[236]:
 
 
 # try requiring at least two samples in the same datapoint to reach the expression threshold
@@ -459,7 +459,7 @@ fig.savefig('../figures/GTEx-max-third-highest-sample-expression_by-reference-vs
             bbox_inches='tight')
 
 
-# In[23]:
+# In[237]:
 
 
 # try requiring at least two samples in the same datapoint to reach the expression threshold
@@ -502,7 +502,7 @@ fig.savefig('../figures/developmental-max-third-highest-sample-expression_by-ref
             bbox_inches='tight')
 
 
-# In[24]:
+# In[238]:
 
 
 # overlap between tissue and development
@@ -523,13 +523,13 @@ fig.savefig('../figures/expressed-alt-isoform-overlap-by-TPM-threshold_Venn.pdf'
             bbox_inches='tight')
 
 
-# In[25]:
+# In[239]:
 
 
 metadata_dev['dev_stage'].value_counts()
 
 
-# In[26]:
+# In[240]:
 
 
 # remove adult tissues in development data
@@ -553,13 +553,13 @@ fig.savefig('../figures/expressed-alt-isoform-overlap-restricted-by-TPM-threshol
             bbox_inches='tight')
 
 
-# In[27]:
+# In[241]:
 
 
 (df_gtex.shape, df_dev.shape)
 
 
-# In[28]:
+# In[242]:
 
 
 n_samples_gtex = df_gtex.shape[1]
@@ -581,27 +581,27 @@ fig.savefig('../figures/n-isoforms-vs-pct-samples_GTEx-vs-development_line-plot.
             bbox_inches='tight')
 
 
-# In[29]:
+# In[243]:
 
 
 # is this difference just individual level variation?
 (df_gtex.max(axis=1) > 1).value_counts()
 
 
-# In[30]:
+# In[244]:
 
 
 # is it possible to partition tissue and developmental stage specific isoforms?
 # can I do this within the cardoso morosia data?
 
 
-# In[31]:
+# In[245]:
 
 
 (df_dev.max(axis=1) > 1).value_counts()
 
 
-# In[32]:
+# In[246]:
 
 
 # plot distribution of isoforms by TPM
@@ -628,7 +628,7 @@ fig.savefig('../figures/expression_GTEX_GENCODE-isoforms_by-reference-vs-alterna
             bbox_inches='tight')
 
 
-# In[33]:
+# In[247]:
 
 
 # # plot distribution of isoforms by TPM
@@ -655,7 +655,7 @@ fig.savefig('../figures/expression_GTEX_GENCODE-isoforms_by-reference-vs-alterna
 #             bbox_inches='tight')
 
 
-# In[34]:
+# In[248]:
 
 
 # include all genes
@@ -728,13 +728,13 @@ fig.savefig('../figures/expression_GTEX_GENCODE-transcripts_by-reference-vs-alte
             bbox_inches='tight')
 
 
-# In[35]:
+# In[249]:
 
 
 means_gtex_all.max(axis=1)[~means_gtex_all.index.isin(mane_select)]
 
 
-# In[36]:
+# In[250]:
 
 
 # plot distribution of isoforms by TPM
@@ -761,7 +761,7 @@ fig.savefig('../figures/expression_development_GENCODE-isoforms_by-reference-vs-
             bbox_inches='tight')
 
 
-# In[37]:
+# In[251]:
 
 
 def load_developmental_tissue_expression_gencode_all_genes():
@@ -831,7 +831,7 @@ fig.savefig('../figures/expression_development_GENCODE-transcripts_by-reference-
             bbox_inches='tight')
 
 
-# In[38]:
+# In[252]:
 
 
 (
@@ -842,7 +842,7 @@ fig.savefig('../figures/expression_development_GENCODE-transcripts_by-reference-
 )
 
 
-# In[39]:
+# In[253]:
 
 
 # GAPDH and actin
@@ -855,7 +855,7 @@ fig.savefig('../figures/expression_development_GENCODE-transcripts_by-reference-
     )
 
 
-# In[40]:
+# In[254]:
 
 
 # number of isoforms vs gene expression, publications, and exons 
@@ -868,7 +868,7 @@ gn = tpm_per_gene.max(axis=1).rename('TPM - gene-level, max across GTEx tissues'
 gn['n_isoforms'] = gn.index.map(genes_gtex.value_counts())
 
 
-# In[41]:
+# In[255]:
 
 
 #from ccsblib.huri import load_number_publications_per_gene, load_id_map
@@ -883,20 +883,20 @@ gn['n_isoforms'] = gn.index.map(genes_gtex.value_counts())
 # gn['Number of publications'] = gn.index.map(n_pub)
 
 
-# In[42]:
+# In[256]:
 
 
 # TODO: change to get reference isoform
 gn['Number of exons in reference isoform'] = gn.index.map({name: len(tf.orfs[0].exons) for name, tf in tfs.items()})
 
 
-# In[43]:
+# In[257]:
 
 
 gn.head()
 
 
-# In[44]:
+# In[258]:
 
 
 # log-scale?
@@ -914,7 +914,7 @@ ax.text(x=x.max() * 0.9, y=20, s=f'r = {r:.2f}', ha='right')
 ax.text(x=x.max() * 0.9, y=18, s=f'rho = {rho:.2f}', ha='right')
 
 
-# In[45]:
+# In[259]:
 
 
 import seaborn as sns
@@ -973,7 +973,7 @@ import seaborn as sns
 #             bbox_inches='tight')
 
 
-# In[46]:
+# In[260]:
 
 
 from data_loading import load_tf_families
@@ -983,13 +983,13 @@ gn['family'] = gn.index.map(fam)
 gn['is_nuclear_receptor'] = (gn['family'] == 'Nuclear receptor')
 
 
-# In[47]:
+# In[261]:
 
 
 gn['family'].value_counts().head(10)
 
 
-# In[48]:
+# In[262]:
 
 
 # fig, ax = plt.subplots(1, 1)
@@ -1000,7 +1000,7 @@ gn['family'].value_counts().head(10)
 # ax.set_yscale('log')
 
 
-# In[49]:
+# In[263]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1010,7 +1010,7 @@ sns.boxplot(data=gn,
             ax=ax)
 
 
-# In[50]:
+# In[264]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1021,7 +1021,7 @@ sns.boxplot(data=gn,
 ax.set_yscale('log')
 
 
-# In[51]:
+# In[265]:
 
 
 # percentage of alternative isoform
@@ -1058,7 +1058,7 @@ fig.savefig('../figures/expression-fraction-GTEx-max-across-tissues_ref-vs-alt_h
             bbox_inches='tight')
 
 
-# In[52]:
+# In[266]:
 
 
 # percentage of alternative isoform
@@ -1099,7 +1099,7 @@ fig.savefig('../figures/expression-fraction-development-max-across-tissues_ref-v
             bbox_inches='tight')
 
 
-# In[53]:
+# In[267]:
 
 
 TPM_THRESHOLD = 2
@@ -1146,7 +1146,7 @@ print(len(switching_alt_isos))
 
 # ### note to luke - this block of code seems to finish correctly only sometimes, something about the .sample() step
 
-# In[85]:
+# In[268]:
 
 
 # percentage of alternative isoform
@@ -1183,7 +1183,7 @@ fig.savefig('../figures/expression-fraction-downsampled-GTEx-control-max-across-
             bbox_inches='tight')
 
 
-# In[55]:
+# In[269]:
 
 
 # TODO: diagonal line
@@ -1239,7 +1239,7 @@ for cm_tissue, gtex_tissue in paired_tissues:
     plt.savefig('../figures/GTEx-vs-dev_{}_GENCODE.pdf'.format(gtex_tissue), bbox_inches='tight')
 
 
-# In[57]:
+# In[270]:
 
 
 # calculate tissue-specificity score for each isoform
@@ -1254,7 +1254,7 @@ def calculate_tiss_spec(x):
     return x
 
 
-# In[58]:
+# In[271]:
 
 
 # dot / box plot
@@ -1267,7 +1267,7 @@ sns.stripplot(data=df, x='body_site', y=isoform)
 
 # ### kaia's new plots
 
-# In[60]:
+# In[272]:
 
 
 ref_alt_map = pd.DataFrame([ref_isos]).T
@@ -1285,13 +1285,13 @@ print(len(ref_alt_map_nonan))
 ref_alt_map_nonan.head()
 
 
-# In[61]:
+# In[273]:
 
 
 ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
 
 
-# In[62]:
+# In[274]:
 
 
 means_dev["max_dev"] = means_dev.max(axis=1)
@@ -1306,7 +1306,7 @@ means_dev_ri["UID_rep"] = means_dev_ri["UID"].str.replace("_", "|")
 means_dev_ri.head()
 
 
-# In[63]:
+# In[275]:
 
 
 means_gtex["max_gtex"] = means_gtex.max(axis=1)
@@ -1321,7 +1321,7 @@ means_gtex_ri["UID_rep"] = means_gtex_ri["UID"].str.replace("_", "|")
 means_gtex_ri.head()
 
 
-# In[64]:
+# In[276]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex"]], left_on="ref", 
@@ -1337,13 +1337,13 @@ print(len(ref_alt_map_nonan))
 ref_alt_map_nonan.head()
 
 
-# In[65]:
+# In[277]:
 
 
 ref_alt_map_nonan.sort_values(by="max_gtex_ref", ascending=False).head()
 
 
-# In[66]:
+# In[278]:
 
 
 fig = plt.figure(figsize=(3.5, 3))
@@ -1378,7 +1378,7 @@ fig.savefig('../figures/expression-scatter-ref_v_alt-gtex.pdf',
             bbox_inches='tight')
 
 
-# In[67]:
+# In[279]:
 
 
 fig = plt.figure(figsize=(3.5, 3))
@@ -1413,7 +1413,7 @@ fig.savefig('../figures/expression-scatter-ref_v_alt-dev.pdf',
             bbox_inches='tight')
 
 
-# In[68]:
+# In[280]:
 
 
 # putting NA as 0!
@@ -1428,7 +1428,7 @@ f_dev_ri["UID_rep"] = f_dev_ri["UID"].str.replace("_", "|")
 f_dev_ri.head()
 
 
-# In[69]:
+# In[281]:
 
 
 # putting NA as 0!
@@ -1443,7 +1443,7 @@ f_gtex_ri["UID_rep"] = f_gtex_ri["UID"].str.replace("_", "|")
 f_gtex_ri.head()
 
 
-# In[70]:
+# In[282]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gtex", "min_ratio_gtex"]], left_on="ref", 
@@ -1458,7 +1458,7 @@ print(len(ref_alt_map_nonan))
 ref_alt_map_nonan.head()
 
 
-# In[71]:
+# In[283]:
 
 
 fig = plt.figure(figsize=(3.5, 3))
@@ -1485,7 +1485,7 @@ fig.savefig('../figures/expression-ratio-scatter-ref_v_alt-gtex.pdf',
             bbox_inches='tight')
 
 
-# In[72]:
+# In[284]:
 
 
 fig = plt.figure(figsize=(3.5, 3))
@@ -1512,7 +1512,7 @@ fig.savefig('../figures/expression-ratio-scatter-ref_v_alt-dev.pdf',
             bbox_inches='tight')
 
 
-# In[73]:
+# In[285]:
 
 
 ref_alt_map_nonan["mm_dev_alt_delta"] = ref_alt_map_nonan["max_ratio_dev_alt"] - ref_alt_map_nonan["min_ratio_dev_alt"]
@@ -1522,7 +1522,7 @@ ref_alt_map_nonan["mm_gtex_ref_delta"] = ref_alt_map_nonan["max_ratio_gtex_ref"]
 ref_alt_map_nonan.sample(5)
 
 
-# In[74]:
+# In[345]:
 
 
 fig = plt.figure(figsize=(3.5, 2))
@@ -1555,7 +1555,7 @@ fig.savefig('../figures/expression-histogram-max_delta-dev.pdf',
             bbox_inches='tight')
 
 
-# In[75]:
+# In[346]:
 
 
 fig = plt.figure(figsize=(3.5, 2))
@@ -1590,7 +1590,7 @@ fig.savefig('../figures/expression-histogram-max_delta-gtex.pdf',
 
 # ### # make domain figure - move this into domain notebook at some point
 
-# In[76]:
+# In[323]:
 
 
 # loop through ref/alt pairs above and calculate total num AAs inserted/deleted/frameshifted
@@ -1695,7 +1695,7 @@ ref_alt_map_nonan["perc_f_dom"] = tot_perc_f_dom
 ref_alt_map_nonan.sample(5)
 
 
-# In[77]:
+# In[324]:
 
 
 def mimic_r_boxplot(ax):
@@ -1720,7 +1720,7 @@ def mimic_r_boxplot(ax):
                 line.set_alpha(0.5)
 
 
-# In[78]:
+# In[327]:
 
 
 to_plot = pd.melt(ref_alt_map_nonan, id_vars=["ref", "gene", "alt"], value_vars=["n_ins", "perc_ins",
@@ -1735,7 +1735,7 @@ to_plot["type"] = to_plot["variable"].str.split("_", expand=True)[1]
 to_plot.sample(5)
 
 
-# In[79]:
+# In[353]:
 
 
 fig = plt.figure(figsize=(3.6, 3))
@@ -1755,31 +1755,31 @@ fig.savefig('../figures/domain-overall-boxplot.pdf',
             bbox_inches='tight')
 
 
-# In[80]:
+# In[355]:
 
 
 to_plot[to_plot["n_or_perc"] == "perc"].groupby(["type", "dom_cat"]).agg("median")
 
 
-# In[81]:
+# In[365]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f_dom"] > 0])
 
 
-# In[82]:
+# In[357]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f"] >= 10])
 
 
-# In[83]:
+# In[358]:
 
 
 len(ref_alt_map_nonan)
 
 
-# In[84]:
+# In[366]:
 
 
 214/2305
