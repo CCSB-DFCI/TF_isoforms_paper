@@ -150,7 +150,7 @@ def y2h_ppi_per_tf_gene_plot(
     ax.set_yticklabels(
         [
             strikethrough(name) if all_na else name
-            for name, all_na in tf.isnull().all(axis=1).iteritems()
+            for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
 
@@ -196,7 +196,7 @@ def y2h_ppi_per_paralog_pair_plot(
     ax.set_yticklabels(
         [
             strikethrough(name) if all_na else name
-            for name, all_na in tf.isnull().all(axis=1).iteritems()
+            for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
 
