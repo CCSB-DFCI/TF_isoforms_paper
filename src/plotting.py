@@ -350,7 +350,7 @@ def nice_boxplot(df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylab
 
     sns.swarmplot(data=df, y=ycat, x=xcat,
                   order=xorder, palette=pal, ax=ax,
-                  size=4, edgecolor="black", linewidth=0.5, alpha=0.5)
+                  size=2, edgecolor="black", linewidth=0.5, alpha=0.5)
 
     # calculate differences
     for comp, xs, y, d_y in zip([(xorder[0], xorder[1]), (xorder[0], xorder[2]), 
@@ -415,7 +415,7 @@ def nice_violinplot(figsize, df, ycat, xcat, pal, xorder, pys, ay, xlabel, xtick
         u, p = mannwhitneyu(dist_a, dist_b, alternative="two-sided")
         print(p)
 
-        annotate_pval(ax, xs[0], xs[1], y, 0, y-(y*d_y), p, PAPER_FONTSIZE)
+        annotate_pval(ax, xs[0], xs[1], y, 0, y-(y*d_y), p, PAPER_FONTSIZE-1)
 
     # add N to plot
     for i, label in enumerate(xorder):

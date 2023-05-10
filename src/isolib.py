@@ -787,7 +787,7 @@ class Gene(GenomicFeature):
         #                                       hue=1)
         # TODO: will this error if too many exons?
         colors_frame_1 = sns.color_palette(
-            palette="bright", n_colors=len(merged_exon_bounds)
+            palette="husl", n_colors=len(merged_exon_bounds)
         )
 
         colors_frame_2 = sns.cubehelix_palette(
@@ -1117,6 +1117,7 @@ class Gene(GenomicFeature):
         gs = gridspec.GridSpecFromSubplotSpec(
             len(isoforms), 1, subplot_spec=ax.get_subplotspec(), hspace=2
         )
+        
         max_seq_len = max(len(iso.aa_seq) for iso in isoforms)
 
         aligner = Align.PairwiseAligner()

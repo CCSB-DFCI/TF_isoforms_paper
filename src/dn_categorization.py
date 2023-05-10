@@ -729,6 +729,12 @@ ax.set_xlabel("enrichment over total")
 ax.set_ylabel("")
 
 
+# In[54]:
+
+
+dn[dn["gene_symbol"]=="PATZ1"]
+
+
 # ## write file
 
 # In[27]:

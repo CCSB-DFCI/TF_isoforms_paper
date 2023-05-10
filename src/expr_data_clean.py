@@ -209,12 +209,36 @@ gn.head()
 # In[16]:
 
 
+len(gn)
+
+
+# In[17]:
+
+
+len(gn[gn["n_isoforms"] > 1])
+
+
+# In[18]:
+
+
+gn.n_isoforms.mean()
+
+
+# In[19]:
+
+
+gn.sort_values(by="n_isoforms", ascending=False).head()
+
+
+# In[20]:
+
+
 fam_members = pd.DataFrame(gn['family'].value_counts()).reset_index()
 fam_members_ov12 = fam_members[fam_members["family"] >= 12]
 fam_members_ov12
 
 
-# In[17]:
+# In[21]:
 
 
 # plot distribution of isoforms by TPM
@@ -242,21 +266,21 @@ plt.tight_layout()
 # 
 # GTEx has more samples per condition than Dev, but Dev has more conditions
 
-# In[18]:
+# In[22]:
 
 
 # conditions (body sites): gtex
 len(metadata_gtex['body_site'].value_counts())
 
 
-# In[19]:
+# In[23]:
 
 
 # samples per body site: gtex
 metadata_gtex['body_site'].value_counts()
 
 
-# In[20]:
+# In[24]:
 
 
 # conditions (body sites): dev
@@ -264,7 +288,7 @@ metadata_dev['body_site'] = metadata_dev['organism_part'] + ' ' + metadata_dev['
 len(metadata_dev['body_site'].value_counts())
 
 
-# In[21]:
+# In[25]:
 
 
 # samples per body site: dev
@@ -274,7 +298,7 @@ metadata_dev['body_site'].value_counts()
 # ### loop through GTEx tissues and pick the # of samples by randomly matching to a dev dataset
 # this is inherently unstable when sampling w/o replacement as will end up with times where there are more samps in the dev that you're randomly matching to than the gtex (rare but happens)
 
-# In[22]:
+# In[26]:
 
 
 # loop through gtex tissues
@@ -306,40 +330,60 @@ if metadata_gtex_dummy.index.duplicated().any():
     raise UserWarning('Unexpected duplicates')
 
 
-# In[23]:
+# In[27]:
 
 
 metadata_gtex_dummy.shape
 
 
-# In[24]:
+# In[28]:
 
 
 len(metadata_gtex_dummy.body_site.unique())
 
 
-# In[25]:
+# In[29]:
 
 
 len(metadata_gtex_dummy.body_site.str.split("_", expand=True)[0].unique())
 
 
-# In[26]:
+# In[30]:
 
 
 metadata_dev.shape
 
 
-# In[27]:
+# In[31]:
 
 
 len(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).unique())
 
 
+# In[112]:
+
+
+df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).unique()
+
+
+# In[119]:
+
+
+tmp = metadata_dev.groupby(["organism_part", "dev_stage"])["BioSample"].agg("count").reset_index()
+tmp.sort_values(by="BioSample")
+
+
 # #### this dataframe is now the same shape as the dev data in both # of samples and # of "sites"
 # gets to the same # of "sites" by re-sampling among GTEx tissues
 
-# In[28]:
+# In[140]:
+
+
+# write this file so we can load it in the DN section later
+metadata_gtex_dummy.to_csv("../data/processed/metadata_gtex_dummy.csv")
+
+
+# In[32]:
 
 
 means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean()
@@ -349,7 +393,7 @@ means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy[
 
 # ### GTEx: all
 
-# In[29]:
+# In[33]:
 
 
 # plot number of isoforms above 1 TPM
@@ -402,7 +446,7 @@ fig.savefig('../figures/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx.pdf',
 
 # ### GTEx: downsample
 
-# In[30]:
+# In[34]:
 
 
 # plot number of isoforms above 1 TPM
@@ -438,7 +482,7 @@ fig.savefig('../figures/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_downsamp.pd
 
 # ### Dev
 
-# In[31]:
+# In[35]:
 
 
 # plot number of isoforms above 1 TPM
@@ -476,7 +520,7 @@ fig.savefig('../figures/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_dev.pdf',
 
 # ### GTEx: all
 
-# In[32]:
+# In[36]:
 
 
 p = (means_gtex.loc[means_gtex.index.isin(alt_isos), :] >= 1).any(axis=1).sum()
@@ -520,7 +564,7 @@ fig.savefig('../figures/GTEx-max-expression_by-reference-vs-alternative_pie.pdf'
 
 # #### GTEx all: exclude testis
 
-# In[33]:
+# In[37]:
 
 
 # Exlclude testis
@@ -566,7 +610,7 @@ fig.savefig('../figures/GTEx-max-expression_by-reference-vs-alternative_no-testi
 
 # ### GTEx: downsample
 
-# In[34]:
+# In[38]:
 
 
 p = (means_gtex_downsample.loc[means_gtex_downsample.index.isin(alt_isos), :] >= 1).any(axis=1).sum()
@@ -608,7 +652,7 @@ fig.savefig('../figures/downsampled-GTEx-control-max-expression_by-reference-vs-
             bbox_inches='tight')
 
 
-# In[35]:
+# In[39]:
 
 
 # Exlclude testis
@@ -654,7 +698,7 @@ fig.savefig('../figures/downsampled-GTEx-max-expression_by-reference-vs-alternat
 
 # ### Dev
 
-# In[36]:
+# In[40]:
 
 
 p = (means_dev.loc[means_dev.index.isin(alt_isos), :] >= 1).any(axis=1).sum()
@@ -698,7 +742,7 @@ fig.savefig('../figures/developmental-max-expression_by-reference-vs-alternative
 
 # #### Dev: no testis
 
-# In[37]:
+# In[41]:
 
 
 cols = [c for c in means_dev.columns if 'testis' not in c]
@@ -745,7 +789,7 @@ fig.savefig('../figures/developmental-max-expression_by-reference-vs-alternative
 
 # ### GTEx: all
 
-# In[38]:
+# In[42]:
 
 
 fig, axs = plt.subplots(2, 1, sharex=True)
@@ -773,7 +817,7 @@ fig.savefig('../figures/expression_GTEX_GENCODE-isoforms_by-reference-vs-alterna
 
 # ### GTEx: downsample
 
-# In[39]:
+# In[43]:
 
 
 # plot distribution of isoforms by TPM
@@ -802,7 +846,7 @@ fig.savefig('../figures/expression_downsampled-GTEX-control_GENCODE-isoforms_by-
 
 # ### Dev
 
-# In[40]:
+# In[44]:
 
 
 # plot distribution of isoforms by TPM
@@ -833,7 +877,7 @@ fig.savefig('../figures/expression_development_GENCODE-isoforms_by-reference-vs-
 
 # ### GTEx: all
 
-# In[41]:
+# In[45]:
 
 
 # percentage of alternative isoform
@@ -872,7 +916,13 @@ fig.savefig('../figures/expression-fraction-GTEx-max-across-tissues_ref-vs-alt_h
 
 # ### GTEx: downsample
 
-# In[42]:
+# In[46]:
+
+
+genes_gtex
+
+
+# In[47]:
 
 
 # percentage of alternative isoform
@@ -911,7 +961,7 @@ fig.savefig('../figures/expression-fraction-downsampled-GTEx-control-max-across-
 
 # ### Dev
 
-# In[43]:
+# In[48]:
 
 
 # percentage of alternative isoform
@@ -954,7 +1004,7 @@ fig.savefig('../figures/expression-fraction-development-max-across-tissues_ref-v
 
 # #### aside: calculating isoforms that switch
 
-# In[44]:
+# In[49]:
 
 
 TPM_THRESHOLD = 2
@@ -1001,7 +1051,7 @@ print(len(switching_alt_isos))
 
 # ## 9. ref v alt 2D heatmaps: max expression
 
-# In[45]:
+# In[50]:
 
 
 ref_alt_map = pd.DataFrame([ref_isos]).T
@@ -1019,7 +1069,7 @@ print(len(ref_alt_map_nonan))
 ref_alt_map_nonan.head()
 
 
-# In[46]:
+# In[51]:
 
 
 ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
@@ -1027,7 +1077,7 @@ ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
 
 # ### GTEx: all
 
-# In[47]:
+# In[52]:
 
 
 means_gtex["max_gtex"] = means_gtex.max(axis=1)
@@ -1042,7 +1092,7 @@ means_gtex_ri = means_gtex.reset_index()
 means_gtex_ri["UID_rep"] = means_gtex_ri["UID"].str.replace("_", "|")
 
 
-# In[48]:
+# In[53]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex", "min_gtex"]], left_on="ref", 
@@ -1051,7 +1101,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex"
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[49]:
+# In[54]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1097,7 +1147,7 @@ fig.savefig('../figures/expression-scatter-ref_v_alt-gtex.pdf',
 
 # ### GTEx: downsampled
 
-# In[50]:
+# In[55]:
 
 
 means_gtex_downsample["max_gtex_downsample"] = means_gtex_downsample.max(axis=1)
@@ -1112,7 +1162,7 @@ means_gtex_downsample_ri = means_gtex_downsample.reset_index()
 means_gtex_downsample_ri["UID_rep"] = means_gtex_downsample_ri["UID"].str.replace("_", "|")
 
 
-# In[51]:
+# In[56]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep", "max_gtex_downsample",
@@ -1123,7 +1173,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep",
                                             left_on="alt", right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[52]:
+# In[57]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1169,7 +1219,7 @@ fig.savefig('../figures/expression-scatter-ref_v_alt-gtex-downsample.pdf',
 
 # ### Dev
 
-# In[53]:
+# In[58]:
 
 
 means_dev["max_dev"] = means_dev.max(axis=1)
@@ -1184,7 +1234,7 @@ means_dev_ri = means_dev.reset_index()
 means_dev_ri["UID_rep"] = means_dev_ri["UID"].str.replace("_", "|")
 
 
-# In[54]:
+# In[59]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", "min_dev"]], left_on="ref", 
@@ -1193,7 +1243,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", 
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[55]:
+# In[60]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1243,7 +1293,7 @@ fig.savefig('../figures/expression-scatter-ref_v_alt-dev.pdf',
 
 # ### GTEx: all
 
-# In[56]:
+# In[61]:
 
 
 print(len(f_gtex))
@@ -1256,7 +1306,7 @@ f_gtex_ri = f_gtex_nonan.reset_index()
 f_gtex_ri["UID_rep"] = f_gtex_ri["UID"].str.replace("_", "|")
 
 
-# In[57]:
+# In[62]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gtex", "min_ratio_gtex"]], left_on="ref", 
@@ -1265,7 +1315,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gte
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[58]:
+# In[63]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1291,7 +1341,7 @@ fig.savefig('../figures/expression-ratio-scatter-ref-gtex.pdf',
             bbox_inches='tight')
 
 
-# In[59]:
+# In[64]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1318,7 +1368,7 @@ fig.savefig('../figures/expression-ratio-scatter-alt-gtex.pdf',
 
 # ### GTEx: downsample
 
-# In[60]:
+# In[65]:
 
 
 print(len(f_gtex_downsample))
@@ -1332,7 +1382,7 @@ f_gtex_downsample_ri = f_gtex_downsample_nonan.reset_index()
 f_gtex_downsample_ri["UID_rep"] = f_gtex_downsample_ri["UID"].str.replace("_", "|")
 
 
-# In[61]:
+# In[66]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "max_ratio_gtex_downsample", 
@@ -1343,7 +1393,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "ma
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[62]:
+# In[67]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1351,8 +1401,8 @@ fig = plt.figure(figsize=(2, 1.5))
 df = ref_alt_map_nonan[["ref", "min_ratio_gtex_downsample_ref", "max_ratio_gtex_downsample_ref"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_gtex_downsample_ref"])) & (~pd.isnull(df["max_ratio_gtex_downsample_ref"]))]
 
-n_switches = df[(df["min_ratio_gtex_downsample_ref"] < 20) & (df["max_ratio_gtex_downsample_ref"] > 70)]
-n_off = df[(df["min_ratio_gtex_downsample_ref"] < 20) & (df["max_ratio_gtex_downsample_ref"] < 20)]
+n_switches = df[(df["min_ratio_gtex_downsample_ref"] < 10) & (df["max_ratio_gtex_downsample_ref"] > 90)]
+n_off = df[(df["min_ratio_gtex_downsample_ref"] < 10) & (df["max_ratio_gtex_downsample_ref"] < 10)]
 print(len(n_switches))
 p_switches_ref_gtex_ds = len(n_switches)/len(df)
 p_off_ref_gtex_ds = len(n_off)/len(df)
@@ -1374,7 +1424,7 @@ fig.savefig('../figures/expression-ratio-scatter-ref-gtex-downsample.pdf',
             bbox_inches='tight')
 
 
-# In[63]:
+# In[68]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1382,8 +1432,8 @@ fig = plt.figure(figsize=(2, 1.5))
 df = ref_alt_map_nonan[["alt", "min_ratio_gtex_downsample_alt", "max_ratio_gtex_downsample_alt"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_gtex_downsample_alt"])) & (~pd.isnull(df["max_ratio_gtex_downsample_alt"]))]
 
-n_switches = df[(df["min_ratio_gtex_downsample_alt"] < 20) & (df["max_ratio_gtex_downsample_alt"] > 70)]
-n_off = df[(df["min_ratio_gtex_downsample_alt"] < 20) & (df["max_ratio_gtex_downsample_alt"] < 70)]
+n_switches = df[(df["min_ratio_gtex_downsample_alt"] < 10) & (df["max_ratio_gtex_downsample_alt"] > 90)]
+n_off = df[(df["min_ratio_gtex_downsample_alt"] < 10) & (df["max_ratio_gtex_downsample_alt"] < 10)]
 print(len(n_switches))
 p_switches_alt_gtex_ds = len(n_switches)/len(df)
 p_off_alt_gtex_ds = len(n_off)/len(df)
@@ -1403,12 +1453,12 @@ ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s alt isoforms" % len(df))
 
 # add lines to distinguish events
-ax.plot([20, 0], [20, 20], linestyle="dotted", color="black")
-ax.plot([20, 20], [0, 20], linestyle="dotted", color="black")
-ax.plot([0, 20], [70, 70], linestyle="dotted", color="black")
-ax.plot([20, 20], [70, 100], linestyle="dotted", color="black")
-ax.text(20, 10, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
-ax.text(20, 85, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
+ax.plot([10, 0], [10, 10], linestyle="dotted", color="black")
+ax.plot([10, 10], [0, 10], linestyle="dotted", color="black")
+ax.plot([0, 10], [90, 90], linestyle="dotted", color="black")
+ax.plot([10, 10], [90, 100], linestyle="dotted", color="black")
+ax.text(10, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
+ax.text(10, 95, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
 
 fig.savefig('../figures/expression-ratio-scatter-alt-gtex-downsample.pdf',
             bbox_inches='tight')
@@ -1416,7 +1466,7 @@ fig.savefig('../figures/expression-ratio-scatter-alt-gtex-downsample.pdf',
 
 # ### Dev
 
-# In[64]:
+# In[69]:
 
 
 print(len(f_dev))
@@ -1429,7 +1479,7 @@ f_dev_ri = f_dev_nonan.reset_index()
 f_dev_ri["UID_rep"] = f_dev_ri["UID"].str.replace("_", "|")
 
 
-# In[65]:
+# In[70]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev", "min_ratio_dev"]], left_on="ref", 
@@ -1438,7 +1488,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev"
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[66]:
+# In[71]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1446,8 +1496,8 @@ fig = plt.figure(figsize=(2, 1.5))
 df = ref_alt_map_nonan[["ref", "min_ratio_dev_ref", "max_ratio_dev_ref"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_dev_ref"])) & (~pd.isnull(df["max_ratio_dev_ref"]))]
 
-n_switches = df[(df["min_ratio_dev_ref"] < 20) & (df["max_ratio_dev_ref"] > 70)]
-n_off = df[(df["min_ratio_dev_ref"] < 20) & (df["max_ratio_dev_ref"] < 70)]
+n_switches = df[(df["min_ratio_dev_ref"] < 10) & (df["max_ratio_dev_ref"] > 90)]
+n_off = df[(df["min_ratio_dev_ref"] < 10) & (df["max_ratio_dev_ref"] < 10)]
 print(len(n_switches))
 p_switches_ref_dev = len(n_switches)/len(df)
 p_off_ref_dev = len(n_off)/len(df)
@@ -1478,7 +1528,7 @@ fig.savefig('../figures/expression-ratio-scatter-ref-dev.pdf',
             bbox_inches='tight')
 
 
-# In[67]:
+# In[72]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1486,8 +1536,8 @@ fig = plt.figure(figsize=(2, 1.5))
 df = ref_alt_map_nonan[["alt", "min_ratio_dev_alt", "max_ratio_dev_alt"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_dev_alt"])) & (~pd.isnull(df["max_ratio_dev_alt"]))]
 
-n_switches = df[(df["min_ratio_dev_alt"] < 20) & (df["max_ratio_dev_alt"] > 70)]
-n_off = df[(df["min_ratio_dev_alt"] < 20) & (df["max_ratio_dev_alt"] < 70)]
+n_switches = df[(df["min_ratio_dev_alt"] < 10) & (df["max_ratio_dev_alt"] > 90)]
+n_off = df[(df["min_ratio_dev_alt"] < 10) & (df["max_ratio_dev_alt"] < 10)]
 print(len(n_switches))
 p_switches_alt_dev = len(n_switches)/len(df)
 p_off_alt_dev = len(n_off)/len(df)
@@ -1507,18 +1557,18 @@ ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s alt isoforms" % len(df))
 
 # add lines to distinguish events
-ax.plot([20, 0], [20, 20], linestyle="dotted", color="black")
-ax.plot([20, 20], [0, 20], linestyle="dotted", color="black")
-ax.plot([0, 20], [70, 70], linestyle="dotted", color="black")
-ax.plot([20, 20], [70, 100], linestyle="dotted", color="black")
-ax.text(20, 10, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
-ax.text(20, 85, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
+ax.plot([10, 0], [10, 10], linestyle="dotted", color="black")
+ax.plot([10, 10], [0, 10], linestyle="dotted", color="black")
+ax.plot([0, 10], [90, 90], linestyle="dotted", color="black")
+ax.plot([10, 10], [90, 100], linestyle="dotted", color="black")
+ax.text(10, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
+ax.text(10, 95, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
 
 fig.savefig('../figures/expression-ratio-scatter-alt-dev.pdf',
             bbox_inches='tight')
 
 
-# In[68]:
+# In[73]:
 
 
 bar = pd.DataFrame.from_dict({"gtex_ds_ref": {"switch": p_switches_ref_gtex_ds*100, "low": p_off_ref_gtex_ds*100},
@@ -1531,7 +1581,7 @@ bar = bar[["index", "low", "switch", "shift"]]
 bar
 
 
-# In[69]:
+# In[74]:
 
 
 palette = {"low": "lightgrey",
@@ -1540,7 +1590,7 @@ palette = {"low": "lightgrey",
 palette
 
 
-# In[74]:
+# In[75]:
 
 
 gtex_bar = bar[bar["index"].str.contains("gtex")]
@@ -1556,7 +1606,7 @@ plt.savefig('../figures/expression-switch-bar-gtex.pdf',
             bbox_inches='tight')
 
 
-# In[75]:
+# In[76]:
 
 
 dev_bar = bar[bar["index"].str.contains("dev")]
@@ -1574,7 +1624,7 @@ plt.savefig('../figures/expression-switch-bar-dev.pdf',
 
 # ### example plot: TF gene whose isoform ratios change across tissues
 
-# In[71]:
+# In[77]:
 
 
 tmp = ref_alt_map_nonan
@@ -1587,7 +1637,7 @@ tmp["dg_alt"] = tmp["mm_dev_alt"]-tmp["mm_gtex_ds_alt"]
 #tmp.sort_values(by="dg_alt", ascending=False).head(30)
 
 
-# In[79]:
+# In[78]:
 
 
 def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, fig_suffix):
@@ -1620,7 +1670,7 @@ def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, 
                 bbox_inches='tight')
 
 
-# In[81]:
+# In[79]:
 
 
 liver_cols = [x for x in means_dev.columns if "liver" in x]
@@ -1629,30 +1679,173 @@ developmental_tissue_expression_plot("HIF1A", (6, 1.75), (0, 6), means_dev, live
                                      "means_dev_liver_kidney")
 
 
-# In[82]:
+# In[80]:
 
 
-liver_cols = [x for x in means_gtex_downsample.columns if "Liver" in x]
-kidney_cols = [x for x in means_gtex_downsample.columns if "Kidney" in x]
-developmental_tissue_expression_plot("HIF1A", (0.75, 1.75), (0, 6), means_gtex_downsample, liver_cols + kidney_cols, 
-                                     "means_gtex_ds_liver_kidney")
+liver_cols = [x for x in means_gtex.columns if "Liver" in x]
+kidney_cols = [x for x in means_gtex.columns if "Kidney" in x]
+developmental_tissue_expression_plot("HIF1A", (0.35, 1.75), (0, 6), means_gtex, liver_cols + kidney_cols, 
+                                     "means_gtex_liver_kidney")
 
 
-# In[99]:
+# In[81]:
 
 
-developmental_tissue_expression_plot("HIF1A", means_dev, means_dev.columns, "means_dev_all")
+tmp_nn = tmp[(~pd.isnull(tmp["min_ratio_dev_alt"])) & (~pd.isnull(tmp["max_ratio_dev_alt"]))]
+tmp_srt = tmp_nn[(tmp_nn["max_ratio_dev_alt"] > 90) & (tmp_nn["min_ratio_dev_alt"] < 10)]
+tmp_srt[["gene", "ref", "alt", "max_ratio_dev_alt", 
+         "min_ratio_dev_alt", "max_dev_alt", "min_dev_alt"]].sort_values(by="max_ratio_dev_alt", ascending=False).head(20)
 
 
-# In[100]:
+# In[138]:
 
 
-developmental_tissue_expression_plot("HIF1A", means_gtex_downsample, means_gtex_downsample.columns, "means_gtex_ds_all")
+notestis_cols = [x for x in means_dev.columns if "testis" not in x]
+notestis_cols = [x for x in notestis_cols if "_dev" not in x]
+notestis_cols = [x for x in notestis_cols if "ovary" not in x]
+developmental_tissue_expression_plot("PKNOX1", (5, 1.75), (0, 6), means_dev, notestis_cols, 
+                                     "means_dev_notestis")
+
+
+# In[83]:
+
+
+heart_cols = [x for x in means_dev.columns if "heart" in x]
+ovary_cols = [x for x in means_dev.columns if "ovary" in x]
+developmental_tissue_expression_plot("HEY2", (4, 1.75), (0, 6), means_dev, heart_cols + ovary_cols, 
+                                     "means_dev_heart_ovary")
+
+
+# In[84]:
+
+
+heart_cols = [x for x in means_gtex.columns if "Heart" in x]
+ovary_cols = [x for x in means_gtex.columns if "Ovary" in x]
+developmental_tissue_expression_plot("HEY2", (0.5, 1.75), (0, 6), means_gtex, heart_cols + ovary_cols, 
+                                     "means_gtex_heart_ovary")
+
+
+# In[85]:
+
+
+brain_cols = [x for x in means_dev.columns if "brain" in x]
+developmental_tissue_expression_plot("NFKB1", (4, 1.75), (0, 6), means_dev, brain_cols, 
+                                     "means_dev_brain")
+
+
+# In[86]:
+
+
+brain_cols = [x for x in means_gtex.columns if "Brain" in x]
+developmental_tissue_expression_plot("NFKB1", (1.75, 1.75), (0, 6), means_gtex, brain_cols, 
+                                     "means_gtex_brain")
+
+
+# In[87]:
+
+
+fig, ax = plt.subplots(figsize=(5, 0.5))
+
+tfs["HEY2"].exon_diagram(ax=ax)
+
+fig.savefig("../figures/HEY1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[88]:
+
+
+fig, ax = plt.subplots(figsize=(7.5, 1))
+
+tfs["NFKB1"].exon_diagram(ax=ax)
+
+fig.savefig("../figures/NFKB1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[89]:
+
+
+fig, ax = plt.subplots(figsize=(6, 1.5))
+
+tfs["HIF1A"].exon_diagram(ax=ax)
+
+
+# In[136]:
+
+
+fig, ax = plt.subplots(figsize=(5, 0.75))
+
+tfs["CREB5"].exon_diagram(ax=ax)
+
+fig.savefig("../figures/CREB5_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[137]:
+
+
+fig, ax = plt.subplots(figsize=(5, 0.75))
+
+tfs["CREB5"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=ax)
+
+fig.savefig("../figures/CREB5_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[90]:
+
+
+fig, ax = plt.subplots(figsize=(3, 1))
+
+tfs["HEY2"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=ax)
+
+fig.savefig("../figures/HEY1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[91]:
+
+
+fig, ax = plt.subplots(figsize=(7, 1.5))
+
+tfs["NFKB1"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=ax)
+
+fig.savefig("../figures/NFKB1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[92]:
+
+
+fig, ax = plt.subplots(figsize=(6, 1.5))
+
+tfs["HIF1A"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=ax)
+
+
+# In[124]:
+
+
+ss_alt = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_gtex_downsample_alt"] >= 10)].gene.unique())
+ss_alt
+
+
+# In[125]:
+
+
+ss_alt = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_dev_alt"] >= 10)].gene.unique())
+ss_alt
+
+
+# In[126]:
+
+
+len(ref_alt_map_nonan.gene.unique())
+
+
+# In[128]:
+
+
+864/909
 
 
 # ### # make domain figure - move this into domain notebook at some point
 
-# In[101]:
+# In[93]:
 
 
 # loop through ref/alt pairs above and calculate total num AAs inserted/deleted/frameshifted
@@ -1812,7 +2005,7 @@ ref_alt_map_nonan["perc_f_eff"] = tot_perc_f_eff
 ref_alt_map_nonan.sample(5)
 
 
-# In[84]:
+# In[94]:
 
 
 def mimic_r_boxplot(ax):
@@ -1837,7 +2030,7 @@ def mimic_r_boxplot(ax):
                 line.set_alpha(0.5)
 
 
-# In[102]:
+# In[95]:
 
 
 def comp_cat(row):
@@ -1849,7 +2042,7 @@ def comp_cat(row):
         return "total"
 
 
-# In[103]:
+# In[96]:
 
 
 to_plot = pd.melt(ref_alt_map_nonan, id_vars=["ref", "gene", "alt"], value_vars=["n_ins", "perc_ins",
@@ -1867,7 +2060,7 @@ to_plot["dom_cat"] = to_plot.apply(comp_cat, axis=1)
 to_plot.sample(5)
 
 
-# In[123]:
+# In[97]:
 
 
 fig = plt.figure(figsize=(2.3, 1.25))
@@ -1889,13 +2082,13 @@ fig.savefig('../figures/domain-overall-boxplot.pdf',
             bbox_inches='tight')
 
 
-# In[87]:
+# In[98]:
 
 
 to_plot[to_plot["n_or_perc"] == "perc"].groupby(["type", "dom_cat"]).agg("median")
 
 
-# In[97]:
+# In[99]:
 
 
 ref = "ESR1-201|ESR1-202|ESR1-207|ESR1-208".split("|")[0]
@@ -1905,38 +2098,58 @@ pp_str = tfs["ESR1"].pairwise_changes_relative_to_reference(ref, alt)
 aa_ftr = tfs["ESR1"].aa_feature_disruption(ref)
 
 
-# In[98]:
+# In[100]:
 
 
 pp_str
 
 
-# In[100]:
+# In[101]:
 
 
 aa_ftr[aa_ftr["alt_iso"] == alt]
 
 
-# In[365]:
+# In[102]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f_dom"] > 0])
 
 
-# In[357]:
+# In[103]:
+
+
+len(ref_alt_map_nonan[ref_alt_map_nonan["perc_ins"] >= 10])
+
+
+# In[104]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f"] >= 10])
 
 
-# In[358]:
+# In[105]:
 
 
 len(ref_alt_map_nonan)
 
 
-# In[366]:
+# In[106]:
 
 
 214/2305
+
+
+# In[110]:
+
+
+len(ref_alt_map_nonan[(ref_alt_map_nonan["perc_dd_eff"] > 0) |
+                      (ref_alt_map_nonan["perc_ins_eff"] > 0) |
+                      (ref_alt_map_nonan["perc_f_eff"] > 0)])
+
+
+# In[111]:
+
+
+684/2305
 

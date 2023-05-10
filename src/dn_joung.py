@@ -713,22 +713,39 @@ nice_boxplot(dn_cats_nonan, "neglog_diff_pval", "dn_cat", pal,
              "effect of TF isoforms on differentiation\n(Joung et al.)", "../figures/Joung_DiffP_Boxplot.pdf")
 
 
+# In[49]:
+
+
+nice_boxplot(dn_cats_nonan, "RNA Velocity difference", "dn_cat", pal, 
+             ["ref", "rewire", "DN", "NA"], [0, 0, 0, 0], -0.1, 
+             "", ["reference", "rewirer", "negative regulator", "NA"], 
+             "RNA Velocity difference", False, (-0.05, 0.02), 
+             "effect of TF isoforms on differentiation\n(Joung et al.)", "../figures/Joung_DiffDiff_Boxplot.pdf")
+
+
+# In[50]:
+
+
+sns.lmplot(data=dn_cats_nonan, x="neglog_diff_pval", y="Diffusion difference", 
+           hue="dn_cat", palette=pal, col="dn_cat", height=2, scatter_kws={"s": 7})
+
+
 # ## 9. plot p-values across cell count quartiles
 
-# In[49]:
+# In[51]:
 
 
 joung_tf1p0_cnts["cell_cnt_qcut"] = pd.qcut(joung_tf1p0_cnts["tot_cell_cnt"], q=4, labels=[1, 2, 3, 4])
 
 
-# In[50]:
+# In[52]:
 
 
 dn_cats_nonan = dn_cats_nonan.merge(joung_tf1p0_cnts[["TF", "tot_cell_cnt", "cell_cnt_qcut"]], 
                                     left_on="TF ORF", right_on="TF")
 
 
-# In[51]:
+# In[53]:
 
 
 fig = plt.figure(figsize=(5, 3))
@@ -750,9 +767,31 @@ plt.legend(loc=2, bbox_to_anchor=(1.01, 1), facecolor="white")
 fig.savefig("../figures/Joung_DiffP_Boxplot_QCut.pdf", dpi="figure", bbox_inches="tight")
 
 
+# In[54]:
+
+
+fig = plt.figure(figsize=(5, 3))
+
+ax = sns.boxplot(data=dn_cats_nonan, x="cell_cnt_qcut", y="Diffusion difference", hue="dn_cat", palette=pal, 
+                 hue_order=["ref", "rewire", "DN", "NA"], fliersize=0)
+
+sns.swarmplot(data=dn_cats_nonan, x="cell_cnt_qcut", y="Diffusion difference", hue="dn_cat", palette=pal,
+              hue_order=["ref", "rewire", "DN", "NA"], ax=ax, split=True,
+              size=4, edgecolor="black", linewidth=0.5, alpha=0.5)
+
+mimic_r_boxplot(ax)
+
+ax.set_xlabel("Subsampled cell count quartile")
+ax.set_ylabel("Joung et al. over-expression Diffusion difference")
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), facecolor="white")
+
+fig.savefig("../figures/Joung_DiffDiff_Boxplot_QCut.pdf", dpi="figure", bbox_inches="tight")
+
+
 # ## 10. scatter for ref v alt
 
-# In[52]:
+# In[55]:
 
 
 dn_cats_nonan_ref = dn_cats_nonan[dn_cats_nonan["iso_status"] == "ref"]
@@ -765,7 +804,7 @@ dn_cats_nonan_diff["diff_diff_diff"] = dn_cats_nonan_diff["Diffusion difference_
 dn_cats_nonan_diff["abs_ddd"] = np.abs(dn_cats_nonan_diff["diff_diff_diff"])
 
 
-# In[53]:
+# In[56]:
 
 
 fig = plt.figure(figsize=(2.4, 2.2))
@@ -785,7 +824,7 @@ plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
 fig.savefig("../figures/Joung_Scatter.inc_NA.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[54]:
+# In[57]:
 
 
 fig = plt.figure(figsize=(2, 2.2))
@@ -806,28 +845,123 @@ ax.get_legend().remove()
 fig.savefig("../figures/Joung_Scatter.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[55]:
+# In[59]:
+
+
+fig = plt.figure(figsize=(2, 2.2))
+
+ax = sns.scatterplot(data=dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])], 
+                     x="Diffusion difference_ref", y="Diffusion difference_alt",
+                     hue="dn_cat_alt", palette=pal, linewidth=0.5, edgecolor="black", alpha=0.8, zorder=10)
+ax.set_xlabel("reference isoform effect size")
+ax.set_ylabel("alternative isoform effect size")
+ax.set_title("effect of TF isoforms on differentiation\n(Joung et al.)")
+
+ax.set_xlim((-0.04, 0.01))
+ax.set_ylim((-0.03, 0.01))
+ax.plot([-0.0025, -0.0025], [-0.0025, 0.0075], linestyle="dashed", color="black", linewidth=0.5)
+ax.plot([-0.0025, 0.0075], [-0.0025, -0.0025], linestyle="dashed", color="black", linewidth=0.5)
+ax.plot([-0.0025, 0.0075], [0.0075, 0.0075], linestyle="dashed", color="black", linewidth=0.5)
+ax.plot([0.0075, 0.0075], [-0.0025, 0.0075], linestyle="dashed", color="black", linewidth=0.5)
+# ax.axvline(x=0, linestyle="dashed", color="black", linewidth=0.5)
+
+ax.get_legend().remove()
+
+fig.savefig("../figures/Joung_Scatter_EffSize.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[60]:
+
+
+fig = plt.figure(figsize=(2, 2.2))
+
+ax = sns.scatterplot(data=dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])], 
+                     x="Diffusion difference_ref", y="Diffusion difference_alt",
+                     hue="dn_cat_alt", palette=pal, linewidth=0.5, edgecolor="black", alpha=0.8, zorder=10)
+ax.set_xlabel("reference isoform effect size")
+ax.set_ylabel("alternative isoform effect size")
+ax.set_title("effect of TF isoforms on differentiation\n(Joung et al.)")
+
+ax.set_xlim((-0.0025, 0.0075))
+ax.set_ylim((-0.0025, 0.0075))
+ax.plot([-0.0025, 0.0075], [-0.0025, 0.0075], linestyle="dashed", color="black", linewidth=1, zorder=1)
+
+ax.get_legend().remove()
+
+fig.savefig("../figures/Joung_Scatter_EffSize_Zoom.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[61]:
+
+
+fig = plt.figure(figsize=(2, 2.2))
+
+ax = sns.scatterplot(data=dn_cats_nonan_diff[(dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])) &
+                                             (dn_cats_nonan_diff["Diffusion P-value_alt"] < 0.1)], 
+                     x="Diffusion difference_ref", y="Diffusion difference_alt",
+                     hue="dn_cat_alt", palette=pal, linewidth=0.5, edgecolor="black", alpha=0.8, zorder=10)
+ax.set_xlabel("reference isoform effect size")
+ax.set_ylabel("alternative isoform effect size")
+ax.set_title("effect of TF isoforms on differentiation\n(Joung et al.)")
+
+ax.set_xlim((-0.04, 0.01))
+ax.set_ylim((-0.03, 0.01))
+ax.axhline(y=0, linestyle="dashed", color="black", linewidth=0.5)
+ax.axvline(x=0, linestyle="dashed", color="black", linewidth=0.5)
+
+ax.get_legend().remove()
+
+#fig.savefig("../figures/Joung_Scatter.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[64]:
 
 
 tmp = dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])]
-tmp.sort_values(by="neglog_diff_pval_alt", ascending=False)[["tf1p0_id_ref", "tf1p0_id_alt", "dn_cat_alt",
-                                                             "Name_ref", "Name_alt",
+tmp.sort_values(by="Diffusion difference_alt", ascending=True)[["tf1p0_id_ref", "tf1p0_id_alt", "dn_cat_alt",
+                                                             "Name_ref", "Name_alt", "Diffusion difference_ref",
+                                                                  "Diffusion difference_alt",
                                                              "neglog_diff_pval_ref", "neglog_diff_pval_alt",
                                                              "tot_cell_cnt_ref", "tot_cell_cnt_alt"]].head(20)
 
 
-# In[56]:
+# In[117]:
 
 
-tmp[tmp["tf1p0_id_alt"].str.contains("GRHL3")][["tf1p0_id_ref", "tf1p0_id_alt", "dn_cat_alt",
-                                                             "Name_ref", "Name_alt",
-                                                             "neglog_diff_pval_ref", "neglog_diff_pval_alt",
-                                                             "tot_cell_cnt_ref", "tot_cell_cnt_alt"]]
+fig = plt.figure(figsize=(2, 2.2))
+
+ax = sns.scatterplot(data=dn_cats_nonan[dn_cats_nonan["dn_cat"].isin(["ref", "rewire", "DN"])], 
+                     x="Diffusion difference", y="neglog_diff_pval", 
+                     hue="dn_cat", palette=pal, linewidth=0.25, edgecolor="black", alpha=0.8, zorder=10,
+                     **{"s": 8})
+
+ax.set_xlabel("over-expression effect size")
+ax.set_ylabel("-log10(over-expression p-value)")
+ax.set_title("effect of TF isoforms on differentiation\n(Joung et al.)")
+
+ax.set_xlim((-0.04, 0.01))
+ax.set_ylim((-0.01, 7.2))
+ax.axhline(y=-np.log10(0.05), linestyle="dashed", color="black", linewidth=0.5)
+ax.axvline(x=0, linestyle="dashed", color="black", linewidth=0.5)
+
+ax.get_legend().remove()
+
+fig.savefig("../figures/Joung_Volcano.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[103]:
+
+
+tmp = dn_cats_nonan[dn_cats_nonan["dn_cat"]=="DN"]
+#tmp = tmp[tmp["neglog_diff_pval"] > 3]
+tmp.sort_values(by="neglog_diff_pval", 
+                ascending=False)[["tf1p0_id", "dn_cat", "Diffusion difference",
+                                 "neglog_diff_pval", "tot_cell_cnt"]].head()
 
 
 # ## 11. enrichment heatmaps
 
-# In[57]:
+# In[65]:
 
 
 joung_cells["Name"] = joung_cells["TF"].str.strip().str.split("-", expand=True)[0]
@@ -838,13 +972,13 @@ joung_cells = joung_cells[joung_cells["prediction.score.max"] > 0.2]
 print(len(joung_cells))
 
 
-# In[58]:
+# In[66]:
 
 
 joung_cells_grp = joung_cells.groupby(["Name", "TF", "predicted.id"])["batch"].agg("count").reset_index()
 
 
-# In[59]:
+# In[67]:
 
 
 tot_cell_cnt = dn_cats_nonan[["Name", "TF", "tot_cell_cnt"]].drop_duplicates()
@@ -861,7 +995,7 @@ orf_enr["perc_cells_of_diff_tf"] = orf_enr["id_cell_cnt"]/orf_enr["diff_cell_cnt
 orf_enr["perc_cells_of_tot_tf"] = orf_enr["id_cell_cnt"]/orf_enr["tot_cell_cnt"]
 
 
-# In[60]:
+# In[68]:
 
 
 orf_enr_dn = orf_enr.merge(dn_cats_nonan[["gene_name", "Name", "tf1p0_id",
@@ -870,7 +1004,7 @@ orf_enr_dn = orf_enr.merge(dn_cats_nonan[["gene_name", "Name", "tf1p0_id",
                                                                                          "dn_cat"])
 
 
-# In[61]:
+# In[69]:
 
 
 has_alt = list(orf_enr_dn[orf_enr_dn["dn_cat"] != "ref"]["gene_name"].unique())
@@ -881,20 +1015,30 @@ orf_enr_dn_filt = orf_enr_dn_filt[orf_enr_dn_filt["gene_name"].isin(has_ref)]
 len(orf_enr_dn_filt)
 
 
-# In[62]:
+# In[70]:
 
 
 orf_enr_dn_filt["dn_cat_s"] = pd.Categorical(orf_enr_dn_filt["dn_cat"], ["ref", "rewire", "DN", "NA", "likely"])
 orf_enr_dn_filt = orf_enr_dn_filt.sort_values(by=["gene_name", "dn_cat_s"])
+orf_enr_dn_filt[orf_enr_dn_filt["gene_name"] == "PBX1"]
 
 
-# In[70]:
+# In[71]:
 
 
-cell_cnt[cell_cnt["TF"].str.contains("PBX1")]
+cell_cnt["undiff_cell_cnt"] = cell_cnt["tot_cell_cnt"] - cell_cnt["diff_cell_cnt"]
+len(cell_cnt)
 
 
-# In[63]:
+# In[72]:
+
+
+cell_cnt["diff_cell_perc"] = (cell_cnt["diff_cell_cnt"]/cell_cnt["tot_cell_cnt"])*100
+cell_cnt["undiff_cell_perc"] = (cell_cnt["undiff_cell_cnt"]/cell_cnt["tot_cell_cnt"])*100
+cell_cnt[cell_cnt["TF"].str.contains("GRHL3")]
+
+
+# In[73]:
 
 
 tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("KLF7")].pivot(index="tf1p0_id", 
@@ -911,10 +1055,10 @@ g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform
 g.savefig("../figures/Joung_KLF7_hm.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[67]:
+# In[108]:
 
 
-tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("PBX1")].pivot(index="tf1p0_id", 
+tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("PKNOX1")].pivot(index="tf1p0_id", 
                                                                               columns="predicted.id", 
                                                                               values="perc_cells_of_tot_tf")
 tmp.fillna(0, inplace=True)
@@ -924,14 +1068,26 @@ idx = idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id").drop_dup
 idx["Isoform type"] = idx.dn_cat.map(pal)
 
 g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform type"],
-               figsize=(4, 2.5), yticklabels=True, cbar_pos=(0, 1, 0.05, 0.2))
-g.savefig("../figures/Joung_PBX1_hm.pdf", bbox_inches="tight", dpi="figure")
+               figsize=(2, 0.75), yticklabels=True, cbar_pos=(0, 1, 0.05, 0.2), annot=True)
+g.savefig("../figures/Joung_PKNOX1_hm.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[75]:
+# In[116]:
 
 
-tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("ATF2")].pivot(index="tf1p0_id", 
+cell_cnt[cell_cnt["TF"].str.contains("PKNOX1")]
+
+
+# In[114]:
+
+
+sns.barplot(data=tmp)
+
+
+# In[109]:
+
+
+tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("PBX1")].pivot(index="tf1p0_id", 
                                                                               columns="predicted.id", 
                                                                               values="perc_cells_of_tot_tf")
 tmp.fillna(0, inplace=True)
