@@ -6,9 +6,13 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import patches
 import pandas as pd
+from scipy import stats
 
 sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../.."))
 from isoform_pairwise_metrics import paralog_pair_ppi_table
+
+
+COLOR_PURPLE = (155 / 255, 97 / 255, 153 / 255)
 
 
 def binary_profile_matrix(
@@ -292,3 +296,85 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):
     for pos in ["top", "left", "right"]:
         ax.spines[pos].set_visible(False)
     ax.yaxis.set_tick_params(length=0)
+
+
+def validation_titration_plot(
+    data,
+    selections,
+    threshold=None,
+    xmin=None,
+    xmax=None,
+    ymax=None,
+    score_column="score",
+    labels=None,
+    colors=None,
+    line_styles=None,
+    ax=None,
+    threshold_label=None,
+    threshold_color="grey",
+    plot_kwargs=None,
+):
+    """
+    - error bars
+
+    """
+    if ax is None:
+        ax = plt.gca()
+    if labels is None:
+        labels = [""] * len(selections)
+    if colors is None:
+        colors = [None] * len(selections)
+    if line_styles is None:
+        line_styles = ["-"] * len(selections)
+    if xmin is None:
+        xmin = data[score_column].min()
+    if xmax is None:
+        xmax = data[score_column].max()
+    n_points = 1000  # TODO: this is a bad way to do it, would be better to just get every point where there is a pair
+    points = np.linspace(xmin, xmax, n_points)
+    for selection, label, color, line_style in zip(
+        selections, labels, colors, line_styles
+    ):
+        n = data.loc[selection, score_column].notnull().sum()
+        pos = np.array([(data.loc[selection, score_column] > x).sum() for x in points])
+        neg = n - pos
+        fracs = pos / n
+        ax.plot(
+            points, fracs, label=label, color=color, linestyle=line_style
+        )  # BUG , **plot_kwargs)
+        intv = stats.beta.interval(0.6827, pos + 1, neg + 1)
+        errs = [fracs - intv[0], intv[1] - fracs]
+        errs[0][pos == 0] = 0.0
+        errs[1][neg == 0] = 0.0
+        ax.fill_between(
+            points,
+            fracs - errs[0],
+            fracs + errs[1],
+            color=color,
+            alpha=0.2,
+            linewidth=0,
+        )
+    ax.set_ylim(0, ymax)
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylabel("Fraction positive")
+    ax.set_xlabel("Score threshold")
+    ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=8)
+    if threshold is not None:
+        ax.axvline(
+            x=threshold,
+            ymin=0,
+            ymax=1,
+            linestyle="--",
+            color=threshold_color,
+            linewidth=1,
+        )
+        if threshold_label is not None:
+            ax.text(
+                x=threshold + (xmax - xmin) * 0.02,
+                y=ymax,
+                s=threshold_label,
+                color=threshold_color,
+                verticalalignment="top",
+                horizontalalignment="left",
+                fontsize=8,
+            )
