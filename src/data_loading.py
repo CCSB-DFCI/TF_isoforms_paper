@@ -23,7 +23,7 @@ from Bio.PDB.DSSP import make_dssp_dict
 from Bio.Data.IUPACData import protein_letters_3to1
 
 
-#from ccsblib import paros_connection  # TMP
+# from ccsblib import paros_connection  # TMP
 
 import isolib
 
@@ -54,8 +54,18 @@ def cache_with_pickle(func):
     return wrapper
 
 
-# TODO: this is a mess because there are circular function dependencies here
 def load_valid_isoform_clones():
+    df = pd.read_csv(
+        "../data/processed/valid-unique-isoform-clones_2021-07-20.tsv", sep="\t"
+    )
+    df["clone_name"] = df["clone_acc"].map(
+        lambda x: x.split("|")[0] + "-" + x.split("|")[1].split("/")[0]
+    )
+    return df
+
+
+# TODO: this is a mess because there are circular function dependencies here
+def define_valid_isoform_clones():
     """The subset of TF isoform clones that have passed the stringent
        annotation process (at-length AA match to GENCODE, or approved by
        Gloria/GENCODE team).
@@ -441,15 +451,63 @@ def load_isoform_and_paralog_y2h_data(
 
 
 def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
-    df = pd.read_csv(DATA_DIR / "internal/a2_juan_pdi_w_unique_isoacc.tsv", sep="\t")
-    df = (
-        pd.concat([df.loc[:, ["tf", "unique_acc"]], pd.get_dummies(df["bait"])], axis=1)
-        .groupby(["tf", "unique_acc"])
+    """Yeast one-hybrid results for the TF isoforms.
+
+    Args:
+        add_missing_data (bool, optional): include rows containing NaNs for
+            isoforms that are in the entry clone collection but were not
+            succesfully tested in Y1H. Defaults to False.
+        include_pY1H_data (bool, optional): Add data from additional experiment
+            performed from the single cases in the paired yeast one-hybrid test.
+            Defaults to True.
+
+    Returns:
+        pandas.DataFrame: yeast one-hybrid data, one row for each isoform,
+        one column for each bait
+    """
+    df = pd.read_excel(
+        "../data/internal/TF isoforms eY1H calls 14JUL23.xlsx", sheet_name="List format"
+    )
+    if df["Bait"].isnull().any():
+        raise UserWarning("unexpected missing values")
+    if df["isoform ID"].isnull().any():
+        raise UserWarning("unexpected missing values")
+    df["Binary"] = df["Binary"].map({"yes": True, "no": False, "inconclusive": np.nan})
+
+    y1h = (
+        pd.concat(
+            [df["isoform ID"], pd.get_dummies(df["Bait"])],
+            axis=1,
+        )
+        .groupby(["isoform ID"])
         .sum()
         > 0
     ).reset_index()
+    for _i, row in df.loc[df["Binary"] == False, :].iterrows():
+        y1h.loc[(y1h["isoform ID"] == row["isoform ID"]), row["Bait"]] = False
+    for _i, row in df.loc[df["Binary"].isnull(), :].iterrows():
+        y1h.loc[(y1h["isoform ID"] == row["isoform ID"]), row["Bait"]] = np.nan
+    clones = load_valid_isoform_clones()
+    if clones["clone_name"].duplicated().any():
+        raise UserWarning("unexpected duplicates")
+    clone_acc = clones.set_index("clone_name")["clone_acc"]
+    gene_symbol = clones.set_index("clone_name")["gene"]
+    y1h["tf"] = y1h["isoform ID"].map(gene_symbol)
+    y1h["unique_acc"] = y1h["isoform ID"].map(clone_acc)
+    y1h = y1h.drop(columns=["isoform ID"])
+    y1h = y1h.loc[:, list(y1h.columns[-2:]) + list(y1h.columns[:-2])]
+    # HACK adding data that is missing from excel file
+    y1h.loc[y1h["tf"] == "TCF4", "HS1597"] = True
+
+    df = y1h  # Lazy coding
+    df[df.columns[2:]] = df[df.columns[2:]].astype("boolean")
+
     zeros = pd.read_csv(DATA_DIR / "internal/a2_juan_isoforms_wo_pdi.tsv", sep="\t")
-    df = pd.concat([df, zeros], axis=0, sort=False).reset_index(drop=True).fillna(False)
+    zeros = zeros.loc[~zeros["unique_acc"].isin(df["unique_acc"].values), :]
+    zeros.loc[:, df.columns[2:]] = False
+    zeros[zeros.columns[2:]] = zeros[zeros.columns[2:]].astype("boolean")
+    df = pd.concat([df, zeros], axis=0, sort=False).reset_index(drop=True)
+
     if add_missing_data:
         isoforms = load_valid_isoform_clones()
         df = pd.merge(
@@ -465,6 +523,8 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
         pY1H = load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment()
         df = pd.merge(df, pY1H, on=["tf", "unique_acc"], how="outer")
     df = df.sort_values(["tf", "unique_acc"])
+    if y1h["unique_acc"].isnull().any():
+        raise UserWarning("unexpected missing values")
     return df
 
 
@@ -536,11 +596,11 @@ def load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment():
     df["isoform"] = df["isoform"].map(lambda x: {"MAX": "MAX-1"}.get(x, x))
     df["tf"] = df["isoform"].apply(lambda x: x.split("-")[0])
     df["unique_acc"] = df["isoform"].map(clones)
-    
+
     # kaia had to change this line - py version issue?
-    #df = df.pivot(index=["tf", "unique_acc"], columns="bait gene", values="interaction")
+    # df = df.pivot(index=["tf", "unique_acc"], columns="bait gene", values="interaction")
     df = df.set_index(["tf", "unique_acc"]).pivot(columns="bait gene")["interaction"]
-    
+
     df = df.astype("boolean")
     df = df.reset_index()
     df = df.loc[df["unique_acc"].notnull(), :]
