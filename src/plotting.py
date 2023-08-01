@@ -3,14 +3,16 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib import patches
-from scipy.stats import mannwhitneyu
 import pandas as pd
+from scipy import stats
 
 sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../.."))
 from isoform_pairwise_metrics import paralog_pair_ppi_table
+
+
+COLOR_PURPLE = (155 / 255, 97 / 255, 153 / 255)
 
 
 def binary_profile_matrix(
@@ -20,7 +22,6 @@ def binary_profile_matrix(
     fill_color="black",
     border_color="black",
     column_label_rotation=40,
-    equal_aspect=True,
 ):
     """Used for edgotyping: displays binary results with a grid of boxes
 
@@ -60,8 +61,7 @@ def binary_profile_matrix(
         raise ValueError("box_size must be between 0-1")
     if ax is None:
         ax = plt.gca()
-    if equal_aspect:
-        ax.set_aspect("equal")
+    ax.set_aspect("equal")
     positives = [
         (i, j)
         for i in range(data.shape[1])
@@ -100,7 +100,7 @@ def binary_profile_matrix(
     ax.xaxis.tick_top()
     ax.set_xticks(range(data.shape[1]))
     ax.xaxis.set_tick_params(length=0)
-    ax.xaxis.set_ticklabels(data.columns, rotation=column_label_rotation, ha="center")
+    ax.xaxis.set_ticklabels(data.columns, rotation=column_label_rotation, ha="left")
     ax.set_yticks(range(data.shape[0]))
     ax.yaxis.set_tick_params(length=0)
     ax.set_yticklabels(data.index)
@@ -119,7 +119,7 @@ def strikethrough(s):
 
 
 def y2h_ppi_per_tf_gene_plot(
-    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, equal_aspect=True
+    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1
 ):
     tf = data.loc[
         (data["category"] == "tf_isoform_ppis") & (data["ad_gene_symbol"] == gene_name),
@@ -148,18 +148,17 @@ def y2h_ppi_per_tf_gene_plot(
             color="grey",
         )
         return
-    binary_profile_matrix(tf, ax=ax, column_label_rotation=90, equal_aspect=equal_aspect)
+    binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels(
         [
             strikethrough(name) if all_na else name
             for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
-    ax.tick_params(axis='x', which='major', labelsize=PAPER_FONTSIZE-1)
 
 
 def y2h_ppi_per_paralog_pair_plot(
-    tf_gene_a, tf_gene_b, data, ax=None, min_n_isoforms=1, min_n_partners=1, equal_aspect=True
+    tf_gene_a, tf_gene_b, data, ax=None, min_n_isoforms=1, min_n_partners=1
 ):
     """
 
@@ -195,18 +194,17 @@ def y2h_ppi_per_paralog_pair_plot(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return
-    binary_profile_matrix(tf, ax=ax, column_label_rotation=90, equal_aspect=equal_aspect)
+    binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels(
         [
             strikethrough(name) if all_na else name
             for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
-    ax.tick_params(axis='x', which='major', labelsize=PAPER_FONTSIZE-1)
 
 
 def y1h_pdi_per_tf_gene_plot(
-    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, equal_aspect=True
+    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1
 ):
     tf = (
         data.loc[data["tf"] == gene_name, data.columns[1:]]
@@ -232,14 +230,13 @@ def y1h_pdi_per_tf_gene_plot(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return
-    binary_profile_matrix(tf, ax=ax, column_label_rotation=90, equal_aspect=equal_aspect)
+    binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels(
         [
             strikethrough(name) if all_na else name
             for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
-    ax.tick_params(axis='x', which='major', labelsize=PAPER_FONTSIZE-1)
 
 
 def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):
@@ -300,142 +297,84 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):
         ax.spines[pos].set_visible(False)
     ax.yaxis.set_tick_params(length=0)
 
-## kaia's added code
-PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
-                "rc": {"font.size":7,"axes.titlesize":7,
-                       "axes.labelsize":7, 'axes.linewidth':0.5,
-                       "legend.fontsize":6, "xtick.labelsize":6,
-                       "ytick.labelsize":6, "xtick.major.size": 3.0,
-                       "ytick.major.size": 3.0, "axes.edgecolor": "black",
-                       "xtick.major.pad": 3.0, "ytick.major.pad": 3.0}}
-PAPER_FONTSIZE = 7
 
-def mimic_r_boxplot(ax):
-    for i, patch in enumerate(ax.artists):
-        r, g, b, a = patch.get_facecolor()
-        col = (r, g, b, 1)
-        patch.set_facecolor((r, g, b, .5))
-        patch.set_edgecolor((r, g, b, 1))
+def validation_titration_plot(
+    data,
+    selections,
+    threshold=None,
+    xmin=None,
+    xmax=None,
+    ymax=None,
+    score_column="score",
+    labels=None,
+    colors=None,
+    line_styles=None,
+    ax=None,
+    threshold_label=None,
+    threshold_color="grey",
+    plot_kwargs=None,
+):
+    """
+    - error bars
 
-        # Each box has 6 associated Line2D objects (to make the whiskers, fliers, etc.)
-        # Loop over them here, and use the same colour as above
-        line_order = ["lower", "upper", "whisker_1", "whisker_2", "med", "fliers"]
-        for j in range(i*6,i*6+6):
-            elem = line_order[j%6]
-            line = ax.lines[j]
-            if "whisker" in elem:
-                line.set_visible(False)
-            line.set_color(col)
-            line.set_mfc(col)
-            line.set_mec(col)
-            if "fliers" in elem:
-                line.set_alpha(0.5)
-
-def annotate_pval(ax, x1, x2, y, h, text_y, val, fontsize):
-    from decimal import Decimal
-    ax.plot([x1, x1, x2, x2], [y, y+h, y+h, y], lw=1, c="black", linewidth=0.5)
-    if val < 0.0001:
-        text = "{:.1e}".format(Decimal(val))
-        #text = "**"
-    elif val < 0.05:
-        text = "%.3f" % val
-        #text = "*"
-    else:
-        text = "%.2f" % val
-        #text = "n.s."
-    ax.text((x1+x2)*.5, text_y, text, ha='center', va='bottom', color="black", size=fontsize)
-    
-def nice_boxplot(df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylabel, log_scale, ylim, title, figf):
-    fig = plt.figure(figsize=(2,2.5))
-
-    ax = sns.boxplot(data=df, y=ycat, x=xcat,
-                     order=xorder, palette=pal,
-                     fliersize=0)
-    mimic_r_boxplot(ax)
-
-    sns.swarmplot(data=df, y=ycat, x=xcat,
-                  order=xorder, palette=pal, ax=ax,
-                  size=2, edgecolor="black", linewidth=0.5, alpha=0.5)
-
-    # calculate differences
-    for comp, xs, y, d_y in zip([(xorder[0], xorder[1]), (xorder[0], xorder[2]), 
-                                 (xorder[0], xorder[3]), (xorder[1], xorder[2])],
-                                [(0, 1), (0, 2), (0, 3), (1, 2)], pys, [0, 0, 0, 0]):
-        cat_a = comp[0]
-        cat_b = comp[1]
-        dist_a = list(df[(df[xcat] == cat_a)][ycat])
-        dist_b = list(df[(df[xcat] == cat_b)][ycat])
-
-        u, p = mannwhitneyu(dist_a, dist_b, alternative="two-sided")
-        print(p)
-
-        annotate_pval(ax, xs[0], xs[1], y, 0, y-(y*d_y), p, PAPER_FONTSIZE)
-    
-    # add N to plot
-    for i, label in enumerate(xorder):
-        n = len(df[(df[xcat] == label) & (~pd.isnull(ycat))])
-        print(n)
-        ax.annotate(str(n), xy=(i, ay), xycoords="data", xytext=(0, 0), textcoords="offset pixels",
-                    ha="center", va="top", color=pal[label], size=PAPER_FONTSIZE)
-
-    ax.set_xlabel(xlabel)
-    ax.set_xticklabels(xticklabels, ha="right", va="top", rotation=30)
-    ax.set_ylabel(ylabel)
-    if log_scale:
-        ax.set_yscale("log")
-    ax.set_ylim(ylim)
-
-    ax.set_title(title)
-
-    fig.savefig(figf, dpi="figure", bbox_inches="tight")
-        
-def nice_violinplot(figsize, df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylabel, log_scale, ylim, title, figf):
-    fig = plt.figure(figsize=figsize)
-
-    ax = sns.violinplot(data=df, y=ycat, x=xcat,
-                        order=xorder, palette=pal,
-                        cut=0, inner="quartiles", scale="width")
-    
-    # edit quartile lines
-    for l in ax.lines:
-        l.set_linestyle('--')
-        l.set_linewidth(0.6)
-        l.set_color('black')
-        l.set_alpha(0.5)
-    for l in ax.lines[1::3]:
-        l.set_linestyle('-')
-        l.set_linewidth(1.0)
-        l.set_color('black')
-        l.set_alpha(1)
-
-    # calculate differences
-    for comp, xs, y, d_y in zip([(xorder[0], xorder[1]), (xorder[0], xorder[2]), 
-                                 (xorder[0], xorder[3]), (xorder[1], xorder[2])],
-                                [(0, 1), (0, 2), (0, 3), (1, 2)], pys, [0, 0, 0, 0]):
-        cat_a = comp[0]
-        cat_b = comp[1]
-        dist_a = list(df[(df[xcat] == cat_a)][ycat])
-        dist_b = list(df[(df[xcat] == cat_b)][ycat])
-
-        u, p = mannwhitneyu(dist_a, dist_b, alternative="two-sided")
-        print(p)
-
-        annotate_pval(ax, xs[0], xs[1], y, 0, y-(y*d_y), p, PAPER_FONTSIZE-1)
-
-    # add N to plot
-    for i, label in enumerate(xorder):
-        n = len(df[(df[xcat] == label) & (~pd.isnull(ycat))])
-        print(n)
-        ax.annotate(str(n), xy=(i, ay), xycoords="data", xytext=(0, 0), textcoords="offset pixels",
-                    ha="center", va="top", color=pal[label], size=PAPER_FONTSIZE)
-
-    ax.set_xlabel(xlabel)
-    ax.set_xticklabels(xticklabels, ha="right", va="top", rotation=30)
-    ax.set_ylabel(ylabel)
-    if log_scale:
-        ax.set_yscale("log")
-    ax.set_ylim(ylim)
-
-    ax.set_title(title)
-
-    fig.savefig(figf, dpi="figure", bbox_inches="tight")
+    """
+    if ax is None:
+        ax = plt.gca()
+    if labels is None:
+        labels = [""] * len(selections)
+    if colors is None:
+        colors = [None] * len(selections)
+    if line_styles is None:
+        line_styles = ["-"] * len(selections)
+    if xmin is None:
+        xmin = data[score_column].min()
+    if xmax is None:
+        xmax = data[score_column].max()
+    n_points = 1000  # TODO: this is a bad way to do it, would be better to just get every point where there is a pair
+    points = np.linspace(xmin, xmax, n_points)
+    for selection, label, color, line_style in zip(
+        selections, labels, colors, line_styles
+    ):
+        n = data.loc[selection, score_column].notnull().sum()
+        pos = np.array([(data.loc[selection, score_column] > x).sum() for x in points])
+        neg = n - pos
+        fracs = pos / n
+        ax.plot(
+            points, fracs, label=label, color=color, linestyle=line_style
+        )  # BUG , **plot_kwargs)
+        intv = stats.beta.interval(0.6827, pos + 1, neg + 1)
+        errs = [fracs - intv[0], intv[1] - fracs]
+        errs[0][pos == 0] = 0.0
+        errs[1][neg == 0] = 0.0
+        ax.fill_between(
+            points,
+            fracs - errs[0],
+            fracs + errs[1],
+            color=color,
+            alpha=0.2,
+            linewidth=0,
+        )
+    ax.set_ylim(0, ymax)
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylabel("Fraction positive")
+    ax.set_xlabel("Score threshold")
+    ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left", fontsize=8)
+    if threshold is not None:
+        ax.axvline(
+            x=threshold,
+            ymin=0,
+            ymax=1,
+            linestyle="--",
+            color=threshold_color,
+            linewidth=1,
+        )
+        if threshold_label is not None:
+            ax.text(
+                x=threshold + (xmax - xmin) * 0.02,
+                y=ymax,
+                s=threshold_label,
+                color=threshold_color,
+                verticalalignment="top",
+                horizontalalignment="left",
+                fontsize=8,
+            )

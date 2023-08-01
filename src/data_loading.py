@@ -15,7 +15,13 @@ import pickle
 import numpy as np
 import pandas as pd
 from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
+from ucsc.api import Sequence
 import tqdm
+from Bio.PDB.DSSP import make_dssp_dict
+from Bio.Data.IUPACData import protein_letters_3to1
+
 
 #from ccsblib import paros_connection  # TMP
 
@@ -109,6 +115,99 @@ def load_valid_isoform_clones():
     df["clone_name"] = df["clone_acc"].map(
         lambda x: x.split("|")[0] + "-" + x.split("|")[1].split("/")[0]
     )
+    return df
+
+
+def load_disorder_predictions():
+    cache_path = Path("../data/processed/TFiso1_disorder-and-ss_from-alphafold.tsv")
+    if cache_path.exists():
+        return pd.read_csv(cache_path, sep="\t")
+    dssp_dir = Path("../data/processed/dssp_alphafold")
+    dfs = []
+    for dssp_file_path in dssp_dir.iterdir():
+        dssp = make_dssp_dict(dssp_file_path)
+        dfs.append(
+            pd.DataFrame(
+                data=[
+                    (dssp_file_path.stem, k[1][1], v[0], v[1], v[2])
+                    for k, v in dssp[0].items()
+                ],
+                columns=["clone_name", "position", "aa", "secondary_structure", "ASA"],
+            )
+        )
+    df = pd.concat(dfs, axis=0, ignore_index=True)
+    # NOTE: the Davey analysis uses GGXGG whereas I think this paper is GXG
+    # Wilke: Tien et al. 2013 https://doi.org/10.1371/journal.pone.0080635
+    max_asa = {
+        "ALA": 129.0,
+        "ARG": 274.0,
+        "ASN": 195.0,
+        "ASP": 193.0,
+        "CYS": 167.0,
+        "GLN": 225.0,
+        "GLU": 223.0,
+        "GLY": 104.0,
+        "HIS": 224.0,
+        "ILE": 197.0,
+        "LEU": 201.0,
+        "LYS": 236.0,
+        "MET": 224.0,
+        "PHE": 240.0,
+        "PRO": 159.0,
+        "SER": 155.0,
+        "THR": 172.0,
+        "TRP": 285.0,
+        "TYR": 263.0,
+        "VAL": 174.0,
+    }
+    max_asa = {protein_letters_3to1[k.capitalize()]: v for k, v in max_asa.items()}
+    df["RSA"] = df["ASA"] / df["aa"].map(max_asa)
+    df["RSA"] = df["RSA"].clip(upper=1.0)
+    WINDOW_SIZE_RESIDUES = 20
+    DISORDER_WINDOW_RSA_CUTOFF = 0.5
+    rsa_window_col = f"RSA_window_{WINDOW_SIZE_RESIDUES}"
+    df[rsa_window_col] = (
+        df.groupby("clone_name")["RSA"]
+        .rolling(
+            window=WINDOW_SIZE_RESIDUES * 2 + 1,
+            min_periods=WINDOW_SIZE_RESIDUES + 1,
+            center=True,
+        )
+        .mean()
+        .rename(rsa_window_col)
+        .droplevel("clone_name")
+    )
+    df["is_disordered"] = df[rsa_window_col] >= DISORDER_WINDOW_RSA_CUTOFF
+
+    DISORDER_HELIX_LENGTH_CUTOFF = 20
+    to_change = []
+    for clone_name, df_clone in df.groupby("clone_name"):
+        helix_count = 0
+        for _i, row in df_clone.iterrows():
+            if row["secondary_structure"] == "H":
+                helix_count += 1
+            else:
+                if helix_count >= DISORDER_HELIX_LENGTH_CUTOFF:
+                    for i in range(
+                        row["position"] - 1, row["position"] - helix_count, -1
+                    ):
+                        to_change.append((clone_name, i))
+                helix_count = 0
+        if helix_count >= DISORDER_HELIX_LENGTH_CUTOFF:
+            for i in range(row["position"], row["position"] - helix_count, -1):
+                to_change.append((clone_name, i))
+    to_change = (df["clone_name"] + "_" + df["position"].astype(str)).isin(
+        {a + "_" + str(b) for a, b in to_change}
+    )
+    print(
+        f"{to_change.sum()} ({to_change.mean():.0%}) aa in helices of length 20 aa or more"
+    )
+    print(
+        f"{df.loc[to_change, 'is_disordered'].mean():.0%} of residues in long helices misclassified as disordered"
+    )
+    df.loc[to_change, "is_disordered"] = False
+
+    df.to_csv(cache_path, index=False, sep="\t")
     return df
 
 
@@ -369,6 +468,45 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
     return df
 
 
+def load_Y1H_DNA_bait_sequences():
+    cache_path = DATA_DIR / "processed/Y1H_DNA_baits.fa"
+    if cache_path.exists():
+        return {rec.id: str(rec.seq) for rec in SeqIO.parse(cache_path, format="fasta")}
+    df = pd.read_excel("../data/external/Fuxman-Bass-et-al_Cell_2015_Table-S8.xlsx")
+    if df["Vista Enhancer ID"].duplicated().any():
+        raise UserWarning("unexpected duplicate enhancer IDs")
+    if df["Sequence"].duplicated().any():
+        raise UserWarning("unexpected duplicate sequences")
+    baits = df.set_index("Vista Enhancer ID")["Sequence"].to_dict()
+
+    df = pd.read_excel(
+        "../data/external/Fuxman-Bass-et-al_Cell_2015_Table-S10.xlsx",
+        sheet_name="Noncoding mutations",
+    )
+    # reference genome version: GRCh37.p12
+
+    def get_dna_sequence_from_coords(s):
+        chrom, pos = s.split(":")
+        chrom = "chr" + chrom[3:]  # to avoid problems from capital C
+        start, stop = map(int, pos.replace(",", "").split("-"))
+        try:
+            ret = Sequence.get(genome="hg19", chrom=chrom, start=start - 1, end=stop)
+        except:
+            print("failed for: " + s)
+            raise
+        return ret.dna.upper()
+
+    df["seq"] = df["Region amplified"].apply(get_dna_sequence_from_coords)
+    baits = {**baits, **df.set_index("Mutation ID")["seq"].to_dict()}
+    with open(cache_path, "w") as f:
+        SeqIO.write(
+            (SeqRecord(id=k, description="", seq=Seq(v)) for k, v in baits.items()),
+            f,
+            "fasta",
+        )
+    return baits
+
+
 def load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment():
     clones = load_valid_isoform_clones().set_index("clone_name")["clone_acc"]
 
@@ -405,6 +543,7 @@ def load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment():
     
     df = df.astype("boolean")
     df = df.reset_index()
+    df = df.loc[df["unique_acc"].notnull(), :]
     return df
 
 
@@ -1616,7 +1755,6 @@ def load_annotated_gencode_tfs(
     path_effector_domains=DATA_DIR
     / "external/Soto-et-al_MolCell_2022_Supplementary-tables.xlsx",
 ):
-
     import pyranges  # this import is hidden as it's causing installation problems
 
     tf_ensembl_gene_ids = set(load_human_tf_db()["Ensembl ID"].values)
