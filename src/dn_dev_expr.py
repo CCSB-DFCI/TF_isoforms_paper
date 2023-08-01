@@ -476,11 +476,15 @@ nice_boxplot(ref_expr, "gtex_tau", "gene_cat", pal, ["rewire", "DN", "both", "NA
             "../figures/DN_GTExTau_Gene_Boxplot.pdf")
 
 
-# In[41]:
+# In[189]:
 
 
 def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, fig_suffix):
     locs = [x for x in list(means.index) if x.split("|")[0] == gene_name]
+    
+    # include isos that aren't cloned
+    locs = list(set(locs + [x for x in list(means.index) if x.split(" ")[1][:-4] == gene_name]))
+    
     n_isos = len(means.loc[locs])
     palette = sns.color_palette("Spectral", as_cmap=False, n_colors=n_isos)
     fig, axes = plt.subplots(2, 1, sharex=True)
@@ -510,7 +514,7 @@ def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, 
                 bbox_inches='tight')
 
 
-# In[42]:
+# In[190]:
 
 
 notestis_cols = [x for x in means_dev.columns if "testis" not in x]
@@ -520,6 +524,12 @@ notestis_cols = [x for x in notestis_cols if "ovary" not in x]
 notestis_cols = [x for x in notestis_cols if "brain" not in x]
 developmental_tissue_expression_plot("PKNOX1", (5, 1.75), (0, 6), means_dev, notestis_cols, 
                                      "means_dev_notestis")
+
+
+# In[67]:
+
+
+f_dev.loc["PKNOX1|1/4|11H11 PKNOX1-201"].min()
 
 
 # In[45]:
@@ -608,4 +618,309 @@ fig, ax = plt.subplots(figsize=(4.5, 1.5))
 tfs["KLF7"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=ax)
 
 fig.savefig("../figures/KLF7_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[60]:
+
+
+fig, ax = plt.subplots(figsize=(5, 1))
+
+tfs["GRHL3"].exon_diagram(ax=ax)
+
+fig.savefig("../figures/GRHL3_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[61]:
+
+
+fig, ax = plt.subplots(figsize=(5, 1))
+
+tfs["GRHL3"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+
+fig.savefig("../figures/GRHL3_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# ## novel isoforms aside
+
+# In[118]:
+
+
+status_map = {}
+
+# only loop through clone collection
+for tf in tfs.keys():
+    gene = tfs[tf]
+    
+    try:
+        annot_ref = gene.reference_isoform.name
+    except:
+        annot_ref = "none"
+        
+    try:
+        annot_alt = gene.alternative_isoforms
+    except:
+        annot_alt = []
+        
+    for iso in gene.cloned_isoforms:
+        if iso.name == annot_ref:
+            status_map[iso.clone_acc] = {"gene_name": tf, "status": "ref"}
+        elif iso.is_novel_isoform():
+            status_map[iso.clone_acc] = {"gene_name": tf, "status": "novel"}
+        else:
+            status_map[iso.clone_acc] = {"gene_name": tf, "status": "alt"}
+
+
+# In[119]:
+
+
+status_map = pd.DataFrame.from_dict(status_map, orient="index")
+status_map
+
+
+# In[121]:
+
+
+means_dev["median"] = means_dev.median(axis=1)
+means_dev["max"] = means_dev.max(axis=1)
+
+means_gtex_downsample["median"] = means_gtex_downsample.median(axis=1)
+means_gtex_downsample["max"] = means_gtex_downsample.max(axis=1)
+
+
+# In[122]:
+
+
+dev_mm = means_dev[["median", "max"]].reset_index()
+gtex_ds_mm = means_gtex_downsample[["median", "max"]].reset_index()
+
+
+# In[124]:
+
+
+dev_mm["clone_acc"] = dev_mm["UID"].str.split(" ", expand=True)[0]
+gtex_ds_mm["clone_acc"] = gtex_ds_mm["UID"].str.split(" ", expand=True)[0]
+mm = dev_mm[dev_mm["clone_acc"] != "noclone"].merge(gtex_ds_mm[gtex_ds_mm["clone_acc"] != "noclone"], 
+                                                    on="clone_acc", suffixes=("_dev", "_gtex_ds"))
+mm.sample(5)
+
+
+# In[125]:
+
+
+status_map = status_map.reset_index()
+status_map["clone_acc"] = status_map["index"].str.split(" ", expand=True)[0]
+
+
+# In[129]:
+
+
+exp_nov = status_map.merge(mm, on="clone_acc")
+exp_nov_melt = pd.melt(exp_nov, id_vars=["index", "gene_name", "status", "clone_acc"], value_vars=["median_dev",
+                                                                                                   "max_dev",
+                                                                                                   "median_gtex_ds",
+                                                                                                   "max_gtex_ds"])
+exp_nov_melt["measurement"] = exp_nov_melt["variable"].str.split("_", expand=True)[0]
+
+
+# In[137]:
+
+
+colors = met_brewer.met_brew(name="Monet")
+sns.palplot(colors)
+
+
+# In[159]:
+
+
+fig = plt.figure(figsize=(2.2, 1.5))
+
+ax = sns.boxplot(data=exp_nov_melt[exp_nov_melt["variable"].str.contains("dev")], 
+                 x="status", y="value", hue="measurement", palette={"median": colors[7],
+                                                                    "max": colors[6]}, 
+                 flierprops={"marker": "o"}, fliersize=4, notch=True)
+
+mimic_r_boxplot(ax)
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
+
+ax.set_xlabel("clone category")
+ax.set_ylabel("isoform expression (tpm)")
+
+fig.savefig("../figures/novel_isos.dev_expr_boxplot.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[160]:
+
+
+fig = plt.figure(figsize=(2.2, 1.5))
+
+ax = sns.boxplot(data=exp_nov_melt[exp_nov_melt["variable"].str.contains("gtex")], 
+                 x="status", y="value", hue="measurement", palette={"median": colors[7],
+                                                                    "max": colors[6]}, 
+                 flierprops={"marker": "o"}, fliersize=4, notch=True)
+
+mimic_r_boxplot(ax)
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
+
+ax.set_xlabel("clone category")
+ax.set_ylabel("isoform expression (tpm)")
+
+fig.savefig("../figures/novel_isos.gtex_expr_boxplot.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[161]:
+
+
+status_map.status.value_counts()
+
+
+# In[153]:
+
+
+exp_nov.status.value_counts()
+
+
+# In[166]:
+
+
+exp_nov.groupby("status")[["median_dev", "max_dev", "median_gtex_ds", "max_gtex_ds"]].agg("mean")
+
+
+# In[154]:
+
+
+exp_nov[exp_nov["median_dev"] >= 1].status.value_counts()
+
+
+# In[155]:
+
+
+exp_nov[exp_nov["max_dev"] >= 1].status.value_counts()
+
+
+# In[156]:
+
+
+exp_nov[exp_nov["median_gtex_ds"] >= 1].status.value_counts()
+
+
+# In[157]:
+
+
+exp_nov[exp_nov["max_gtex_ds"] >= 1].status.value_counts()
+
+
+# In[169]:
+
+
+exp_nov[exp_nov["status"] == "novel"].sort_values(by="max_dev", ascending=False).head(20)
+
+
+# In[170]:
+
+
+f_dev["median"] = f_dev.median(axis=1)
+f_dev["max"] = f_dev.max(axis=1)
+
+f_gtex_downsample["median"] = f_gtex_downsample.median(axis=1)
+f_gtex_downsample["max"] = f_gtex_downsample.max(axis=1)
+
+
+# In[171]:
+
+
+dev_mm = f_dev[["median", "max"]].reset_index()
+gtex_ds_mm = f_gtex_downsample[["median", "max"]].reset_index()
+
+
+# In[172]:
+
+
+dev_mm["clone_acc"] = dev_mm["UID"].str.split(" ", expand=True)[0]
+gtex_ds_mm["clone_acc"] = gtex_ds_mm["UID"].str.split(" ", expand=True)[0]
+mm = dev_mm[dev_mm["clone_acc"] != "noclone"].merge(gtex_ds_mm[gtex_ds_mm["clone_acc"] != "noclone"], 
+                                                    on="clone_acc", suffixes=("_f_dev", "_f_gtex_ds"))
+mm.sample(5)
+
+
+# In[173]:
+
+
+f_nov = status_map.merge(mm, on="clone_acc")
+f_nov_melt = pd.melt(f_nov, id_vars=["index", "gene_name", "status", "clone_acc"], value_vars=["median_f_dev",
+                                                                                               "max_f_dev",
+                                                                                               "median_f_gtex_ds",
+                                                                                               "max_f_gtex_ds"])
+f_nov_melt["measurement"] = f_nov_melt["variable"].str.split("_", expand=True)[0]
+
+
+# In[174]:
+
+
+fig = plt.figure(figsize=(2.2, 1.5))
+
+ax = sns.boxplot(data=f_nov_melt[exp_nov_melt["variable"].str.contains("dev")], 
+                 x="status", y="value", hue="measurement", palette={"median": colors[7],
+                                                                    "max": colors[6]}, 
+                 flierprops={"marker": "o"}, fliersize=4, notch=True)
+
+mimic_r_boxplot(ax)
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
+
+ax.set_xlabel("clone category")
+ax.set_ylabel("isoform expression (%)")
+
+fig.savefig("../figures/novel_isos.dev_ratio_boxplot.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[175]:
+
+
+fig = plt.figure(figsize=(2.2, 1.5))
+
+ax = sns.boxplot(data=f_nov_melt[exp_nov_melt["variable"].str.contains("gtex")], 
+                 x="status", y="value", hue="measurement", palette={"median": colors[7],
+                                                                    "max": colors[6]}, 
+                 flierprops={"marker": "o"}, fliersize=4, notch=True)
+
+mimic_r_boxplot(ax)
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
+
+ax.set_xlabel("clone category")
+ax.set_ylabel("isoform expression (%)")
+
+fig.savefig("../figures/novel_isos.gtex_ratio_boxplot.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[176]:
+
+
+f_nov[f_nov["status"] == "novel"].sort_values(by="max_f_dev", ascending=False).head(20)
+
+
+# In[192]:
+
+
+notestis_cols = [x for x in means_dev.columns if "testis" not in x]
+notestis_cols = [x for x in notestis_cols if "median" not in x]
+notestis_cols = [x for x in notestis_cols if "max" not in x]
+notestis_cols = [x for x in notestis_cols if "ovary" not in x]
+notestis_cols = [x for x in notestis_cols if "brain" not in x]
+developmental_tissue_expression_plot("ZNF414", (7, 1.75), (0, 6), means_dev, notestis_cols, 
+                                     "means_dev_notestis_large")
+
+
+# In[202]:
+
+
+pd.DataFrame(f_dev.loc["ZNF414|1/3|03H06 nomatch"]).sort_values(by="ZNF414|1/3|03H06 nomatch", ascending=False).head(10)
+
+
+# In[186]:
+
+
+"noclone ZSCAN9-208".split(" ")[1]
 

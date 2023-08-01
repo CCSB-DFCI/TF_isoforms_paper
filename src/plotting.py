@@ -20,6 +20,7 @@ def binary_profile_matrix(
     fill_color="black",
     border_color="black",
     column_label_rotation=40,
+    equal_aspect=True,
 ):
     """Used for edgotyping: displays binary results with a grid of boxes
 
@@ -59,7 +60,8 @@ def binary_profile_matrix(
         raise ValueError("box_size must be between 0-1")
     if ax is None:
         ax = plt.gca()
-    ax.set_aspect("equal")
+    if equal_aspect:
+        ax.set_aspect("equal")
     positives = [
         (i, j)
         for i in range(data.shape[1])
@@ -98,7 +100,7 @@ def binary_profile_matrix(
     ax.xaxis.tick_top()
     ax.set_xticks(range(data.shape[1]))
     ax.xaxis.set_tick_params(length=0)
-    ax.xaxis.set_ticklabels(data.columns, rotation=column_label_rotation, ha="left")
+    ax.xaxis.set_ticklabels(data.columns, rotation=column_label_rotation, ha="center")
     ax.set_yticks(range(data.shape[0]))
     ax.yaxis.set_tick_params(length=0)
     ax.set_yticklabels(data.index)
@@ -117,7 +119,7 @@ def strikethrough(s):
 
 
 def y2h_ppi_per_tf_gene_plot(
-    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1
+    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, equal_aspect=True
 ):
     tf = data.loc[
         (data["category"] == "tf_isoform_ppis") & (data["ad_gene_symbol"] == gene_name),
@@ -146,17 +148,18 @@ def y2h_ppi_per_tf_gene_plot(
             color="grey",
         )
         return
-    binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
+    binary_profile_matrix(tf, ax=ax, column_label_rotation=90, equal_aspect=equal_aspect)
     ax.set_yticklabels(
         [
             strikethrough(name) if all_na else name
             for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
+    ax.tick_params(axis='x', which='major', labelsize=PAPER_FONTSIZE-1)
 
 
 def y2h_ppi_per_paralog_pair_plot(
-    tf_gene_a, tf_gene_b, data, ax=None, min_n_isoforms=1, min_n_partners=1
+    tf_gene_a, tf_gene_b, data, ax=None, min_n_isoforms=1, min_n_partners=1, equal_aspect=True
 ):
     """
 
@@ -192,17 +195,18 @@ def y2h_ppi_per_paralog_pair_plot(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return
-    binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
+    binary_profile_matrix(tf, ax=ax, column_label_rotation=90, equal_aspect=equal_aspect)
     ax.set_yticklabels(
         [
             strikethrough(name) if all_na else name
             for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
+    ax.tick_params(axis='x', which='major', labelsize=PAPER_FONTSIZE-1)
 
 
 def y1h_pdi_per_tf_gene_plot(
-    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1
+    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, equal_aspect=True
 ):
     tf = (
         data.loc[data["tf"] == gene_name, data.columns[1:]]
@@ -228,13 +232,14 @@ def y1h_pdi_per_tf_gene_plot(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return
-    binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
+    binary_profile_matrix(tf, ax=ax, column_label_rotation=90, equal_aspect=equal_aspect)
     ax.set_yticklabels(
         [
             strikethrough(name) if all_na else name
             for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
+    ax.tick_params(axis='x', which='major', labelsize=PAPER_FONTSIZE-1)
 
 
 def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):

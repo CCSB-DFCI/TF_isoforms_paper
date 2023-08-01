@@ -845,7 +845,7 @@ ax.get_legend().remove()
 fig.savefig("../figures/Joung_Scatter.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[59]:
+# In[58]:
 
 
 fig = plt.figure(figsize=(2, 2.2))
@@ -870,7 +870,7 @@ ax.get_legend().remove()
 fig.savefig("../figures/Joung_Scatter_EffSize.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[60]:
+# In[59]:
 
 
 fig = plt.figure(figsize=(2, 2.2))
@@ -891,7 +891,7 @@ ax.get_legend().remove()
 fig.savefig("../figures/Joung_Scatter_EffSize_Zoom.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[61]:
+# In[60]:
 
 
 fig = plt.figure(figsize=(2, 2.2))
@@ -914,7 +914,7 @@ ax.get_legend().remove()
 #fig.savefig("../figures/Joung_Scatter.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[64]:
+# In[61]:
 
 
 tmp = dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])]
@@ -925,7 +925,7 @@ tmp.sort_values(by="Diffusion difference_alt", ascending=True)[["tf1p0_id_ref", 
                                                              "tot_cell_cnt_ref", "tot_cell_cnt_alt"]].head(20)
 
 
-# In[117]:
+# In[62]:
 
 
 fig = plt.figure(figsize=(2, 2.2))
@@ -949,7 +949,7 @@ ax.get_legend().remove()
 fig.savefig("../figures/Joung_Volcano.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[103]:
+# In[63]:
 
 
 tmp = dn_cats_nonan[dn_cats_nonan["dn_cat"]=="DN"]
@@ -961,7 +961,7 @@ tmp.sort_values(by="neglog_diff_pval",
 
 # ## 11. enrichment heatmaps
 
-# In[65]:
+# In[64]:
 
 
 joung_cells["Name"] = joung_cells["TF"].str.strip().str.split("-", expand=True)[0]
@@ -972,13 +972,13 @@ joung_cells = joung_cells[joung_cells["prediction.score.max"] > 0.2]
 print(len(joung_cells))
 
 
-# In[66]:
+# In[65]:
 
 
 joung_cells_grp = joung_cells.groupby(["Name", "TF", "predicted.id"])["batch"].agg("count").reset_index()
 
 
-# In[67]:
+# In[66]:
 
 
 tot_cell_cnt = dn_cats_nonan[["Name", "TF", "tot_cell_cnt"]].drop_duplicates()
@@ -995,7 +995,7 @@ orf_enr["perc_cells_of_diff_tf"] = orf_enr["id_cell_cnt"]/orf_enr["diff_cell_cnt
 orf_enr["perc_cells_of_tot_tf"] = orf_enr["id_cell_cnt"]/orf_enr["tot_cell_cnt"]
 
 
-# In[68]:
+# In[67]:
 
 
 orf_enr_dn = orf_enr.merge(dn_cats_nonan[["gene_name", "Name", "tf1p0_id",
@@ -1004,7 +1004,7 @@ orf_enr_dn = orf_enr.merge(dn_cats_nonan[["gene_name", "Name", "tf1p0_id",
                                                                                          "dn_cat"])
 
 
-# In[69]:
+# In[68]:
 
 
 has_alt = list(orf_enr_dn[orf_enr_dn["dn_cat"] != "ref"]["gene_name"].unique())
@@ -1015,7 +1015,7 @@ orf_enr_dn_filt = orf_enr_dn_filt[orf_enr_dn_filt["gene_name"].isin(has_ref)]
 len(orf_enr_dn_filt)
 
 
-# In[70]:
+# In[69]:
 
 
 orf_enr_dn_filt["dn_cat_s"] = pd.Categorical(orf_enr_dn_filt["dn_cat"], ["ref", "rewire", "DN", "NA", "likely"])
@@ -1023,14 +1023,14 @@ orf_enr_dn_filt = orf_enr_dn_filt.sort_values(by=["gene_name", "dn_cat_s"])
 orf_enr_dn_filt[orf_enr_dn_filt["gene_name"] == "PBX1"]
 
 
-# In[71]:
+# In[70]:
 
 
 cell_cnt["undiff_cell_cnt"] = cell_cnt["tot_cell_cnt"] - cell_cnt["diff_cell_cnt"]
 len(cell_cnt)
 
 
-# In[72]:
+# In[71]:
 
 
 cell_cnt["diff_cell_perc"] = (cell_cnt["diff_cell_cnt"]/cell_cnt["tot_cell_cnt"])*100
@@ -1038,7 +1038,7 @@ cell_cnt["undiff_cell_perc"] = (cell_cnt["undiff_cell_cnt"]/cell_cnt["tot_cell_c
 cell_cnt[cell_cnt["TF"].str.contains("GRHL3")]
 
 
-# In[73]:
+# In[72]:
 
 
 tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("KLF7")].pivot(index="tf1p0_id", 
@@ -1055,7 +1055,7 @@ g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform
 g.savefig("../figures/Joung_KLF7_hm.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[108]:
+# In[73]:
 
 
 tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("PKNOX1")].pivot(index="tf1p0_id", 
@@ -1072,19 +1072,13 @@ g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform
 g.savefig("../figures/Joung_PKNOX1_hm.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[116]:
+# In[74]:
 
 
 cell_cnt[cell_cnt["TF"].str.contains("PKNOX1")]
 
 
-# In[114]:
-
-
-sns.barplot(data=tmp)
-
-
-# In[109]:
+# In[75]:
 
 
 tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("PBX1")].pivot(index="tf1p0_id", 
@@ -1101,7 +1095,7 @@ g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform
 # g.savefig("../figures/Joung_HOXA1_hm.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[64]:
+# In[76]:
 
 
 tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("GRHL3")].pivot(index="tf1p0_id", 
@@ -1123,14 +1117,56 @@ g.savefig("../figures/Joung_GRHL3_hm.pdf", bbox_inches="tight", dpi="figure")
 
 # ## 12. write files
 
-# In[65]:
+# In[77]:
 
 
 joung_orf.to_csv("../data/processed/Joung_ORF_annotated.tsv", sep="\t", index=False)
 
 
-# In[66]:
+# In[78]:
 
 
 dn_cats.to_csv("../data/processed/DN_cats_Joung.tsv", sep="\t", index=False)
+
+
+# In[81]:
+
+
+joung_orf[joung_orf["RefSeq Gene Name"] == "GRHL3"]
+
+
+# In[118]:
+
+
+joung_orf[joung_orf["RefSeq Gene Name"] == "TBX5"]
+
+
+# In[122]:
+
+
+tfs["TBX5"]["TBX5|1/3|08E01"].aa_seq
+
+
+# In[123]:
+
+
+len(tfs["TBX5"]["TBX5|1/3|08E01"].aa_seq)
+
+
+# In[125]:
+
+
+tfs["TBX5"]["TBX5|2/3|08C02"].aa_seq
+
+
+# In[126]:
+
+
+len(tfs["TBX5"]["TBX5|2/3|08C02"].aa_seq)
+
+
+# In[128]:
+
+
+tfs["TBX5"].orfs
 

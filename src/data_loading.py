@@ -398,7 +398,11 @@ def load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment():
     df["isoform"] = df["isoform"].map(lambda x: {"MAX": "MAX-1"}.get(x, x))
     df["tf"] = df["isoform"].apply(lambda x: x.split("-")[0])
     df["unique_acc"] = df["isoform"].map(clones)
-    df = df.pivot(index=["tf", "unique_acc"], columns="bait gene", values="interaction")
+    
+    # kaia had to change this line - py version issue?
+    #df = df.pivot(index=["tf", "unique_acc"], columns="bait gene", values="interaction")
+    df = df.set_index(["tf", "unique_acc"]).pivot(columns="bait gene")["interaction"]
+    
     df = df.astype("boolean")
     df = df.reset_index()
     return df

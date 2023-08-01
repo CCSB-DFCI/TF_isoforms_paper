@@ -551,14 +551,14 @@ df["rw_cumsum"] = np.cumsum(df["rewire"])
 df
 
 
-# In[38]:
+# In[25]:
 
 
 colors = met_brewer.met_brew(name="Hokusai3", n=4, brew_type="discrete")
 sns.palplot(colors)
 
 
-# In[49]:
+# In[26]:
 
 
 fig, ax = plt.subplots(figsize=(0.85, 1.5))
@@ -586,7 +586,7 @@ ax.set_xticklabels(["negative\nregulator", "rewirer"])
 fig.savefig("../figures/dn_stacked_bar.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[40]:
+# In[27]:
 
 
 # make stacked barchart situation of all assays (to compare)
@@ -604,7 +604,7 @@ nc["assessed_cumsum"] = np.cumsum(nc["assessed"])
 nc
 
 
-# In[44]:
+# In[28]:
 
 
 fig, ax = plt.subplots(figsize=(0.25, 1.5))
@@ -629,7 +629,7 @@ ax.set_xticklabels(["total assessed"])
 fig.savefig("../figures/dn_stacked_bar.nc.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[60]:
+# In[29]:
 
 
 genes_w_dn = dn[dn["dn_short"] == "DN"][["gene_symbol", "family"]].drop_duplicates()
@@ -651,17 +651,17 @@ family_cats["rw_p"] = family_cats["rw"]/family_cats["rw"].sum(axis=0)*100
 family_cats.sort_values(by="tot", ascending=False).head(11)
 
 
-# In[61]:
+# In[30]:
 
 
 colors = met_brewer.met_brew(name="Renoir", n=11, brew_type="discrete")
 sns.palplot(colors)
 
 
-# In[63]:
+# In[41]:
 
 
-fig, ax = plt.subplots(figsize=(2.75, 2))
+fig, ax = plt.subplots(figsize=(3, 1.75))
 
 xs = ["total", "negative regulator", "rewirer"]
 
@@ -674,6 +674,7 @@ for i, row in family_cats.sort_values(by="tot", ascending=False).head(11).iterro
     c += 1
 
 ax.bar(xs, np.subtract([100, 100, 100], b), bottom=b, label="smaller families", color="lightgray")
+ax.set_ylabel("% of categorized isoforms")
 
 # add legend
 handles, labels = ax.get_legend_handles_labels()
@@ -682,7 +683,7 @@ ax.legend(handles[::-1], labels[::-1], loc='upper left', bbox_to_anchor=(1.01, 1
 fig.savefig("../figures/dn_families_stacked_bar.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[72]:
+# In[32]:
 
 
 family_cats["dn_fc"] = family_cats["dn_p"]/family_cats["tot_p"]
@@ -691,7 +692,7 @@ family_cats_sorted = family_cats.sort_values(by="tot", ascending=False).head(11)
 family_cats_sorted
 
 
-# In[79]:
+# In[33]:
 
 
 to_plot = pd.melt(family_cats_sorted, id_vars="family", value_vars=["dn_fc", "rw_fc"])
@@ -711,7 +712,7 @@ ax.set_xlabel("enrichment over total")
 ax.set_ylabel("")
 
 
-# In[80]:
+# In[34]:
 
 
 fig = plt.figure(figsize=(2, 2))
@@ -729,7 +730,7 @@ ax.set_xlabel("enrichment over total")
 ax.set_ylabel("")
 
 
-# In[54]:
+# In[35]:
 
 
 dn[dn["gene_symbol"]=="PATZ1"]
@@ -737,7 +738,7 @@ dn[dn["gene_symbol"]=="PATZ1"]
 
 # ## write file
 
-# In[27]:
+# In[36]:
 
 
 dn.to_csv("../data/processed/TF-iso_ref-vs-alt.DN_cat.tsv", sep="\t", index=False)

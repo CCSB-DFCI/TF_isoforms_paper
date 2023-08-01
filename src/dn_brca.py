@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # In[1]:
@@ -474,6 +474,36 @@ dn_data_exp["neglog_padj_nan"] = -np.log10(dn_data_exp["wilcox_padj_nan"])
 # In[42]:
 
 
+len(dn_data_exp[(dn_data_exp["wilcox_padj"] < 0.05) & (dn_data_exp["dn_cat"].isin(["ref", "rewire", "DN"]))])
+
+
+# In[43]:
+
+
+len(dn_data_exp[(dn_data_exp["wilcox_padj"] < 0.05) & (dn_data_exp["dn_cat"] == "ref")])
+
+
+# In[44]:
+
+
+len(dn_data_exp[(dn_data_exp["wilcox_padj"] < 0.05) & (dn_data_exp["dn_cat"] == "DN")])
+
+
+# In[45]:
+
+
+len(dn_data_exp[(dn_data_exp["wilcox_padj"] < 0.05) & (dn_data_exp["dn_cat"] == "rewire")])
+
+
+# In[46]:
+
+
+len(dn_data_exp[dn_data_exp["dn_cat"].isin(["ref", "rewire", "DN"])])
+
+
+# In[47]:
+
+
 fig = plt.figure(figsize=(2, 2.2))
 
 ax = sns.scatterplot(data=dn_data_exp[dn_data_exp["dn_cat"].isin(["ref", "rewire", "DN"])], 
@@ -495,34 +525,13 @@ ax.get_legend().remove()
 fig.savefig("../figures/BRCA_Volcano.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[62]:
+# In[48]:
 
 
 dn_data_exp[dn_data_exp["gene_name"]=="KLF7"][["tf1p0_id", "dn_cat", "med_paired-diff_ratio", "neglog_padj"]]
 
 
-# In[81]:
-
-
-sig = dn_data_exp[["gene_name", "tf1p0_id", "dn_cat", "abs_med_paired-diff_ratio", "neglog_padj"]]
-sig["sig"] = dn_data_exp["neglog_padj"] >= -np.log10(0.05)
-sig_tot = sig.groupby(["dn_cat"])["tf1p0_id"].agg("count").reset_index()
-sig_sig = sig[(sig["sig"]) & 
-              (sig["abs_med_paired-diff_ratio"] > 0.05)].groupby(["dn_cat"])["tf1p0_id"].agg("count").reset_index()
-sig_low = sig[(sig["sig"]) & 
-              (sig["abs_med_paired-diff_ratio"] <= 0.05)].groupby(["dn_cat"])["tf1p0_id"].agg("count").reset_index()
-sig_plt = sig_tot.merge(sig_sig, on="dn_cat", suffixes=("_tot", "_sig"), 
-                        how="left").merge(sig_low, on="dn_cat", how="left")
-sig_plt.fillna(0, inplace=True)
-sig_plt["perc_high"] = sig_plt["tf1p0_id_sig"]/sig_plt["tf1p0_id_tot"]
-sig_plt["perc_low"] = sig_plt["tf1p0_id"]/sig_plt["tf1p0_id_tot"]
-sig_plt["perc_unsig"] = 1-(sig_plt["perc_high"]+sig_plt["perc_low"])
-#sig_plt.set_index("dn_cat", inplace=True)
-sig_plt = sig_plt[["dn_cat", "perc_high", "perc_low", "perc_unsig"]]
-sig_plt
-
-
-# In[84]:
+# In[50]:
 
 
 dn_data_exp[dn_data_exp["dn_cat"].isin(["ref", "rewire", "DN"])][["gene_name", "family", "tf1p0_id",
@@ -531,14 +540,14 @@ dn_data_exp[dn_data_exp["dn_cat"].isin(["ref", "rewire", "DN"])][["gene_name", "
                                                                                               ascending=False).head(20)
 
 
-# In[44]:
+# In[51]:
 
 
 brca_isos = brca_isos.merge(tf_id_map[["iso_id", "gene_name"]], on="iso_id").drop_duplicates()
 len(brca_isos)
 
 
-# In[45]:
+# In[52]:
 
 
 brca_isos_paired = brca_isos[["gene_name", "iso_id"] + tcga_paired_ctrls + tcga_paired_tumors]
@@ -547,10 +556,10 @@ new_tumor_cols = ["tumor - %s" % (i+1) for i, x in enumerate(tcga_paired_tumors)
 brca_isos_paired.columns = ["gene_name", "iso_id"] + new_ctrl_cols + new_tumor_cols
 
 
-# In[46]:
+# In[53]:
 
 
-def brca_expression_plot(gene_name, figsize, ylim, df, cols, fig_suffix):
+def brca_expression_plot(gene_name, figsize, ylim, df, cols, fig_suffix, ctrls_line, tumor_line):
     df_sub = df[df["gene_name"] == gene_name]
     df_sub.set_index("iso_id", inplace=True)
     df_sub = df_sub[cols].drop_duplicates()
@@ -579,26 +588,32 @@ def brca_expression_plot(gene_name, figsize, ylim, df, cols, fig_suffix):
     axes[1].set_yticklabels(['{:.0%}'.format(t) for t in axes[1].get_yticks()])
     axes[1].legend(loc='lower left', bbox_to_anchor=(1, 0))
     axes[0].axhline(y=1, color='black', linewidth=0.5, linestyle="dashed")
+    
+    # add medians
+    axes[1].plot(ctrls_line[0], ctrls_line[1], color="black", linewidth=0.5, linestyle="dashed")
+    axes[1].plot(tumor_line[0], tumor_line[1], color="black", linewidth=0.5, linestyle="dashed")
+    
     plt.subplots_adjust(hspace=0.25)
     plt.savefig('../figures/brca_' + gene_name + '_' + fig_suffix + '.pdf',
                 bbox_inches='tight')
 
 
-# In[47]:
+# In[54]:
 
 
-cols = new_ctrl_cols[0:50] + new_tumor_cols[0:50]
-brca_expression_plot("PKNOX1", (10, 3), (0, 6), brca_isos_paired, cols, "paired")
+dn_data_exp[dn_data_exp["gene_name"] == "PKNOX1"][["gene_name", "tf1p0_id", "dn_cat", "med_paired-brca_ratio",
+                                                   "med_paired-ctrls_ratio", "med_paired-diff_ratio"]]
 
 
-# In[48]:
+# In[55]:
 
 
-cols = new_ctrl_cols[0:50] + new_tumor_cols[0:50]
-brca_expression_plot("KLF7", (10, 3), (0, 6), brca_isos_paired, cols, "paired")
+cols = new_ctrl_cols[0:35] + new_tumor_cols[0:35]
+brca_expression_plot("PKNOX1", (9, 3), (0, 6), brca_isos_paired, cols, "paired",
+                     ([0, 34.5], [0.62, 0.62]), ([34.5, 70], [0.55, 0.55]))
 
 
-# In[49]:
+# In[56]:
 
 
 f_brca_paired = f_brca_filt[["gene_name", "iso_id"] + tcga_paired_ctrls + tcga_paired_tumors]
@@ -607,14 +622,14 @@ new_tumor_cols = ["tumor - %s" % (i+1) for i, x in enumerate(tcga_paired_tumors)
 f_brca_paired.columns = ["gene_name", "iso_id"] + new_ctrl_cols + new_tumor_cols
 
 
-# In[50]:
+# In[57]:
 
 
 f_brca_paired_melt = pd.melt(f_brca_paired, id_vars=["gene_name", "iso_id"])
 f_brca_paired_melt["samp"] = f_brca_paired_melt["variable"].str.split(" ", expand=True)[0]
 
 
-# In[51]:
+# In[58]:
 
 
 dn_data_exp = dn_data_exp.merge(tf_id_map[["gene_name", "clone_acc", "iso_id", "merge_id"]], 
@@ -624,7 +639,7 @@ print(len(dn_data_exp))
 dn_data_exp[dn_data_exp["gene_name"]=="PKNOX1"]
 
 
-# In[96]:
+# In[59]:
 
 
 tmp = f_brca_paired_melt[f_brca_paired_melt["gene_name"] == "PKNOX1"]
@@ -649,55 +664,72 @@ for i, iso in enumerate(tmp.iso_id.unique()):
 
 ax.set_xlabel("")
 ax.set_ylabel("isoform ratio")
-ax.set_title("BRCA TCGA")
+ax.set_title("PKNOX1 isoforms in breast cancer")
 ax.get_legend().remove()
 ax.set_ylim((-0.05, 1))
 
 fig.savefig("../figures/BRCA_PKNOX1_boxplot.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[61]:
+# ## read in TCGA PanCan data
+
+# In[60]:
 
 
-tmp = f_brca_paired_melt[f_brca_paired_melt["gene_name"] == "KLF7"]
-
-fig = plt.figure(figsize=(3, 1.5))
-
-ax = sns.boxplot(data=tmp, x="iso_id", y="value", hue="samp", fliersize=0,
-                 palette={"normal": "gray", "tumor": sns.color_palette("Set2")[3]})
-mimic_r_boxplot(ax)
-
-sns.swarmplot(data=tmp, x="iso_id", y="value", hue="samp",
-              palette={"normal": "gray", "tumor": sns.color_palette("Set2")[3]}, ax=ax,
-              size=1, edgecolor="black", linewidth=0.5, alpha=0.5, split=True)
-
-# annotate w p-vals
-tmp = f_brca_filt[f_brca_filt["gene_name"] == "KLF7"]
-ys = [0.95, 0.4, 0.9, 0.6, 0.2, 0.5, 0.2, 0.2]
-for i, iso in enumerate(tmp.iso_id.unique()):
-    print(iso)
-    padj = tmp[tmp["iso_id"]==iso]["wilcox_padj"].iloc[0]
-    
-    annotate_pval(ax, i-0.2, i+0.2, ys[i], 0, ys[i], padj, PAPER_FONTSIZE)
-
-ax.set_xlabel("")
-ax.set_ylabel("isoform ratio")
-ax.set_title("BRCA TCGA")
-ax.get_legend().remove()
-ax.set_ylim((-0.05, 1.1))
+pancan = pd.read_table("../data/external/PanCan_PKNOX1_w_header.txt")
+pancan.head()
 
 
-# In[94]:
+# In[62]:
 
 
-sns.scatterplot(data=dn_data_exp[dn_data_exp["dn_cat"].isin(["rewire", "DN"])], 
-                x="Diffusion difference", y="med_paired-diff_ratio", hue="dn_cat",
-                palette=pal)
+cols = ["event_id", "event_type", "event_chr", "event_coordinates", "alt_region_coordinates", "gene_name"]
+samp_cols = [x.split(".")[0] for x in pancan.columns if x.startswith("TCGA")]
+new_cols = cols + samp_cols
+pancan.columns = new_cols
+pancan.head()
 
 
-# In[93]:
+# In[66]:
 
 
-dn_data_exp[dn_data_exp["dn_cat"].isin(["rewire", "DN"])][["tf1p0_id", "dn_cat", "Diffusion difference", "Diffusion P-value",
-                                                           "med_paired-diff_ratio", "wilcox_padj"]].sort_values(by="Diffusion difference")
+for i, row in tcga_paired.iterrows():
+    try:
+        pancan["paired-diff_%s_ratio" % (i+1)] = pancan[row.tcga_id_tumor]-pancan[row.tcga_id_ctrl]
+        pancan["paired-diff_%s_rationan" % (i+1)] = pancan[row.tcga_id_tumor].fillna(0)-pancan[row.tcga_id_ctrl].fillna(0)
+    except KeyError:
+        print("missing ctrl %s or tumor %s" % (row.tcga_id_ctrl, row.tcga_id_tumor))
+
+
+# In[75]:
+
+
+diff_cols = [x for x in pancan.columns if "paired-diff" in x]
+pancan_m = pd.melt(pancan[diff_cols])
+pancan_m["type"] = pancan_m['variable'].apply(lambda row: row.split('_')[-1])
+pancan_m
+
+
+# In[79]:
+
+
+sns.distplot(pancan_m[pancan_m["type"]=="ratio"]["value"])
+
+
+# In[80]:
+
+
+pancan_m[pancan_m["type"]=="ratio"]["value"].median()
+
+
+# In[81]:
+
+
+pancan_m[pancan_m["type"]=="ratio"]["value"].mean()
+
+
+# In[ ]:
+
+
+
 

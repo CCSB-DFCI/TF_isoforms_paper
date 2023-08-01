@@ -6,7 +6,7 @@
 # - add the other DBDs from the same clan
 # - About 1700 out of 2700 have PFam hits in the file (~60%)
 
-# In[6]:
+# In[1]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -28,13 +28,13 @@ tfs = load_annotated_gencode_tfs()
 clans = load_pfam_clans()
 
 
-# In[8]:
+# In[2]:
 
 
 np.random.seed(2023)
 
 
-# In[9]:
+# In[3]:
 
 
 PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
@@ -47,14 +47,14 @@ PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper",
 PAPER_FONTSIZE = 7
 
 
-# In[10]:
+# In[4]:
 
 
 sns.set(**PAPER_PRESET)
 fontsize = PAPER_FONTSIZE
 
 
-# In[11]:
+# In[5]:
 
 
 fig, axs = plt.subplots(2, 1, sharex=True)
@@ -81,7 +81,27 @@ fig.savefig('../figures/n-aa-per-isoform_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[12]:
+# In[6]:
+
+
+# TODO change to reference isoform
+df = pd.concat([g.aa_feature_disruption(g.orfs[0].name) for g in tfs.values()])
+dbd = load_DNA_binding_domains()
+dbd['clan'] = dbd['pfam'].map(clans)
+dbd['num_genes'] = dbd['pfam'].map(df.groupby('accession')['gene'].size())
+df['is_DBD'] = df['accession'].isin(dbd['pfam'].values) | df['accession'].str.startswith('C2H2_ZF_array')
+
+# TODO: move to isolib.py
+df['is_affected_at_all'] = (df['deletion'] + df['insertion'] + df['frameshift']) > 0
+for frac in [1.0, 0.9, 0.5, 0.1]:
+    df[f"is_affected_{frac * 100:.0f}pct"] = (df['deletion'] + df['insertion'] + df['frameshift']) >= frac * df['length']
+
+dbd_acc = set(dbd['pfam'].values).union(
+            set(df['accession'][df['accession'].str.startswith('C2H2_ZF_array')].unique())
+            )
+
+
+# In[7]:
 
 
 # exons per isoform
@@ -109,7 +129,7 @@ fig.savefig('../figures/n-exons-per-isoform_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[13]:
+# In[8]:
 
 
 # size of exons
@@ -131,7 +151,7 @@ fig.savefig('../figures/n-aa-per-exon_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[14]:
+# In[9]:
 
 
 # size of domains split by DBD, other pfam and effector
@@ -161,7 +181,7 @@ fig.savefig('../figures/n_aa_per_domain_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[ ]:
+# In[10]:
 
 
 # linking domains to exons
@@ -183,7 +203,7 @@ def f_exon_per_domain(iso, dom):
     return f
 
 
-# In[15]:
+# In[11]:
 
 
 n_exon_dbd = [n_exon_per_domain(tf.reference_isoform, dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if is_DBD(dom)]
@@ -208,7 +228,7 @@ fig.savefig('../figures/n_exon_per_domain_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[8]:
+# In[12]:
 
 
 f_exon_dbd = [f_exon_per_domain(tf.reference_isoform, dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if is_DBD(dom)]
@@ -233,7 +253,7 @@ fig.savefig('../figures/f_exon_per_domain_GENCODE.pdf',
             bbox_inches='tight')
 
 
-# In[16]:
+# In[13]:
 
 
 from collections import Counter
@@ -247,41 +267,19 @@ single_exon_doms = [dom for tf in tfs.values() for dom in tf.reference_isoform.a
 Counter([d.name for d in single_exon_doms])
 
 
-# In[2]:
+# In[14]:
 
 
 pd.set_option('display.max_columns', 100)
 
 
-# ### note: kaia started here
-
-# In[17]:
-
-
-# TODO change to reference isoform
-df = pd.concat([g.aa_feature_disruption(g.orfs[0].name) for g in tfs.values()])
-dbd = load_DNA_binding_domains()
-dbd['clan'] = dbd['pfam'].map(clans)
-dbd['num_genes'] = dbd['pfam'].map(df.groupby('accession')['gene'].size())
-df['is_DBD'] = df['accession'].isin(dbd['pfam'].values) | df['accession'].str.startswith('C2H2_ZF_array')
-
-# TODO: move to isolib.py
-df['is_affected_at_all'] = (df['deletion'] + df['insertion'] + df['frameshift']) > 0
-for frac in [1.0, 0.9, 0.5, 0.1]:
-    df[f"is_affected_{frac * 100:.0f}pct"] = (df['deletion'] + df['insertion'] + df['frameshift']) >= frac * df['length']
-
-dbd_acc = set(dbd['pfam'].values).union(
-            set(df['accession'][df['accession'].str.startswith('C2H2_ZF_array')].unique())
-            )
-
-
-# In[18]:
+# In[15]:
 
 
 get_ipython().run_cell_magic('time', '', "df_null = pd.concat([g.null_fraction_per_aa_feature(g.orfs[0].name) for g in tfs.values()])\ndf = pd.merge(df, df_null, how='left', on=['gene', 'ref_iso', 'alt_iso', 'length'])")
 
 
-# In[19]:
+# In[16]:
 
 
 for name, tf in tfs.items():
@@ -292,19 +290,19 @@ for name, tf in tfs.items():
         break
 
 
-# In[20]:
+# In[17]:
 
 
 print(len({d for d in dbd_acc if not d.startswith('C2H2_ZF_array_')}) + 1, 'different DNA binding domain types')
 
 
-# In[21]:
+# In[18]:
 
 
 len({k for k, v in clans.items() if v in dbd['clan'].values})
 
 
-# In[22]:
+# In[19]:
 
 
 # random shuffle
@@ -315,39 +313,39 @@ for g in tqdm.tqdm(tfs.values()):
 rnd = pd.concat(rnd)
 
 
-# In[23]:
+# In[20]:
 
 
 rnd['is_DBD'] = rnd['accession'].isin(dbd['pfam'].values) | rnd['accession'].str.startswith('C2H2_ZF_array')
 rnd['is_affected'] = (rnd['deletion'] + rnd['insertion'] + rnd['frameshift']) > 0
 
 
-# In[24]:
+# In[21]:
 
 
 print(df.loc[df['is_DBD'], :].groupby('alt_iso')['is_affected'].any().value_counts())
 df.loc[df['is_DBD'], :].groupby('alt_iso')['is_affected'].any().value_counts().plot.pie()
 
 
-# In[21]:
+# In[22]:
 
 
 df['is_DBD'].sum()
 
 
-# In[143]:
+# In[23]:
 
 
 rnd['is_DBD'].sum()
 
 
-# In[142]:
+# In[24]:
 
 
 rnd.loc[rnd['is_DBD'], :].groupby(['alt_iso', 'random_sample'])['is_affected'].any().value_counts().plot.pie()
 
 
-# In[147]:
+# In[25]:
 
 
 n = df.loc[df['is_DBD'], 'alt_iso'].nunique()
@@ -370,7 +368,7 @@ plt.savefig('../figures/DBD_affected_100_randomizations.pdf',
             bbox_inches='tight')
 
 
-# In[24]:
+# In[26]:
 
 
 (len(tfs),
@@ -380,7 +378,7 @@ plt.savefig('../figures/DBD_affected_100_randomizations.pdf',
  df.loc[df['is_DBD'], 'gene'].nunique())
 
 
-# In[26]:
+# In[27]:
 
 
 def domain_disruption_significance_plot(df, ax=None):
@@ -415,13 +413,13 @@ domain_disruption_significance_plot(df.loc[df['is_DBD'], :])
 plt.savefig('../figures/all_DBD_affected_random_dist.pdf', bbox_inches='tight')
 
 
-# In[161]:
+# In[28]:
 
 
 df.loc[df['is_DBD'], 'alt_iso'].nunique()
 
 
-# In[158]:
+# In[29]:
 
 
 domain_disruption_significance_plot(df.loc[df['accession'].str.startswith('C2H2_ZF_array'), :])
@@ -429,13 +427,13 @@ plt.title('C2H2 ZF array')
 plt.savefig('../figures/C2H2_ZF_array_affected_random_dist.pdf', bbox_inches='tight')
 
 
-# In[164]:
+# In[30]:
 
 
 n_dbd
 
 
-# In[171]:
+# In[31]:
 
 
 above_size_cutoff = (dbd['num_genes'] >= 30)
@@ -453,7 +451,7 @@ for ax in axes[:-1, :].flatten():
 plt.savefig('../figures/different_DBDs_affected_random_dist.pdf', bbox_inches='tight')
 
 
-# In[172]:
+# In[ ]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -463,7 +461,7 @@ domain_disruption_significance_plot(df.loc[df['accession'] == 'PF01352', :],
 plt.savefig('../figures/KRAB_affected_random_dist.pdf', bbox_inches='tight')
 
 
-# In[173]:
+# In[32]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -473,7 +471,7 @@ domain_disruption_significance_plot(df.loc[df['accession'] == 'PF00651', :],
 plt.savefig('../figures/BTB_affected_random_dist.pdf', bbox_inches='tight')
 
 
-# In[138]:
+# In[33]:
 
 
 fig, axes = plt.subplots(10, 1)
@@ -484,7 +482,7 @@ for pfam_ac, ax in zip(df.loc[~df['is_DBD'], :].groupby('accession')['gene'].nun
                                     ax=ax)
 
 
-# In[7]:
+# In[ ]:
 
 
 pfam = pd.read_csv('../data/external/Pfam-A.clans.tsv',
@@ -492,7 +490,7 @@ pfam = pd.read_csv('../data/external/Pfam-A.clans.tsv',
                    names=['pfam_accession', 'clan', 'clan_name', 'short_name', 'name'])
 
 
-# In[5]:
+# In[ ]:
 
 
 df.loc[df['accession'].str.startswith('C2H2_ZF_array'), 'accession'] = 'C2H2_ZF_array'
@@ -534,7 +532,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
     doms[null_col + '_center'] = null_p.groupby('accession').apply(null_quantile, 0.5)
 
 
-# In[8]:
+# In[34]:
 
 
 doms['is_DBD'] = doms.index.isin(dbd['pfam'].values) | (doms.index == 'C2H2_ZF_array')
@@ -545,7 +543,7 @@ doms.loc[doms.index == 'C2H2_ZF_array', 'domain_name'] = ['C2H2 ZF array']
 doms.head()
 
 
-# In[14]:
+# In[35]:
 
 
 dom_affected_levels = [c[5:] for c in doms.columns if c.startswith('f_is_affected_')]
@@ -591,7 +589,7 @@ for level in dom_affected_levels:
                 bbox_inches='tight')
 
 
-# In[43]:
+# In[36]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -628,7 +626,7 @@ plt.savefig('../figures/other_domain_partial_removal.pdf',
             bbox_inches='tight')
 
 
-# In[15]:
+# In[37]:
 
 
 for level in dom_affected_levels:
@@ -667,13 +665,13 @@ for level in dom_affected_levels:
                 bbox_inches='tight')
 
 
-# In[ ]:
+# In[38]:
 
 
 # clans
 
 
-# In[17]:
+# In[39]:
 
 
 # all domains, all DBD, non-DBD
@@ -709,7 +707,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 doms.head()
 
 
-# In[32]:
+# In[40]:
 
 
 df['category_a'] = np.nan
@@ -718,13 +716,13 @@ df.loc[(df['category'] == 'Pfam_domain') & ~df['is_DBD'], 'category_a'] = 'Other
 df.loc[(df['category'] == 'effector_domain'), 'category_a'] = 'Effector domain'
 
 
-# In[34]:
+# In[41]:
 
 
 doms.head()
 
 
-# In[36]:
+# In[42]:
 
 
 # split pfam into dbd and 
@@ -790,7 +788,7 @@ for level in dom_affected_levels:
                 bbox_inches='tight')
 
 
-# In[37]:
+# In[43]:
 
 
 # split effector domain into AD/RD/BiF
@@ -799,7 +797,7 @@ reg_dom = pd.read_excel(path_effector_domains, sheet_name="Table S2")
 df['effector_domain_type'] = df['accession'].map(reg_dom.set_index('Effector domain ID')['Domain type'])
 
 
-# In[39]:
+# In[44]:
 
 
 doms = df.groupby('effector_domain_type')['alt_iso'].nunique().to_frame(name='n_alt_iso')
@@ -863,19 +861,19 @@ for level in dom_affected_levels:
                 bbox_inches='tight')
 
 
-# In[15]:
+# In[45]:
 
 
 reg_dom['N or S?'].value_counts()
 
 
-# In[40]:
+# In[46]:
 
 
 df['effector_domain_N_or_S'] = df['accession'].map(reg_dom.set_index('Effector domain ID')['N or S?'])
 
 
-# In[61]:
+# In[47]:
 
 
 def domain_affected_plots(df, column, order=None):
@@ -942,14 +940,14 @@ def domain_affected_plots(df, column, order=None):
                 bbox_inches='tight')
 
 
-# In[ ]:
+# In[48]:
 
 
 df['effector_domain_necessary_or_sufficient'] = df['accession'].map(reg_dom.set_index('Effector domain ID')['N or S?'])
 domain_affected_plots(df, 'effector_domain_necessary_or_sufficient')
 
 
-# In[22]:
+# In[49]:
 
 
 reg_dom['Confidence (H, M or L)'].value_counts()
@@ -962,7 +960,7 @@ df['effector_domain_confidence'] = df['accession'].map(reg_dom.set_index('Effect
 domain_affected_plots(df, 'effector_domain_confidence')
 
 
-# In[62]:
+# In[51]:
 
 
 # size restriction
@@ -983,13 +981,13 @@ domain_affected_plots(df.loc[df['effector_domain_size_bin'].isin(order), :],
                       order=order)
 
 
-# In[64]:
+# In[ ]:
 
 
 df['pfam_clan'] = df['accession'].map(clans)
 
 
-# In[69]:
+# In[ ]:
 
 
 domain_affected_plots(df,
