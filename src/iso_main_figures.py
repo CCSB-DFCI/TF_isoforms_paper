@@ -3,7 +3,7 @@
 
 # # notebook to make nicer PPI/PDI/M1H panels for figures
 
-# In[1]:
+# In[2]:
 
 
 import numpy as np
@@ -21,17 +21,30 @@ from data_loading import (load_isoform_and_paralog_y2h_data,
                           load_annotated_6k_collection)
 from plotting import (y2h_ppi_per_tf_gene_plot,
                       y1h_pdi_per_tf_gene_plot,
-                      m1h_activation_per_tf_gene_plot, PAPER_PRESET, PAPER_FONTSIZE)
+                      m1h_activation_per_tf_gene_plot)
 
 
-# In[2]:
+# In[3]:
+
+
+PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+                "rc": {"font.size":7,"axes.titlesize":7,
+                       "axes.labelsize":7, 'axes.linewidth':0.5,
+                       "legend.fontsize":6, "xtick.labelsize":6,
+                       "ytick.labelsize":6, "xtick.major.size": 3.0,
+                       "ytick.major.size": 3.0, "axes.edgecolor": "black",
+                       "xtick.major.pad": 3.0, "ytick.major.pad": 3.0}}
+PAPER_FONTSIZE = 7
+
+
+# In[4]:
 
 
 sns.set(**PAPER_PRESET)
 fontsize = PAPER_FONTSIZE
 
 
-# In[3]:
+# In[5]:
 
 
 y2h = load_isoform_and_paralog_y2h_data(add_missing_data=True)
@@ -45,7 +58,7 @@ m1h = m1h.loc[m1h['clone_acc'].isin(isoforms['clone_acc'].values), :]
 tfs = load_annotated_6k_collection()
 
 
-# In[4]:
+# In[6]:
 
 
 len([orf for tf in tfs.values() for orf in tf.orfs])
@@ -53,25 +66,47 @@ len([orf for tf in tfs.values() for orf in tf.orfs])
 
 # ## PDIs
 
-# In[20]:
+# In[8]:
 
 
 gene_name = "PKNOX1"
 
 tf = tfs[gene_name]
 fig, ax = plt.subplots(1, 1, figsize=(1.3, 1.0))
-y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax, equal_aspect=False)
+y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
 plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[21]:
+# In[12]:
+
+
+gene_name = "HEY1"
+
+tf = tfs[gene_name]
+fig, ax = plt.subplots(1, 1, figsize=(0.75, 0.75))
+y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
+plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[10]:
 
 
 gene_name = "GRHL3"
 
 tf = tfs[gene_name]
 fig, ax = plt.subplots(1, 1, figsize=(6, 1.0))
-y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax, equal_aspect=False)
+y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
+plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[17]:
+
+
+gene_name = "CREB1"
+
+tf = tfs[gene_name]
+fig, ax = plt.subplots(1, 1, figsize=(0.75, 0.75))
+y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
 plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
@@ -83,22 +118,22 @@ plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tigh
 gene_name = "PKNOX1"
 
 fig, ax = plt.subplots(1, 1, figsize=(0.87, 0.95))
-y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h, equal_aspect=False)
+y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
 plt.savefig('../figures/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[27]:
+# In[14]:
 
 
 gene_name = "GRHL3"
 
 tf = tfs[gene_name]
 fig, ax = plt.subplots(1, 1, figsize=(0.9, 1.6))
-y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h, equal_aspect=False)
+y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
 plt.savefig('../figures/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[31]:
+# In[15]:
 
 
 tfs["PKNOX1"].splicing_categories("PKNOX1-1", "PKNOX1-2")
