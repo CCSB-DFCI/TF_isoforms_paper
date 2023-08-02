@@ -253,25 +253,25 @@ tfs_no_dbd = {k: v for k, v in tfs.items()
               and len(v.orfs[0].aa_seq_features) > 0}
 
 
-# In[9]:
+# In[8]:
 
 
 df['delta_pdi_trunc'] = df['delta_pdi'].clip(upper=1)
 
 
-# In[10]:
+# In[9]:
 
 
 df['dbd_or_flank_affected'].value_counts().index.values
 
 
-# In[11]:
+# In[10]:
 
 
 df['tf_family_merged'] = df['tf_family'].map(lambda x: x if x in ['C2H2 ZF', 'bHLH', 'Homeodomain', 'Nuclear receptor'] else 'other')
 
 
-# In[12]:
+# In[11]:
 
 
 # TODO: move to data_loading.py
@@ -285,19 +285,19 @@ for c in n_aa.columns:
     df[f'abs_delta_{c}'] = df[f'delta_{c}'].abs()
 
 
-# In[13]:
+# In[12]:
 
 
 df['f_disorder_delta_aa'] = df['abs_delta_n_aa_disordered'] / (df['abs_delta_n_aa_disordered'] + df['abs_delta_n_aa_ordered'])
 
 
-# In[14]:
+# In[13]:
 
 
 df['pdi_affected'] = (df['delta_pdi'] != 0)
 
 
-# In[15]:
+# In[14]:
 
 
 #charged_aas = ("K", "R", "H", "D", "E", "C", "Y")
@@ -310,7 +310,7 @@ def delta_n_K_or_R(row):
 df['delta_n_K_or_R'] = df.apply(delta_n_K_or_R, axis=1)
 
 
-# In[16]:
+# In[15]:
 
 
 # for alternative isoforms, containing the DBD, that are associated with a change in 
@@ -386,19 +386,19 @@ def count_K_or_R_sliding_window(row, window_size=6):
 df['count_K_or_R_sliding_window'] = df.apply(count_K_or_R_sliding_window, axis=1)
 
 
-# In[17]:
+# In[16]:
 
 
 df['count_K_or_R_sliding_window'].value_counts()
 
 
-# In[18]:
+# In[17]:
 
 
 df['dbd_or_flank_affected'].value_counts()
 
 
-# In[19]:
+# In[18]:
 
 
 # only isoforms with DBD
@@ -417,13 +417,13 @@ print(b.mean())
 print(stats.mannwhitneyu(a, b))
 
 
-# In[20]:
+# In[19]:
 
 
 isoform_specific_regions(tfs['KLF7'], subset=['KLF7-1', 'KLF7-4'])
 
 
-# In[21]:
+# In[20]:
 
 
 # check for family enrichment of DBD unaffected PDI changes
@@ -431,20 +431,20 @@ df.loc[(df['dbd_or_flank_affected'] == 'Full DBD in\nalternative isoform') &
 (df['delta_pdi'] != 0), 'tf_family'].value_counts()
 
 
-# In[22]:
+# In[21]:
 
 
 df.loc[(df['dbd_or_flank_affected'] == 'Full DBD in\nalternative isoform') &
 (df['delta_pdi'] != 0), 'gene'].value_counts()
 
 
-# In[23]:
+# In[22]:
 
 
 # PPIs with other TFs as a predictor for non-DBD related PDI changes?
 
 
-# In[24]:
+# In[23]:
 
 
 # 15 aa flanks
@@ -453,13 +453,13 @@ df.loc[(df['dbd_or_flank_affected'] == 'Full DBD in\nalternative isoform') &
        (df['delta_pdi'] != 0), 'gene'].unique())
 
 
-# In[25]:
+# In[24]:
 
 
 (df['dbd_pct_lost'] > 0).sum()
 
 
-# In[37]:
+# In[25]:
 
 
 # TODO
@@ -570,7 +570,7 @@ axs[0].set_ylabel('Change in number of PDI\nin alternative isoform')
 plt.savefig('../figures/DBD_or_flank_change_vs_PDI_composite.pdf', bbox_inches='tight')
 
 
-# In[51]:
+# In[26]:
 
 
 # try distance from DBD

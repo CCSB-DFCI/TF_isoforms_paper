@@ -679,106 +679,6 @@ df.sort_values('delta_pdi', ascending=False).head()
 # In[36]:
 
 
-# TODO
-# check y variable now that we use reference isoform
-# horizontal line across whole
-
-fig, axs = plt.subplots(nrows=1, 
-                        ncols=5,
-                        sharey=True,
-                        width_ratios=[1, 1, 0.35, 0.4, 1.5])
-fig.set_size_inches(w=8, h=2)
-point_size = 7
-
-axs[0].set_title('Full loss of DBD',
-fontsize=10)
-sns.swarmplot(data=df,
-              y='delta_pdi_trunc', 
-              x='dbd_or_flank_affected',
-              size=point_size,
-              order=[
-                     'Full loss\nof DBD',
-                     ],
-              ax=axs[0],
-              color=COLOR_PURPLE,
-              alpha=1)
-
-axs[1].set_title('Partial loss of DBD',
-fontsize=10)
-axs[1].scatter(df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'dbd_pct_lost'].values,
-               df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'delta_pdi_trunc'].values,
-           alpha=1,
-           s=point_size**2/1.5,  # I don't think there should be a divide by anything here....
-            color=COLOR_PURPLE,
-           clip_on=False)
-axs[1].set_xlabel('Proportion missing')
-axs[1].set_xlim(100, 0)
-axs[1].set_xticks([99, 50, 1])
-axs[1].set_xticklabels(['{}%'.format(x)for x in axs[1].get_xticks()])
-axs[1].set_xticks(range(10, 91, 10), minor=True)
-
-
-axs[2].set_title('Insertion\nwithin DBD',
-fontsize=10)
-axs[2].scatter(df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0), 'dbd_insertion_n_aa'].values,
-               df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0), 'delta_pdi_trunc'].values,
-           alpha=1,
-           s=point_size**2/1.5,  # I don't think there should be a divide by anything here....
-            color=COLOR_PURPLE,
-           clip_on=False)
-axs[2].set_xlabel('amino acids\ninserted')
-axs[2].set_xticks([1, 4])
-axs[2].set_xticks(range(1, 6), minor=True)
-
-axs[3].set_title('Flank of DBD\naffected',
-                 fontsize=10)
-sns.swarmplot(data=df,
-              y='delta_pdi_trunc', 
-              x='dbd_or_flank_affected',
-              size=point_size,
-              order=[
-                     'DBD flank affected',
-                     ],
-              ax=axs[3],
-            color=COLOR_PURPLE,
-              alpha=1)
-
-axs[4].set_title('Full DBD + flanks\nin alternative isoform',
-fontsize=10)
-sns.swarmplot(data=df,
-              y='delta_pdi_trunc', 
-              x='dbd_or_flank_affected',
-              size=point_size,
-              order=[
-                     'Full DBD in\nalternative isoform',
-                     ],
-            color=COLOR_PURPLE,
-              ax=axs[4],
-              alpha=1)
-
-for ax in axs:
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-for ax in axs[1:]:
-    ax.spines['left'].set_visible(False)
-    ax.yaxis.set_tick_params(which='both', length=0)
-for i in [0, 3, 4]:
-    axs[i].set_xlabel('')
-    axs[i].set_ylabel('')
-    axs[i].spines['bottom'].set_visible(False)
-    axs[i].xaxis.set_tick_params(length=0)
-    axs[i].set_xticks([])
-axs[0].set_yticks([-1, 0, 1])
-axs[0].set_yticks(np.linspace(-1, 1, 9), minor=True)
-axs[0].set_yticklabels(['-100%', '0', '+≥100%'])
-axs[0].set_ylabel('Change in number of PDI\nin alternative isoform')
-
-plt.savefig('../figures/DBD_or_flank_change_vs_PDI_composite.pdf', bbox_inches='tight')
-
-
-# In[37]:
-
-
 # try distance from DBD
 # TODO
 # check y variable now that we use reference isoform
@@ -865,14 +765,14 @@ axs[0].set_ylabel('Change in number of PDI\nin alternative isoform')
 plt.savefig('../figures/DBD_or_flank_change_vs_PDI_composite_alt_with_distance.pdf', bbox_inches='tight')
 
 
-# In[38]:
+# In[37]:
 
 
 # full DBD in alternative isoform, fraction in disordered
 df['f_disorder_difference'] = df.apply(lambda x: disordered_fraction_of_different_regions(tfs[x['gene']], x['ref_iso'], x['alt_iso']), axis=1)
 
 
-# In[39]:
+# In[38]:
 
 
 # check low values
@@ -898,86 +798,86 @@ fig.savefig('../figures/disordered-pct-alt-sequence_alt-isoforms-full-DBD-diff-P
             bbox_inches='tight')
 
 
-# In[40]:
+# In[39]:
 
 
 # DEBUG
 df.sort_values('f_disorder_difference', ascending=True).head(10)
 
 
-# In[41]:
+# In[40]:
 
 
 # could also do number of aa different or aa similarity
 df.loc[df['gene'] == 'TBX5']
 
 
-# In[42]:
+# In[41]:
 
 
 df.sort_values('dbd_n_aa_to_change', ascending=False).head(10)
 
 
-# In[43]:
+# In[42]:
 
 
 iso = tfs['HEY1']['HEY1-2']
+iso.aa_seq[iso.aa_seq_features[0].start:iso.aa_seq_features[0].end]
+
+
+# In[43]:
+
+
+iso = tfs['ZIC3']['ZIC3-2']
 iso.aa_seq[iso.aa_seq_features[0].start:iso.aa_seq_features[0].end]
 
 
 # In[44]:
 
 
-iso = tfs['ZIC3']['ZIC3-2']
-iso.aa_seq[iso.aa_seq_features[0].start:iso.aa_seq_features[0].end]
+len(iso.aa_seq)
 
 
 # In[45]:
 
 
-len(iso.aa_seq)
-
-
-# In[46]:
-
-
 (1060+164) / 3
 
 
-# In[47]:
+# In[46]:
 
 
 iso = tfs['ZIC3']['ZIC3-2']
 (iso.aa_seq_features[0].start, iso.aa_seq_features[0].end)
 
 
-# In[48]:
+# In[47]:
 
 
 iso = tfs['HEY1']['HEY1-2']
 (iso.aa_seq_features[0].start, iso.aa_seq_features[0].end)
 
 
-# In[49]:
+# In[48]:
 
 
 tfs['HEY1'].pairwise_changes_relative_to_reference('HEY1-2', 'HEY1-1').find('I')
 
 
-# In[50]:
+# In[49]:
 
 
 tfs['CREB1'].pairwise_changes_relative_to_reference('CREB1-2', 'CREB1-1').find('I')
 
 
-# In[51]:
+# In[50]:
 
 
 iso = tfs['CREB1']['CREB1-1']
 (iso.aa_seq_features[1].start, iso.aa_seq_features[1].end)
 
 
-# In[52]:
+# In[51]:
 
 
 iso = tfs['KLF7']['KLF7-1']
@@ -985,87 +885,87 @@ print(iso.aa_seq_features[0].start, iso.aa_seq_features[0].end)
 iso.aa_seq[iso.aa_seq_features[0].start:iso.aa_seq_features[0].end]
 
 
-# In[53]:
+# In[52]:
 
 
 iso = tfs['KLF7']['KLF7-4']
 print(iso.aa_seq_features[0].start, iso.aa_seq_features[0].end)
 
 
-# In[54]:
+# In[53]:
 
 
 print(tfs['KLF7'].pairwise_changes_relative_to_reference('KLF7-1', 'KLF7-4').rfind('I'))
 tfs['KLF7'].pairwise_changes_relative_to_reference('KLF7-1', 'KLF7-4')
 
 
-# In[55]:
+# In[54]:
 
 
 # closest PDB with DNA for HEY1 is 4H10 chain A (ARNTL) sequence ID 59%
 
 
-# In[56]:
+# In[55]:
 
 
 df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100) & (df['delta_pdi_trunc'] > -1), :]
 
 
-# In[57]:
+# In[56]:
 
 
 tfs['ZIC3']['ZIC3-2'].aa_seq_features
 
 
-# In[58]:
+# In[57]:
 
 
 df.head()
 
 
-# In[59]:
+# In[58]:
 
 
 df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_flank_affected'] == False) & (df['delta_pdi_trunc'] > -1), :].sort_values('delta_pdi').tail()
 
 
-# In[60]:
+# In[59]:
 
 
 df.head()
 
 
-# In[61]:
+# In[60]:
 
 
 df.loc[df['dbd_insertion_n_aa'] == 1]
 
 
-# In[62]:
+# In[61]:
 
 
 tfs['EBF3'].exon_diagram()
 
 
-# In[63]:
+# In[62]:
 
 
 m1h = load_m1h_activation_data()
 
 
-# In[64]:
+# In[63]:
 
 
 y1h.head()
 
 
-# In[65]:
+# In[64]:
 
 
 m1h.head()
 
 
-# In[66]:
+# In[65]:
 
 
 # TODO: move to per TF gene notebook
@@ -1086,49 +986,49 @@ for gene_name, tf in tfs.items():
     plt.close(plt.gcf())
 
 
-# In[67]:
+# In[66]:
 
 
 tfs['HEY1'].exon_diagram()
 
 
-# In[68]:
+# In[67]:
 
 
 y1h_pdi_per_tf_gene_plot('HEY1', y1h)
 
 
-# In[69]:
+# In[68]:
 
 
 tfs['ZIC3'].exon_diagram()
 
 
-# In[70]:
+# In[69]:
 
 
 y1h_pdi_per_tf_gene_plot('ZIC3', y1h)
 
 
-# In[71]:
+# In[70]:
 
 
 tfs['EBF3'].orfs[0].dna_binding_domains
 
 
-# In[72]:
+# In[71]:
 
 
 df.loc[df['dbd_affected'].str.startswith('Full'), :].sort_values('delta_pdi')
 
 
-# In[73]:
+# In[72]:
 
 
 tfs['PPARG'].genomic_alignment_of_aa_seqs()
 
 
-# In[74]:
+# In[73]:
 
 
 # load DNA bait sequnces
@@ -1136,20 +1036,20 @@ tfs['PPARG'].genomic_alignment_of_aa_seqs()
 baits = load_Y1H_DNA_bait_sequences()
 
 
-# In[75]:
+# In[74]:
 
 
 y1h = load_y1h_pdi_data()
 
 
-# In[85]:
+# In[75]:
 
 
 # DEBUG
 y1h.tail().dtypes
 
 
-# In[92]:
+# In[76]:
 
 
 def baits_set(row):
@@ -1168,13 +1068,13 @@ df['baits'] = df['baits'].apply(lambda x: ' '.join(x))
 df.to_csv('../output/Y1H_differential-subset.tsv', index=False, sep='\t')
 
 
-# In[93]:
+# In[77]:
 
 
 df['tf'].unique()
 
 
-# In[95]:
+# In[78]:
 
 
 # look for E-box within hs385 / hs416 / MUT_116
@@ -1185,43 +1085,43 @@ df['tf'].unique()
 re.findall('CA..TG', baits['hs416'])
 
 
-# In[96]:
+# In[79]:
 
 
 re.findall('CA..TG', baits['hs385'])
 
 
-# In[97]:
+# In[80]:
 
 
 baits['hs385']
 
 
-# In[98]:
+# In[81]:
 
 
 baits['hs416']
 
 
-# In[99]:
+# In[82]:
 
 
 baits['MUT_116']
 
 
-# In[100]:
+# In[83]:
 
 
 re.findall('CG..TG', baits['MUT_116'])
 
 
-# In[101]:
+# In[84]:
 
 
 re.findall('CG..TG', baits['hs385'])
 
 
-# In[102]:
+# In[85]:
 
 
 re.findall('CG..TG', baits['hs416'])

@@ -99,6 +99,17 @@ y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
 plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
+# In[17]:
+
+
+gene_name = "CREB1"
+
+tf = tfs[gene_name]
+fig, ax = plt.subplots(1, 1, figsize=(0.75, 0.75))
+y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
+plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
 # ## PPIs
 
 # In[13]:
