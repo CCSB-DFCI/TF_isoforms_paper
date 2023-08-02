@@ -100,7 +100,7 @@ def binary_profile_matrix(
     ax.xaxis.tick_top()
     ax.set_xticks(range(data.shape[1]))
     ax.xaxis.set_tick_params(length=0)
-    ax.xaxis.set_ticklabels(data.columns, rotation=column_label_rotation, ha="left")
+    ax.xaxis.set_ticklabels(data.columns, rotation=column_label_rotation, ha="center")
     ax.set_yticks(range(data.shape[0]))
     ax.yaxis.set_tick_params(length=0)
     ax.set_yticklabels(data.index)
@@ -119,7 +119,7 @@ def strikethrough(s):
 
 
 def y2h_ppi_per_tf_gene_plot(
-    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1
+    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, iso_order=None,
 ):
     tf = data.loc[
         (data["category"] == "tf_isoform_ppis") & (data["ad_gene_symbol"] == gene_name),
@@ -148,6 +148,10 @@ def y2h_ppi_per_tf_gene_plot(
             color="grey",
         )
         return
+    if iso_order is None:
+        tf = tf
+    else:
+        tf = tf.loc[iso_order, :]
     binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels(
         [
@@ -158,7 +162,7 @@ def y2h_ppi_per_tf_gene_plot(
 
 
 def y2h_ppi_per_paralog_pair_plot(
-    tf_gene_a, tf_gene_b, data, ax=None, min_n_isoforms=1, min_n_partners=1
+    tf_gene_a, tf_gene_b, data, ax=None, min_n_isoforms=1, min_n_partners=1, iso_order=None,
 ):
     """
 
@@ -194,6 +198,10 @@ def y2h_ppi_per_paralog_pair_plot(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return
+    if iso_order is None:
+        tf = tf
+    else:
+        tf = tf.loc[iso_order, :]
     binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels(
         [
@@ -204,7 +212,7 @@ def y2h_ppi_per_paralog_pair_plot(
 
 
 def y1h_pdi_per_tf_gene_plot(
-    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1
+    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, iso_order=None,
 ):
     tf = (
         data.loc[data["tf"] == gene_name, data.columns[1:]]
@@ -230,6 +238,10 @@ def y1h_pdi_per_tf_gene_plot(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return
+    if iso_order is None:
+        tf = tf
+    else:
+        tf = tf.loc[iso_order, :]
     binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels(
         [
