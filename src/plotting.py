@@ -22,6 +22,8 @@ def binary_profile_matrix(
     fill_color="black",
     border_color="black",
     column_label_rotation=40,
+    bait_colors=None,
+    bait_annot=None,
 ):
     """Used for edgotyping: displays binary results with a grid of boxes
 
@@ -37,6 +39,8 @@ def binary_profile_matrix(
         fill_color (str): color of filled sqaure
         border_color (str): color of outside of square
         column_label_roation: angle in degrees of top labels
+        bait_colors: optional, added to allow for custom colors of squares in PDI figure
+        bait_annot: optional, added to allow for custom annotation of squares in PDI figure
     Examples:
         Display results of some dummy edgotyping data:
         .. plot::
@@ -75,24 +79,54 @@ def binary_profile_matrix(
         if pd.notnull(data.iloc[j, i]) and data.iloc[j, i] == 0
     ]
     for x, y in negatives:
+        
+        if bait_colors is None:
+            neg_fill = False
+            facecolor = None
+        else:
+            neg_fill = True
+            facecolor = bait_colors.iloc[y, x]
+        
         r = patches.Rectangle(
             (x - box_size / 2, y - box_size / 2),
             box_size,
             box_size,
-            fill=False,
+            fill=neg_fill,
+            facecolor = facecolor,
             edgecolor=border_color,
+            linewidth=1
         )
         ax.add_patch(r)
+        
+        if bait_annot is not None:
+            annot = bait_annot.iloc[y, x]
+            ax.text(x, y, "{:.2f}".format(annot), fontsize=6, color="black", ha="center", va="center")
+        
     for x, y in positives:
+        
+        if bait_colors is None:
+            facecolor = fill_color
+            linewidth = 1
+        else:
+            facecolor = bait_colors.iloc[y, x]
+            linewidth = 3
+        
         r = patches.Rectangle(
             (x - box_size / 2, y - box_size / 2),
             box_size,
             box_size,
             fill=True,
-            facecolor=fill_color,
+            facecolor=facecolor,
             edgecolor=border_color,
+            linewidth = linewidth
         )
         ax.add_patch(r)
+        
+        if bait_annot is not None:
+            annot = bait_annot.iloc[y, x]
+            if annot != "NA":
+                ax.text(x, y, "{:.2f}".format(annot), fontsize=6, color="black", ha="center", va="center")
+            
     ax.spines["top"].set_visible(False)
     ax.spines["left"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -212,7 +246,7 @@ def y2h_ppi_per_paralog_pair_plot(
 
 
 def y1h_pdi_per_tf_gene_plot(
-    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, iso_order=None,
+    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, iso_order=None, bait_colors=None, bait_annot=None,
 ):
     tf = (
         data.loc[data["tf"] == gene_name, data.columns[1:]]
@@ -242,7 +276,7 @@ def y1h_pdi_per_tf_gene_plot(
         tf = tf
     else:
         tf = tf.loc[iso_order, :]
-    binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
+    binary_profile_matrix(tf, ax=ax, column_label_rotation=90, bait_colors=bait_colors, bait_annot=bait_annot)
     ax.set_yticklabels(
         [
             strikethrough(name) if all_na else name
