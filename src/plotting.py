@@ -119,16 +119,17 @@ def strikethrough(s):
 
 
 def y2h_ppi_per_tf_gene_plot(
-    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, iso_order=None,
+    gene_name,
+    data,
+    ax=None,
+    min_n_isoforms=1,
+    min_n_partners=1,
+    iso_order=None,
 ):
     tf = data.loc[
         (data["category"] == "tf_isoform_ppis") & (data["ad_gene_symbol"] == gene_name),
         ["ad_clone_acc", "db_gene_symbol", "Y2H_result"],
     ].copy()
-    # tf['score'] = tf['score'].map({'1': True,
-    #                               '0': False,
-    #                               'AA': np.nan,
-    #                               'NC': np.nan})
     tf["ad_clone_acc"] = tf["ad_clone_acc"].apply(isoform_display_name)
     tf = tf.pivot(index="ad_clone_acc", columns="db_gene_symbol", values="Y2H_result")
     # remove partners with no positives
@@ -162,7 +163,13 @@ def y2h_ppi_per_tf_gene_plot(
 
 
 def y2h_ppi_per_paralog_pair_plot(
-    tf_gene_a, tf_gene_b, data, ax=None, min_n_isoforms=1, min_n_partners=1, iso_order=None,
+    tf_gene_a,
+    tf_gene_b,
+    data,
+    ax=None,
+    min_n_isoforms=1,
+    min_n_partners=1,
+    iso_order=None,
 ):
     """
 
@@ -178,9 +185,8 @@ def y2h_ppi_per_paralog_pair_plot(
 
     """
     tf = paralog_pair_ppi_table(data, tf_gene_a, tf_gene_b)
-    tf["score"] = tf["score"].map({"1": True, "0": False, "AA": np.nan, "NC": np.nan})
     tf["ad_clone_acc"] = tf["ad_clone_acc"].apply(isoform_display_name)
-    tf = tf.pivot(index="ad_clone_acc", columns="db_gene_symbol", values="score")
+    tf = tf.pivot(index="ad_clone_acc", columns="db_gene_symbol", values="Y2H_result")
     if ax is None:
         ax = plt.gca()
     if tf.shape[0] < min_n_isoforms or tf.shape[1] < min_n_partners:
@@ -212,7 +218,12 @@ def y2h_ppi_per_paralog_pair_plot(
 
 
 def y1h_pdi_per_tf_gene_plot(
-    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, iso_order=None,
+    gene_name,
+    data,
+    ax=None,
+    min_n_isoforms=1,
+    min_n_partners=1,
+    iso_order=None,
 ):
     tf = (
         data.loc[data["tf"] == gene_name, data.columns[1:]]
