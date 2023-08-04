@@ -56,7 +56,7 @@ def cache_with_pickle(func):
 
 def load_valid_isoform_clones():
     df = pd.read_csv(
-        "../data/processed/valid-unique-isoform-clones_2021-07-20.tsv", sep="\t"
+        DATA_DIR / "processed/valid-unique-isoform-clones_2021-07-20.tsv", sep="\t"
     )
     df["clone_name"] = df["clone_acc"].map(
         lambda x: x.split("|")[0] + "-" + x.split("|")[1].split("/")[0]
@@ -466,7 +466,7 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
         one column for each bait
     """
     df = pd.read_excel(
-        "../data/internal/TF isoforms eY1H calls 14JUL23.xlsx", sheet_name="List format"
+        DATA_DIR / "internal/TF isoforms eY1H calls 14JUL23.xlsx", sheet_name="List format"
     )
     if df["Bait"].isnull().any():
         raise UserWarning("unexpected missing values")

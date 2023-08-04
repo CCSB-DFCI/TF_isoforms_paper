@@ -570,7 +570,26 @@ axs[0].set_ylabel('Change in number of PDI\nin alternative isoform')
 plt.savefig('../figures/DBD_or_flank_change_vs_PDI_composite.pdf', bbox_inches='tight')
 
 
-# In[26]:
+# In[28]:
+
+
+# full DBD in alternative isoform, fraction in disordered
+df['f_disorder_difference'] = df.apply(lambda x: disordered_fraction_of_different_regions(tfs[x['gene']], x['ref_iso'], x['alt_iso']), axis=1)
+
+
+# In[35]:
+
+
+df.dbd_or_flank_affected.value_counts()
+
+
+# In[80]:
+
+
+df[df["gene"] == "CREB1"]
+
+
+# In[ ]:
 
 
 # try distance from DBD
@@ -583,7 +602,7 @@ fig, axs = plt.subplots(nrows=1,
                         ncols=4,
                         sharey=True,
                         gridspec_kw=gs_kw)
-fig.set_size_inches(w=7, h=2)
+fig.set_size_inches(w=7.5, h=2)
 point_size = 6
 
 axs[0].set_title('Full loss of DBD',
@@ -596,7 +615,7 @@ sns.swarmplot(data=df,
                      'Full loss\nof DBD',
                      ],
               ax=axs[0],
-              color=sns.color_palette("Set2")[0],
+              color=sns.color_palette("flare")[0],
                linewidth=1,
                edgecolor="black",
               alpha=1,
@@ -608,7 +627,7 @@ axs[1].scatter(df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'db
                df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'delta_pdi_trunc'].values,
            alpha=1,
            s=point_size**2,
-            color=sns.color_palette("Set2")[0],
+            color=sns.color_palette("flare")[0],
                linewidth=1,
                edgecolor="black",
            clip_on=False,
@@ -619,6 +638,18 @@ axs[1].set_xticks([99, 50, 1])
 axs[1].set_xticklabels(['{}%'.format(x)for x in axs[1].get_xticks()])
 axs[1].set_xticks(range(10, 91, 10), minor=True)
 
+# annotate zic3
+axs[1].annotate("ZIC3-1", xy=(df.loc[(df["alt_iso"] == "ZIC3-1"), 'dbd_pct_lost'].values, 
+                              df.loc[(df["alt_iso"] == "ZIC3-1"), 'delta_pdi_trunc'].values),
+                xytext=(-10, 0), textcoords='offset points', arrowprops = dict(arrowstyle="-"),
+                ha="right", va="top", fontsize=7,
+                bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+axs[1].annotate("ZIC3-3", xy=(df.loc[(df["alt_iso"] == "ZIC3-3"), 'dbd_pct_lost'].values, 
+                              df.loc[(df["alt_iso"] == "ZIC3-3"), 'delta_pdi_trunc'].values),
+                xytext=(-10, -5), textcoords='offset points', arrowprops = dict(arrowstyle="-"),
+                ha="right", va="top", fontsize=7,
+                bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+
 
 axs[2].set_title('Insertion\nwithin DBD',
 fontsize=10)
@@ -626,7 +657,7 @@ axs[2].scatter(df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0)
                df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0), 'delta_pdi_trunc'].values,
            alpha=1,
            s=point_size**2,
-            color=sns.color_palette("Set2")[0],
+            color=sns.color_palette("flare")[0],
                linewidth=1,
                edgecolor="black",
            clip_on=False,
@@ -635,21 +666,57 @@ axs[2].set_xlabel('amino acids\ninserted')
 axs[2].set_xticks([1, 4])
 axs[2].set_xticks(range(1, 6), minor=True)
 
+# annotate hey1
+axs[2].annotate("HEY1-1", xy=(df.loc[(df["alt_iso"] == "HEY1-1"), 'dbd_insertion_n_aa'].values, 
+                              df.loc[(df["alt_iso"] == "HEY1-1"), 'delta_pdi_trunc'].values),
+                xytext=(-3, 15), textcoords='offset points', arrowprops = dict(arrowstyle="-"),
+                ha="center", va="bottom", fontsize=7,
+                bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+
 axs[3].set_title('Full DBD in\nalternative isoform', fontsize=10)
 axs[3].scatter(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'dbd_n_aa_to_change'].values,
                df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'delta_pdi_trunc'].values,
            alpha=1,
            s=point_size**2,
-            color=sns.color_palette("Set2")[0],
+            c=df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'f_disorder_difference'].values,
+               cmap="flare",
                linewidth=1,
                edgecolor="black",
            clip_on=False,
                zorder=10)
+
 axs[3].set_xlabel('Distance of alternative\nsequence from DBD\n(number of AA)')
-#axs[3].set_xlim(100, 0)
-#axs[3].set_xticks([99, 50, 1])
-#axs[3].set_xticklabels(['{}%'.format(x)for x in axs[1].get_xticks()])
-#axs[3].set_xticks(range(10, 91, 10), minor=True)
+
+# annotate tbx5 and creb1
+axs[3].annotate("TBX5-2", xy=(df.loc[(df["alt_iso"] == "TBX5-2"), 'dbd_n_aa_to_change'].values, 
+                              df.loc[(df["alt_iso"] == "TBX5-2"), 'delta_pdi_trunc'].values),
+                xytext=(12, -7), textcoords='offset points', arrowprops = dict(arrowstyle="-"),
+                ha="right", va="top", fontsize=7,
+                bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+axs[3].annotate("TBX5-3", xy=(df.loc[(df["alt_iso"] == "TBX5-3"), 'dbd_n_aa_to_change'].values, 
+                              df.loc[(df["alt_iso"] == "TBX5-3"), 'delta_pdi_trunc'].values),
+                xytext=(-2, 30), textcoords='offset points', arrowprops = dict(arrowstyle="-"),
+                ha="left", va="center", fontsize=7,
+                bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+axs[3].annotate("CREB1-1", xy=(df.loc[(df["alt_iso"] == "CREB1-1"), 'dbd_n_aa_to_change'].values, 
+                              df.loc[(df["alt_iso"] == "CREB1-1"), 'delta_pdi_trunc'].values),
+                xytext=(25, 9), textcoords='offset points', arrowprops = dict(arrowstyle="-", 
+                                                                              connectionstyle="arc3,rad=0.2"),
+                ha="left", va="center", fontsize=7,
+                bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+
+# add colorbar
+# mirror figure
+gs_kw = dict(width_ratios=[0.7, 1, 0.35, 1.5])
+fig2, axs2 = plt.subplots(nrows=1, 
+                        ncols=4,
+                        sharey=True,
+                        gridspec_kw=gs_kw)
+fig2.set_size_inches(w=7.5, h=2)
+t = df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'f_disorder_difference'].values
+map1 = axs2[3].imshow(np.stack([t, t]), cmap="flare")
+fig.colorbar(map1, ax=axs[3], aspect=40, label="% alt. iso. seq. diff.\nin disordered regions")
+
 
 
 for ax in axs:
@@ -672,14 +739,7 @@ axs[0].set_yticklabels(['-100%', '0', '+≥100%'])
 axs[0].set_ylabel('Change in number of PDI\nin alternative isoform')
 
 
-plt.savefig('../figures/DBD_or_flank_change_vs_PDI_composite_alt_with_distance.pdf', bbox_inches='tight')
-
-
-# In[52]:
-
-
-# full DBD in alternative isoform, fraction in disordered
-df['f_disorder_difference'] = df.apply(lambda x: disordered_fraction_of_different_regions(tfs[x['gene']], x['ref_iso'], x['alt_iso']), axis=1)
+fig.savefig('../figures/DBD_or_flank_change_vs_PDI_composite_alt_with_distance_colored_annotated.pdf', bbox_inches='tight')
 
 
 # In[70]:
@@ -791,4 +851,22 @@ fig, ax = plt.subplots(figsize=(4, 1))
 
 tfs["CREB1"].exon_diagram(ax=ax)
 fig.savefig("../figures/CREB1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[118]:
+
+
+fig, ax = plt.subplots(figsize=(4, 1.5))
+
+tfs["TBX5"].exon_diagram(ax=ax)
+fig.savefig("../figures/TBX5_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[120]:
+
+
+fig, ax = plt.subplots(figsize=(4, 2))
+
+tfs["TBX5"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../figures/TBX5_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
