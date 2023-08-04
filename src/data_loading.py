@@ -504,8 +504,10 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
 
     zeros = pd.read_csv(DATA_DIR / "internal/a2_juan_isoforms_wo_pdi.tsv", sep="\t")
     zeros = zeros.loc[~zeros["unique_acc"].isin(df["unique_acc"].values), :]
-    for c in df.columns[2:]:
-        zeros[c] = False
+    zeros = pd.concat(
+        [zeros, pd.DataFrame(data=False, index=zeros.index, columns=df.columns[2:])],
+        axis=1,
+    )
     zeros[zeros.columns[2:]] = zeros[zeros.columns[2:]].astype("boolean")
     df = pd.concat([df, zeros], axis=0, sort=False).reset_index(drop=True)
 
