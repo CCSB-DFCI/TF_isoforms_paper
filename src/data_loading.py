@@ -31,6 +31,31 @@ import isolib
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 CACHE_DIR = Path(__file__).resolve().parents[1] / "cache"
 
+DIMERIZING_TF_FAMILIES = {
+    "bHLH",
+    "bZIP",
+    "Nuclear receptor",
+    "E2F",
+    "CENPB",
+    "MADS box",
+    "Grainyhead",
+    "SAND",
+    "Rel",
+    "EBF1",
+    "STAT",
+    "IRF",
+    "RFX",
+    "HSF",
+    "p53",
+    "AP-2",
+    "GCM",
+    "BED ZF",
+    "MADF",
+    "ARID/BRIGHT",
+    "Myb/SANT",
+    "SMAD",
+}
+
 
 def cache_with_pickle(func):
     """NOTE: only works for functions without arguments"""
@@ -466,7 +491,8 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
         one column for each bait
     """
     df = pd.read_excel(
-        DATA_DIR / "internal/TF isoforms eY1H calls 14JUL23.xlsx", sheet_name="List format"
+        DATA_DIR / "internal/TF isoforms eY1H calls 14JUL23.xlsx",
+        sheet_name="List format",
     )
     if df["Bait"].isnull().any():
         raise UserWarning("unexpected missing values")

@@ -7,12 +7,42 @@ from matplotlib import pyplot as plt
 from matplotlib import patches
 import pandas as pd
 from scipy import stats
+import seaborn as sns
 
 sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../.."))
 from isoform_pairwise_metrics import paralog_pair_ppi_table
 
 
 COLOR_PURPLE = (155 / 255, 97 / 255, 153 / 255)
+
+
+def violinplot_reflected(*args, **kwargs):
+    """
+    monkeypatch from https://github.com/mwaskom/seaborn/issues/525
+    """
+    fit_kde_func = sns.categorical._ViolinPlotter.fit_kde
+
+    def reflected_once_kde(self, x, bw):
+        lb = 0
+        ub = 1
+
+        kde, bw_used = fit_kde_func(self, x, bw)
+
+        kde_evaluate = kde.evaluate
+
+        def truncated_kde_evaluate(x):
+            val = np.where((x >= lb) & (x <= ub), kde_evaluate(x), 0)
+            val += np.where((x >= lb) & (x <= ub), kde_evaluate(lb - x), 0)
+            val += np.where((x > lb) & (x <= ub), kde_evaluate(ub - (x - ub)), 0)
+            return val
+
+        kde.evaluate = truncated_kde_evaluate
+        return kde, bw_used
+
+    sns.categorical._ViolinPlotter.fit_kde = reflected_once_kde
+    retval = sns.violinplot(*args, **kwargs)
+    sns.categorical._ViolinPlotter.fit_kde = fit_kde_func  # change back
+    return retval
 
 
 def binary_profile_matrix(
@@ -79,38 +109,44 @@ def binary_profile_matrix(
         if pd.notnull(data.iloc[j, i]) and data.iloc[j, i] == 0
     ]
     for x, y in negatives:
-        
         if bait_colors is None:
             neg_fill = False
             facecolor = None
         else:
             neg_fill = True
             facecolor = bait_colors.iloc[y, x]
-        
+
         r = patches.Rectangle(
             (x - box_size / 2, y - box_size / 2),
             box_size,
             box_size,
             fill=neg_fill,
-            facecolor = facecolor,
+            facecolor=facecolor,
             edgecolor=border_color,
-            linewidth=1
+            linewidth=1,
         )
         ax.add_patch(r)
-        
+
         if bait_annot is not None:
             annot = bait_annot.iloc[y, x]
-            ax.text(x, y, "{:.2f}".format(annot), fontsize=6, color="black", ha="center", va="center")
-        
+            ax.text(
+                x,
+                y,
+                "{:.2f}".format(annot),
+                fontsize=6,
+                color="black",
+                ha="center",
+                va="center",
+            )
+
     for x, y in positives:
-        
         if bait_colors is None:
             facecolor = fill_color
             linewidth = 1
         else:
             facecolor = bait_colors.iloc[y, x]
             linewidth = 3
-        
+
         r = patches.Rectangle(
             (x - box_size / 2, y - box_size / 2),
             box_size,
@@ -118,15 +154,23 @@ def binary_profile_matrix(
             fill=True,
             facecolor=facecolor,
             edgecolor=border_color,
-            linewidth = linewidth
+            linewidth=linewidth,
         )
         ax.add_patch(r)
-        
+
         if bait_annot is not None:
             annot = bait_annot.iloc[y, x]
             if annot != "NA":
-                ax.text(x, y, "{:.2f}".format(annot), fontsize=6, color="black", ha="center", va="center")
-            
+                ax.text(
+                    x,
+                    y,
+                    "{:.2f}".format(annot),
+                    fontsize=6,
+                    color="black",
+                    ha="center",
+                    va="center",
+                )
+
     ax.spines["top"].set_visible(False)
     ax.spines["left"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -252,7 +296,14 @@ def y2h_ppi_per_paralog_pair_plot(
 
 
 def y1h_pdi_per_tf_gene_plot(
-    gene_name, data, ax=None, min_n_isoforms=1, min_n_partners=1, iso_order=None, bait_colors=None, bait_annot=None,
+    gene_name,
+    data,
+    ax=None,
+    min_n_isoforms=1,
+    min_n_partners=1,
+    iso_order=None,
+    bait_colors=None,
+    bait_annot=None,
 ):
     tf = (
         data.loc[data["tf"] == gene_name, data.columns[1:]]
@@ -282,7 +333,13 @@ def y1h_pdi_per_tf_gene_plot(
         tf = tf
     else:
         tf = tf.loc[iso_order, :]
-    binary_profile_matrix(tf, ax=ax, column_label_rotation=90, bait_colors=bait_colors, bait_annot=bait_annot)
+    binary_profile_matrix(
+        tf,
+        ax=ax,
+        column_label_rotation=90,
+        bait_colors=bait_colors,
+        bait_annot=bait_annot,
+    )
     ax.set_yticklabels(
         [
             strikethrough(name) if all_na else name
