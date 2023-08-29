@@ -1370,6 +1370,42 @@ def load_pfam_domains_gencode():
     return pfam
 
 
+def load_pfam_domains_horfeome():
+    """Filter and format the Pfam domain matches in the human ORFeome.
+
+    Returns:
+        pandas.DataFrame: ORFeome annotated with Pfam domains
+
+    """
+    filepath = Path("../data/internal/horfeome_hmmscan_pfam.domtab")
+    evalue_cutoff = 1e-5
+    pfam = read_hmmer3_domtab(filepath)
+    pfam = pfam.loc[
+        pfam["E-value"] <= evalue_cutoff,
+        [
+            "query name",
+            "target accession",
+            "target name",
+            "description of target",
+            "ali_coord_from",
+            "ali_coord_to",
+            "tlen",
+        ],
+    ].rename(
+        columns={
+            "query name": "orf_id",
+            "target accession": "pfam_accession",
+            "target name": "domain_name",
+            "description of target": "domain_description",
+            "ali_coord_from": "start",
+            "ali_coord_to": "stop",
+            "tlen": "domain_length",
+        }
+    )
+    pfam["pfam_accession"] = pfam["pfam_accession"].str.replace(r"\..*", "", regex=True)
+    return pfam
+
+
 def _is_overlapping(dom_a, dom_b):
     if (
         dom_b["env_coord_from"] > dom_a["env_coord_to"]
