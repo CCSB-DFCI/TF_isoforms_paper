@@ -381,11 +381,11 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):
         y=clones[::n_reps],
         width=data.loc[data["gene"] == tf_gene_name, rep_columns].mean(axis=1).values,
         edgecolor="black",
-        color="grey",
+        color="lightgrey",
         alpha=0.5,
         height=0.6,
     )
-    ax.scatter(y=clones, x=values, alpha=0.5, color="C0")
+    ax.scatter(y=clones, x=values, alpha=0.5, color="black")
     ax.set_yticks(
         clones[::n_reps]
     )  # needed to avoid truncating clones with missing data
@@ -487,3 +487,24 @@ def validation_titration_plot(
                 horizontalalignment="left",
                 fontsize=8,
             )
+
+def mimic_r_boxplot(ax):
+    for i, patch in enumerate(ax.artists):
+        r, g, b, a = patch.get_facecolor()
+        col = (r, g, b, 1)
+        patch.set_facecolor((r, g, b, .5))
+        patch.set_edgecolor((r, g, b, 1))
+
+        # Each box has 6 associated Line2D objects (to make the whiskers, fliers, etc.)
+        # Loop over them here, and use the same colour as above
+        line_order = ["lower", "upper", "whisker_1", "whisker_2", "med", "fliers"]
+        for j in range(i*6,i*6+6):
+            elem = line_order[j%6]
+            line = ax.lines[j]
+            if "whisker" in elem:
+                line.set_visible(False)
+            line.set_color(col)
+            line.set_mfc(col)
+            line.set_mec(col)
+            if "fliers" in elem:
+                line.set_alpha(0.5)

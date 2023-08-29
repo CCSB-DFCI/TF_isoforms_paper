@@ -1637,12 +1637,12 @@ tmp["dg_alt"] = tmp["mm_dev_alt"]-tmp["mm_gtex_ds_alt"]
 #tmp.sort_values(by="dg_alt", ascending=False).head(30)
 
 
-# In[81]:
+# In[97]:
 
 
-def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, fig_suffix):
+def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim, means, cols, fig_suffix):
     n_isos = len(means.loc[genes == gene_name])
-    palette = sns.color_palette("Spectral", as_cmap=False, n_colors=n_isos)
+    palette = sns.color_palette(palette_name, as_cmap=False, n_colors=n_isos)
     fig, axes = plt.subplots(2, 1, sharex=True)
     fig.set_size_inches(figsize)
     ### bar chart ###
@@ -1733,12 +1733,21 @@ developmental_tissue_expression_plot("NFKB1", (4, 1.75), (0, 6), means_dev, brai
                                      "means_dev_brain")
 
 
-# In[89]:
+# In[101]:
 
 
-brain_cols = [x for x in means_gtex.columns if "Brain" in x]
-developmental_tissue_expression_plot("NFKB1", (1.75, 1.75), (0, 6), means_gtex, brain_cols, 
-                                     "means_gtex_brain")
+heart_cols = [x for x in means_dev.columns if "heart" in x]
+ovary_cols = [x for x in means_dev.columns if "ovary" in x]
+developmental_tissue_expression_plot("TBX5", "Set2", (5, 1.75), (0, 12), means_dev, heart_cols + ovary_cols, 
+                                     "means_dev_heart_ovary")
+
+
+# In[104]:
+
+
+gtex_cols = [x for x in means_gtex.columns if "_gtex" not in x]
+developmental_tissue_expression_plot("TBX5", "Set2", (6, 1.75), (0, 6), means_gtex, gtex_cols, 
+                                     "means_gtex")
 
 
 # In[90]:

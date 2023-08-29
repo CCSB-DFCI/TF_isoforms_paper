@@ -77,7 +77,7 @@ len([orf for tf in tfs.values() for orf in tf.orfs])
 # plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[9]:
+# In[7]:
 
 
 gene_name = "HEY1"
@@ -88,7 +88,7 @@ y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax, iso_order=["HEY1-2", "HEY1-
 plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[11]:
+# In[8]:
 
 
 # gene_name = "GRHL3"
@@ -99,7 +99,7 @@ plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tigh
 # plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[15]:
+# In[9]:
 
 
 gene_name = "CREB1"
@@ -110,9 +110,31 @@ y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax, iso_order=["CREB1-2", "CREB
 plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
+# In[10]:
+
+
+gene_name = "TBX5"
+
+tf = tfs[gene_name]
+fig, ax = plt.subplots(1, 1, figsize=(3, 2))
+y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
+plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[11]:
+
+
+gene_name = "ZIC3"
+
+tf = tfs[gene_name]
+fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
+plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
 # ## PPIs
 
-# In[17]:
+# In[12]:
 
 
 gene_name = "PKNOX1"
@@ -122,7 +144,7 @@ y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
 plt.savefig('../figures/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[20]:
+# In[13]:
 
 
 gene_name = "GRHL3"
@@ -133,10 +155,28 @@ y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
 plt.savefig('../figures/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[15]:
+# ## M1H
+
+# In[23]:
 
 
-tfs["PKNOX1"].splicing_categories("PKNOX1-1", "PKNOX1-2")
+gene_name = "RFX3"
+
+fig, ax = plt.subplots(1, 1, figsize=(3, 1.2))
+
+m1h_activation_per_tf_gene_plot("RFX3", data=m1h, ax=ax)
+plt.savefig('../figures/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[18]:
+
+
+gene_name = "TBPL1"
+
+fig, ax = plt.subplots(1, 1, figsize=(3, 1.2))
+
+m1h_activation_per_tf_gene_plot("TBPL1", data=m1h, ax=ax)
+plt.savefig('../figures/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
 # ## exon diagrams
@@ -175,4 +215,58 @@ fig, ax = plt.subplots(figsize=(4, 2))
 
 tfs["CREB1"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=ax)
 fig.savefig("../figures/CREB1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[34]:
+
+
+fig, ax = plt.subplots(figsize=(4, 3))
+
+tfs["ZIC3"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../figures/ZIC3_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[37]:
+
+
+fig, ax = plt.subplots(figsize=(3, 2.5))
+
+tfs["ZIC3"].exon_diagram(ax=ax)
+fig.savefig("../figures/ZIC3_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[20]:
+
+
+fig, ax = plt.subplots(figsize=(8, 1))
+
+tfs["RFX3"].exon_diagram(ax=ax)
+fig.savefig("../figures/RFX3_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[21]:
+
+
+fig, ax = plt.subplots(figsize=(8, 1))
+
+tfs["RFX3"].protein_diagram(ax=ax, only_cloned_isoforms=True)
+fig.savefig("../figures/RFX3_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[28]:
+
+
+fig, ax = plt.subplots(figsize=(7, 0.75))
+
+tfs["TBPL1"].exon_diagram(ax=ax)
+fig.savefig("../figures/TBPL1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[29]:
+
+
+fig, ax = plt.subplots(figsize=(7, 0.75))
+
+tfs["TBPL1"].protein_diagram(ax=ax)
+fig.savefig("../figures/TBPL1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 

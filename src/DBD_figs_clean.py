@@ -570,26 +570,40 @@ axs[0].set_ylabel('Change in number of PDI\nin alternative isoform')
 plt.savefig('../figures/DBD_or_flank_change_vs_PDI_composite.pdf', bbox_inches='tight')
 
 
-# In[28]:
+# In[26]:
 
 
 # full DBD in alternative isoform, fraction in disordered
 df['f_disorder_difference'] = df.apply(lambda x: disordered_fraction_of_different_regions(tfs[x['gene']], x['ref_iso'], x['alt_iso']), axis=1)
 
 
-# In[35]:
+# In[27]:
 
 
 df.dbd_or_flank_affected.value_counts()
 
 
-# In[80]:
+# In[28]:
 
 
-df[df["gene"] == "CREB1"]
+# color map
+t = df.loc[:,'f_disorder_difference'].values
+norm = plt.Normalize(df.loc[:,'f_disorder_difference'].min(), df.loc[:,'f_disorder_difference'].max())
+cmap = sns.color_palette("flare", as_cmap=True)
+palette = {value: cmap(norm(value)) for value in t}
+
+def re_color(row, palette):
+    if pd.isnull(row['f_disorder_difference']):
+        color = palette[0]
+    else:
+        color = palette[row['f_disorder_difference']]
+    return color
+
+df["color"] = df.apply(re_color, axis=1, palette=palette)
+df.sample(5)
 
 
-# In[ ]:
+# In[30]:
 
 
 # try distance from DBD
@@ -615,11 +629,13 @@ sns.swarmplot(data=df,
                      'Full loss\nof DBD',
                      ],
               ax=axs[0],
-              color=sns.color_palette("flare")[0],
+              palette=palette,
+              hue='f_disorder_difference',
                linewidth=1,
                edgecolor="black",
               alpha=1,
              zorder=10)
+axs[0].get_legend().remove()
 
 axs[1].set_title('Partial loss of DBD',
 fontsize=10)
@@ -627,7 +643,7 @@ axs[1].scatter(df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'db
                df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'delta_pdi_trunc'].values,
            alpha=1,
            s=point_size**2,
-            color=sns.color_palette("flare")[0],
+            c=df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'color'].values,
                linewidth=1,
                edgecolor="black",
            clip_on=False,
@@ -657,7 +673,7 @@ axs[2].scatter(df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0)
                df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0), 'delta_pdi_trunc'].values,
            alpha=1,
            s=point_size**2,
-            color=sns.color_palette("flare")[0],
+            c=df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0), 'color'].values,
                linewidth=1,
                edgecolor="black",
            clip_on=False,
@@ -678,8 +694,7 @@ axs[3].scatter(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform')
                df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'delta_pdi_trunc'].values,
            alpha=1,
            s=point_size**2,
-            c=df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'f_disorder_difference'].values,
-               cmap="flare",
+            c=df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'color'].values,
                linewidth=1,
                edgecolor="black",
            clip_on=False,
@@ -713,7 +728,6 @@ fig2, axs2 = plt.subplots(nrows=1,
                         sharey=True,
                         gridspec_kw=gs_kw)
 fig2.set_size_inches(w=7.5, h=2)
-t = df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'f_disorder_difference'].values
 map1 = axs2[3].imshow(np.stack([t, t]), cmap="flare")
 fig.colorbar(map1, ax=axs[3], aspect=40, label="% alt. iso. seq. diff.\nin disordered regions")
 
