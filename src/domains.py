@@ -6,7 +6,7 @@
 # - add the other DBDs from the same clan
 # - About 1700 out of 2700 have PFam hits in the file (~60%)
 
-# In[1]:
+# In[59]:
 
 
 from collections import Counter
@@ -15,12 +15,33 @@ import tqdm
 import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
+import seaborn as sns
 
 from poibin import PoiBin
 
 from data_loading import (load_annotated_gencode_tfs, 
                           load_pfam_clans, 
                           load_DNA_binding_domains)
+
+
+# In[60]:
+
+
+PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+                "rc": {"font.size":7,"axes.titlesize":7,
+                       "axes.labelsize":7, 'axes.linewidth':0.5,
+                       "legend.fontsize":6, "xtick.labelsize":6,
+                       "ytick.labelsize":6, "xtick.major.size": 3.0,
+                       "ytick.major.size": 3.0, "axes.edgecolor": "black",
+                       "xtick.major.pad": 3.0, "ytick.major.pad": 3.0}}
+PAPER_FONTSIZE = 7
+
+
+# In[61]:
+
+
+sns.set(**PAPER_PRESET)
+fontsize = PAPER_FONTSIZE
 
 
 # In[2]:
@@ -290,33 +311,33 @@ rnd['is_DBD'] = rnd['accession'].isin(dbd['pfam'].values) | rnd['accession'].str
 rnd['is_affected'] = (rnd['deletion'] + rnd['insertion'] + rnd['frameshift']) > 0
 
 
-# In[19]:
+# In[18]:
 
 
 # TMP just to fix problem from renaming
 df['is_affected'] = df['is_affected_at_all']
 
 
-# In[20]:
+# In[19]:
 
 
 print(df.loc[df['is_DBD'], :].groupby('alt_iso')['is_affected'].any().value_counts())
 df.loc[df['is_DBD'], :].groupby('alt_iso')['is_affected'].any().value_counts().plot.pie()
 
 
-# In[21]:
+# In[20]:
 
 
 df['is_DBD'].sum()
 
 
-# In[22]:
+# In[21]:
 
 
 rnd['is_DBD'].sum()
 
 
-# In[23]:
+# In[22]:
 
 
 rnd.loc[rnd['is_DBD'], :].groupby(['alt_iso', 'random_sample'])['is_affected'].any().value_counts().plot.pie()
@@ -336,11 +357,11 @@ print(rnd.loc[rnd['is_DBD'], :]
     .groupby(['random_sample', 'alt_iso'])['is_affected']
     .any()
     .sum(level=0).mean())
-plt.annotate(xy=(true_k, 0),
-                text='real value',
-                xytext=(true_k, 40),  # TODO: change y position
-                arrowprops={'color': 'black'},
-                ha='center')
+# plt.annotate(xy=(true_k, 0),
+#                 text='real value',
+#                 xytext=(true_k, 40),  # TODO: change y position
+#                 arrowprops={'color': 'black'},
+#                 ha='center')
 plt.savefig('../figures/DBD_affected_100_randomizations.pdf',
             bbox_inches='tight')
 
@@ -355,14 +376,14 @@ plt.savefig('../figures/DBD_affected_100_randomizations.pdf',
  df.loc[df['is_DBD'], 'gene'].nunique())
 
 
-# In[32]:
+# In[28]:
 
 
 # TMP fix for renaming
 df['null_fraction_affected'] = df['null_fraction_affected_at_all'] 
 
 
-# In[33]:
+# In[31]:
 
 
 def domain_disruption_significance_plot(df, ax=None):
@@ -380,11 +401,19 @@ def domain_disruption_significance_plot(df, ax=None):
     ax.bar(x=range(n),
             height=pmf,
             width=1.)
-    ax.annotate(xy=(true_k, 0),
-                text='real value',
-                xytext=(true_k, max(pmf)),
-                arrowprops={'color': 'black'},
-                ha='center')
+    
+    try:
+        ax.annotate(xy=(true_k, 0),
+                    text='real value',
+                    xytext=(true_k, max(pmf)),
+                    arrowprops={'color': 'black'},
+                    ha='center')
+    except: # dumb matplotlib version issue b/w my env and luke's env
+        ax.annotate(xy=(true_k, 0),
+                    s='real value',
+                    xytext=(true_k, max(pmf)),
+                    arrowprops={'color': 'black'},
+                    ha='center')
     ax.set_ylabel('Probability density of\nrandom distribution')
     ax.set_xlabel('Number of alternative isoforms where domain(s) is affected')
     ax.text(n,
@@ -397,13 +426,13 @@ domain_disruption_significance_plot(df.loc[df['is_DBD'], :])
 plt.savefig('../figures/all_DBD_affected_random_dist.pdf', bbox_inches='tight')
 
 
-# In[34]:
+# In[32]:
 
 
 df.loc[df['is_DBD'], 'alt_iso'].nunique()
 
 
-# In[35]:
+# In[33]:
 
 
 domain_disruption_significance_plot(df.loc[df['accession'].str.startswith('C2H2_ZF_array'), :])
@@ -411,7 +440,7 @@ plt.title('C2H2 ZF array')
 plt.savefig('../figures/C2H2_ZF_array_affected_random_dist.pdf', bbox_inches='tight')
 
 
-# In[37]:
+# In[34]:
 
 
 above_size_cutoff = (dbd['num_genes'] >= 30)
@@ -429,7 +458,7 @@ for ax in axes[:-1, :].flatten():
 plt.savefig('../figures/different_DBDs_affected_random_dist.pdf', bbox_inches='tight')
 
 
-# In[38]:
+# In[35]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -439,7 +468,7 @@ domain_disruption_significance_plot(df.loc[df['accession'] == 'PF01352', :],
 plt.savefig('../figures/KRAB_affected_random_dist.pdf', bbox_inches='tight')
 
 
-# In[39]:
+# In[36]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -449,7 +478,7 @@ domain_disruption_significance_plot(df.loc[df['accession'] == 'PF00651', :],
 plt.savefig('../figures/BTB_affected_random_dist.pdf', bbox_inches='tight')
 
 
-# In[40]:
+# In[37]:
 
 
 fig, axes = plt.subplots(10, 1)
@@ -460,7 +489,7 @@ for pfam_ac, ax in zip(df.loc[~df['is_DBD'], :].groupby('accession')['gene'].nun
                                     ax=ax)
 
 
-# In[41]:
+# In[38]:
 
 
 pfam = pd.read_csv('../data/external/Pfam-A.clans.tsv',
@@ -468,7 +497,7 @@ pfam = pd.read_csv('../data/external/Pfam-A.clans.tsv',
                    names=['pfam_accession', 'clan', 'clan_name', 'short_name', 'name'])
 
 
-# In[42]:
+# In[39]:
 
 
 df.loc[df['accession'].str.startswith('C2H2_ZF_array'), 'accession'] = 'C2H2_ZF_array'
@@ -510,7 +539,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
     doms[null_col + '_center'] = null_p.groupby('accession').apply(null_quantile, 0.5)
 
 
-# In[43]:
+# In[40]:
 
 
 doms['is_DBD'] = doms.index.isin(dbd['pfam'].values) | (doms.index == 'C2H2_ZF_array')
@@ -521,7 +550,7 @@ doms.loc[doms.index == 'C2H2_ZF_array', 'domain_name'] = ['C2H2 ZF array']
 doms.head()
 
 
-# In[44]:
+# In[41]:
 
 
 dom_affected_levels = [c[5:] for c in doms.columns if c.startswith('f_is_affected_')]
@@ -567,7 +596,7 @@ for level in dom_affected_levels:
                 bbox_inches='tight')
 
 
-# In[50]:
+# In[42]:
 
 
 # TMP
@@ -577,7 +606,7 @@ doms['null_99CI_high'] = doms['null_fraction_affected_at_all_99CI_high']
 doms['null_99CI_low'] = doms['null_fraction_affected_at_all_99CI_low']
 
 
-# In[51]:
+# In[43]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -614,7 +643,7 @@ plt.savefig('../figures/other_domain_partial_removal.pdf',
             bbox_inches='tight')
 
 
-# In[52]:
+# In[44]:
 
 
 for level in dom_affected_levels:
@@ -653,7 +682,7 @@ for level in dom_affected_levels:
                 bbox_inches='tight')
 
 
-# In[53]:
+# In[45]:
 
 
 # all domains, all DBD, non-DBD
@@ -689,7 +718,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 doms.head()
 
 
-# In[54]:
+# In[46]:
 
 
 df['category_a'] = np.nan
@@ -698,13 +727,13 @@ df.loc[(df['category'] == 'Pfam_domain') & ~df['is_DBD'], 'category_a'] = 'Other
 df.loc[(df['category'] == 'effector_domain'), 'category_a'] = 'Effector domain'
 
 
-# In[55]:
+# In[47]:
 
 
 doms.head()
 
 
-# In[56]:
+# In[48]:
 
 
 # split pfam into dbd and 
@@ -767,6 +796,42 @@ for level in dom_affected_levels:
         ax.set_xticks(range(0, 101, 20))
         ax.set_xticks(range(0, 101, 10), minor=True)
         plt.savefig(f'../figures/domain_categories_{level}.pdf'.format(level),
+                bbox_inches='tight')
+
+
+# In[72]:
+
+
+for level in dom_affected_levels:
+        fig, ax = plt.subplots(1, 1)
+        fig.set_size_inches(1.75, 1.2)
+        # removing C2H2-ZF clan becuase we look at the ZF arrays instead
+        ax.barh(data.index, 
+                data[f'f_is_{level}'].values * 100,
+                label='Observed values',
+                color=sns.color_palette("Set2")[0])
+        ax.errorbar(y=data.index,
+                x=data[f'null_fraction_{level}_center'].values * 100,
+                xerr=[(data[f'null_fraction_{level}_center'] - data[f'null_fraction_{level}_99CI_low']).values * 100,
+                        (data[f'null_fraction_{level}_99CI_high'] - data[f'null_fraction_{level}_center']).values * 100],
+                                fmt='none',
+                                capsize=3,
+                                color='black',
+                                label='Null distribution: 99% CI')
+        ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.55))
+        ax.set_xlim(0, 100)
+        ax.set_ylim(ax.get_ylim()[::-1])
+        ax.yaxis.set_tick_params(length=0)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.xaxis.tick_top()
+        ax.set_yticklabels(["DBD", "Other\nPfam domain", "Effector\ndomain"])
+        ax.set_xlabel(f'Fraction of alt. isoforms\nwith {level_desc[level]}')
+        ax.xaxis.set_label_position('top')
+        ax.set_xticks(range(0, 101, 20))
+        ax.set_xticks(range(0, 101, 10), minor=True)
+        plt.savefig(f'../figures/domain_categories_{level}.resized.pdf'.format(level),
                 bbox_inches='tight')
 
 

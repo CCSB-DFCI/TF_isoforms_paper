@@ -286,8 +286,10 @@ def pdi_metric(row, data, function):
     df = df.loc[:, df.any(axis=0)]
     if df.shape[1] == 0:
         return np.nan
-    a = set(df.columns[df.iloc[0]])
-    b = set(df.columns[df.iloc[1]])
+    # kaia edited these 2 lines to drop any baits with NA
+    # my version of pandas wasn't auto-filtering these out, think it got fixed in later versions
+    a = set(df.columns[df.iloc[0].fillna(False)])
+    b = set(df.columns[df.iloc[1].fillna(False)])
     return function(a, b)
 
 
