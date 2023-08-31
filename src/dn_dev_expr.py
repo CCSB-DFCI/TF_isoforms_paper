@@ -8,7 +8,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-# In[2]:
+# In[3]:
 
 
 import matplotlib as mpl
@@ -29,7 +29,7 @@ from scipy.stats import mannwhitneyu
 from scipy.stats import pearsonr
 
 import plotting
-from plotting import PAPER_PRESET, PAPER_FONTSIZE, nice_boxplot, nice_violinplot, mimic_r_boxplot
+#from plotting import PAPER_PRESET, PAPER_FONTSIZE, nice_boxplot, nice_violinplot, mimic_r_boxplot
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
@@ -37,7 +37,7 @@ get_ipython().run_line_magic('config', "InlineBackend.figure_format = 'svg'")
 mpl.rcParams['figure.autolayout'] = False
 
 
-# In[3]:
+# In[4]:
 
 
 from data_loading import (load_annotated_6k_collection,
@@ -46,14 +46,14 @@ from data_loading import (load_annotated_6k_collection,
                           load_gtex_remapped)
 
 
-# In[4]:
-
-
-sns.set(**PAPER_PRESET)
-fontsize = PAPER_FONTSIZE
-
-
 # In[5]:
+
+
+# sns.set(**PAPER_PRESET)
+# fontsize = PAPER_FONTSIZE
+
+
+# In[6]:
 
 
 np.random.seed(2023)
@@ -61,7 +61,7 @@ np.random.seed(2023)
 
 # ## functions
 
-# In[6]:
+# In[7]:
 
 
 def calculate_tau(df):
@@ -83,7 +83,7 @@ def calculate_tau(df):
     return nonan_taus, nan_taus, array_max
 
 
-# In[7]:
+# In[8]:
 
 
 rename_dev_stage = {'8 week post conception,embryo': '08',
@@ -111,13 +111,13 @@ rename_dev_stage = {'8 week post conception,embryo': '08',
 
 # ## variables
 
-# In[8]:
+# In[9]:
 
 
 dn_cats_f = "../data/processed/DN_cats_Joung.tsv"
 
 
-# In[9]:
+# In[10]:
 
 
 pal = {"ref": sns.color_palette("Set2")[0],
@@ -131,7 +131,7 @@ pal = {"ref": sns.color_palette("Set2")[0],
 
 # ## 1. import data
 
-# In[10]:
+# In[11]:
 
 
 dn_cats = pd.read_table(dn_cats_f)
@@ -139,13 +139,13 @@ dn_cats["dn_cat"].fillna("NA", inplace=True)
 dn_cats.dn_cat.value_counts()
 
 
-# In[11]:
+# In[12]:
 
 
 tfs = load_annotated_6k_collection()
 
 
-# In[12]:
+# In[13]:
 
 
 df_gtex, metadata_gtex, genes_gtex = load_gtex_remapped()
@@ -160,13 +160,13 @@ metadata_gtex = metadata_gtex.loc[~metadata_gtex['body_site'].isin(exclusion_lis
 means_gtex = df_gtex.groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1).mean()
 
 
-# In[13]:
+# In[14]:
 
 
 metadata_gtex_dummy = pd.read_table("../data/processed/metadata_gtex_dummy.csv", sep=",", index_col=0)
 
 
-# In[14]:
+# In[15]:
 
 
 df_dev, metadata_dev, genes_dev = load_developmental_tissue_expression_remapped()
@@ -200,7 +200,7 @@ means_dev = (df_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + '
 
 # ## 2. down-sample gtex using the same dummy metadata as fig 1
 
-# In[15]:
+# In[16]:
 
 
 means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean()
@@ -208,7 +208,7 @@ means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy[
 
 # ## 3. calculate expression ratios (copy-pasted from luke's code in expr_data.ipynb)
 
-# In[16]:
+# In[17]:
 
 
 per_gene_dev = ((2 ** df_dev - 1)
@@ -226,7 +226,7 @@ f_dev = f_dev * ((per_gene_dev.groupby(df_dev.columns.map(metadata_dev['organism
 f_dev = f_dev * 100
 
 
-# In[17]:
+# In[18]:
 
 
 per_gene_gtex = ((2 ** df_gtex - 1)
@@ -240,19 +240,19 @@ f_gtex = f_gtex * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex['body
 f_gtex = f_gtex * 100
 
 
-# In[18]:
+# In[19]:
 
 
 df_gtex.loc[:,metadata_gtex_dummy.index].shape
 
 
-# In[19]:
+# In[20]:
 
 
 df_gtex.shape
 
 
-# In[20]:
+# In[21]:
 
 
 per_gene_gtex_ds = ((2 ** df_gtex.loc[:,metadata_gtex_dummy.index] - 1)
@@ -271,28 +271,28 @@ f_gtex_downsample = f_gtex_downsample * 100
 # 
 # this is currently across all individual samples for genes but not for isos
 
-# In[21]:
+# In[22]:
 
 
 gene_dev_nonan_taus, gene_dev_nan_taus, gene_dev_array_max = calculate_tau(per_gene_dev.drop_duplicates())
 gene_dev_nan_taus[0:5]
 
 
-# In[22]:
+# In[23]:
 
 
 gene_gtex_nonan_taus, gene_gtex_nan_taus, gene_gtex_array_max = calculate_tau(per_gene_gtex.drop_duplicates())
 gene_gtex_nan_taus[0:5]
 
 
-# In[23]:
+# In[24]:
 
 
 gene_gtex_ds_nonan_taus, gene_gtex_ds_nan_taus, gene_gtex_ds_array_max = calculate_tau(per_gene_gtex_ds.drop_duplicates())
 gene_gtex_ds_nan_taus[0:5]
 
 
-# In[24]:
+# In[25]:
 
 
 gene_taus = pd.DataFrame()
@@ -306,7 +306,7 @@ gene_taus.sample(5)
 
 # ## 4. join with DN categories
 
-# In[25]:
+# In[26]:
 
 
 indiv_cols = f_dev.columns
@@ -316,7 +316,7 @@ dev_ratios["clone_acc"] = dev_ratios["UID"].str.split(" ", expand=True)[0]
 dev_ratios.head()
 
 
-# In[26]:
+# In[27]:
 
 
 indiv_cols = f_gtex.columns
@@ -325,7 +325,7 @@ gtex_ratios = f_gtex.reset_index()
 gtex_ratios["clone_acc"] = gtex_ratios["UID"].str.split(" ", expand=True)[0]
 
 
-# In[27]:
+# In[28]:
 
 
 indiv_cols = f_gtex_downsample.columns
@@ -334,7 +334,7 @@ gtex_ds_ratios = f_gtex_downsample.reset_index()
 gtex_ds_ratios["clone_acc"] = gtex_ds_ratios["UID"].str.split(" ", expand=True)[0]
 
 
-# In[28]:
+# In[29]:
 
 
 dev_ratios = dev_ratios.merge(dn_cats, left_on="clone_acc", right_on="tf1p0_id").drop_duplicates()
@@ -347,7 +347,7 @@ print(len(gtex_ds_ratios))
 
 # ## 5. calculate co-expression
 
-# In[29]:
+# In[30]:
 
 
 # def count_coex(row, thresh):
@@ -360,7 +360,7 @@ print(len(gtex_ds_ratios))
 #     return tot
 
 
-# In[30]:
+# In[31]:
 
 
 # ratios_ref = ratios[ratios["dn_cat"] == "ref"]
@@ -372,7 +372,7 @@ print(len(gtex_ds_ratios))
 # ratios_v.sample(5)
 
 
-# In[31]:
+# In[32]:
 
 
 # # do the null test: randomly sample 2 refs 100 times and do the same thing
@@ -393,7 +393,7 @@ print(len(gtex_ds_ratios))
 # null.sample(5)
 
 
-# In[32]:
+# In[33]:
 
 
 # ratios_coex = ratios_v[["gene_name", "tf1p0_id_ref", 
@@ -407,7 +407,7 @@ print(len(gtex_ds_ratios))
 
 # ## 6. make some plots
 
-# In[33]:
+# In[34]:
 
 
 dn_cats = dn_cats.merge(gene_taus, on="gene_name").drop_duplicates()
@@ -415,7 +415,7 @@ print(len(dn_cats))
 dn_cats.head()
 
 
-# In[34]:
+# In[35]:
 
 
 ref_expr = dn_cats.groupby(["gene_name", "family", "dn_cat", "dev_tau",
@@ -425,7 +425,7 @@ ref_expr = ref_expr.pivot(index="gene_name",
 ref_expr.fillna(0, inplace=True)
 
 
-# In[35]:
+# In[36]:
 
 
 def categorize_gene(row):
@@ -446,37 +446,37 @@ print(len(ref_expr))
 ref_expr.sample(5)
 
 
-# In[36]:
-
-
-nice_boxplot(ref_expr, "dev_tau", "gene_cat", pal, ["rewire", "DN", "both", "NA"], 
-            [1.04, 1.11, 1.17, 1.02], 0.35, "", ["rewirer", "negative regulator", "both", "NA"], 
-            "gene-level tissue specificity (tau)", False, (0.3, 1.23), 
-            "developmental gene expression\nclassified TF genes", 
-            "../figures/DN_DevTau_Gene_Boxplot.pdf")
-
-
 # In[39]:
 
 
-nice_boxplot(ref_expr, "gtex_ds_tau", "gene_cat", pal, ["rewire", "DN", "both", "NA"], 
-            [1.05, 1.11, 1.17, 1.02], 0.45, "", ["rewirer", "negative regulator", "both", "NA"], 
-            "gene-level tissue specificity (tau)", False, (0.4, 1.23), 
-            "GTEx gene expression\nclassified TF genes", 
-            "../figures/DN_GTExDsTau_Gene_Boxplot.pdf")
+# nice_boxplot(ref_expr, "dev_tau", "gene_cat", pal, ["rewire", "DN", "both", "NA"], 
+#             [1.04, 1.11, 1.17, 1.02], 0.35, "", ["rewirer", "negative regulator", "both", "NA"], 
+#             "gene-level tissue specificity (tau)", False, (0.3, 1.23), 
+#             "developmental gene expression\nclassified TF genes", 
+#             "../figures/DN_DevTau_Gene_Boxplot.pdf")
 
 
 # In[40]:
 
 
-nice_boxplot(ref_expr, "gtex_tau", "gene_cat", pal, ["rewire", "DN", "both", "NA"], 
-            [1.05, 1.11, 1.17, 1.02], 0.45, "", ["rewirer", "negative regulator", "both", "NA"], 
-            "gene-level tissue specificity (tau)", False, (0.4, 1.23), 
-            "GTEx gene expression\nclassified TF genes", 
-            "../figures/DN_GTExTau_Gene_Boxplot.pdf")
+# nice_boxplot(ref_expr, "gtex_ds_tau", "gene_cat", pal, ["rewire", "DN", "both", "NA"], 
+#             [1.05, 1.11, 1.17, 1.02], 0.45, "", ["rewirer", "negative regulator", "both", "NA"], 
+#             "gene-level tissue specificity (tau)", False, (0.4, 1.23), 
+#             "GTEx gene expression\nclassified TF genes", 
+#             "../figures/DN_GTExDsTau_Gene_Boxplot.pdf")
 
 
-# In[189]:
+# In[42]:
+
+
+# nice_boxplot(ref_expr, "gtex_tau", "gene_cat", pal, ["rewire", "DN", "both", "NA"], 
+#             [1.05, 1.11, 1.17, 1.02], 0.45, "", ["rewirer", "negative regulator", "both", "NA"], 
+#             "gene-level tissue specificity (tau)", False, (0.4, 1.23), 
+#             "GTEx gene expression\nclassified TF genes", 
+#             "../figures/DN_GTExTau_Gene_Boxplot.pdf")
+
+
+# In[43]:
 
 
 def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, fig_suffix):
@@ -514,7 +514,7 @@ def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, 
                 bbox_inches='tight')
 
 
-# In[190]:
+# In[44]:
 
 
 notestis_cols = [x for x in means_dev.columns if "testis" not in x]
@@ -526,13 +526,13 @@ developmental_tissue_expression_plot("PKNOX1", (5, 1.75), (0, 6), means_dev, not
                                      "means_dev_notestis")
 
 
-# In[67]:
+# In[45]:
 
 
 f_dev.loc["PKNOX1|1/4|11H11 PKNOX1-201"].min()
 
 
-# In[45]:
+# In[46]:
 
 
 notestis_cols = [x for x in means_dev.columns if "testis" not in x]
@@ -544,7 +544,7 @@ developmental_tissue_expression_plot("PKNOX1", (7, 1.75), (0, 6), means_dev, not
                                      "means_dev_notestis_large")
 
 
-# In[44]:
+# In[47]:
 
 
 notestis_cols = [x for x in means_gtex.columns if "Testis" not in x]
@@ -556,7 +556,7 @@ developmental_tissue_expression_plot("PKNOX1", (5, 1.75), (0, 6), means_gtex, no
                                      "means_gtex_notestis")
 
 
-# In[47]:
+# In[48]:
 
 
 notestis_cols = [x for x in means_dev.columns if "testis" not in x]
@@ -600,7 +600,7 @@ tfs["PKNOX1"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=
 fig.savefig("../figures/PKNOX1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[56]:
+# In[52]:
 
 
 fig, ax = plt.subplots(figsize=(4.5, 1.5))
@@ -610,7 +610,7 @@ tfs["KLF7"].exon_diagram(ax=ax)
 fig.savefig("../figures/KLF7_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[57]:
+# In[53]:
 
 
 fig, ax = plt.subplots(figsize=(4.5, 1.5))
@@ -620,7 +620,7 @@ tfs["KLF7"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=ax
 fig.savefig("../figures/KLF7_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[60]:
+# In[54]:
 
 
 fig, ax = plt.subplots(figsize=(5, 1))
@@ -630,7 +630,7 @@ tfs["GRHL3"].exon_diagram(ax=ax)
 fig.savefig("../figures/GRHL3_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[61]:
+# In[55]:
 
 
 fig, ax = plt.subplots(figsize=(5, 1))
@@ -642,7 +642,7 @@ fig.savefig("../figures/GRHL3_protein_diagram.pdf", bbox_inches="tight", dpi="fi
 
 # ## novel isoforms aside
 
-# In[118]:
+# In[56]:
 
 
 status_map = {}
@@ -670,14 +670,14 @@ for tf in tfs.keys():
             status_map[iso.clone_acc] = {"gene_name": tf, "status": "alt"}
 
 
-# In[119]:
+# In[57]:
 
 
 status_map = pd.DataFrame.from_dict(status_map, orient="index")
 status_map
 
 
-# In[121]:
+# In[58]:
 
 
 means_dev["median"] = means_dev.median(axis=1)
@@ -687,14 +687,14 @@ means_gtex_downsample["median"] = means_gtex_downsample.median(axis=1)
 means_gtex_downsample["max"] = means_gtex_downsample.max(axis=1)
 
 
-# In[122]:
+# In[59]:
 
 
 dev_mm = means_dev[["median", "max"]].reset_index()
 gtex_ds_mm = means_gtex_downsample[["median", "max"]].reset_index()
 
 
-# In[124]:
+# In[60]:
 
 
 dev_mm["clone_acc"] = dev_mm["UID"].str.split(" ", expand=True)[0]
@@ -704,14 +704,14 @@ mm = dev_mm[dev_mm["clone_acc"] != "noclone"].merge(gtex_ds_mm[gtex_ds_mm["clone
 mm.sample(5)
 
 
-# In[125]:
+# In[61]:
 
 
 status_map = status_map.reset_index()
 status_map["clone_acc"] = status_map["index"].str.split(" ", expand=True)[0]
 
 
-# In[129]:
+# In[62]:
 
 
 exp_nov = status_map.merge(mm, on="clone_acc")
@@ -722,24 +722,25 @@ exp_nov_melt = pd.melt(exp_nov, id_vars=["index", "gene_name", "status", "clone_
 exp_nov_melt["measurement"] = exp_nov_melt["variable"].str.split("_", expand=True)[0]
 
 
-# In[137]:
+# In[63]:
 
 
 colors = met_brewer.met_brew(name="Monet")
 sns.palplot(colors)
 
 
-# In[159]:
+# In[68]:
 
 
-fig = plt.figure(figsize=(2.2, 1.5))
+fig = plt.figure(figsize=(3, 2))
 
+exp_nov_melt["value_log2"] = np.log2(exp_nov_melt["value"]+1)
 ax = sns.boxplot(data=exp_nov_melt[exp_nov_melt["variable"].str.contains("dev")], 
                  x="status", y="value", hue="measurement", palette={"median": colors[7],
                                                                     "max": colors[6]}, 
                  flierprops={"marker": "o"}, fliersize=4, notch=True)
 
-mimic_r_boxplot(ax)
+plotting.mimic_r_boxplot(ax)
 
 plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
 
