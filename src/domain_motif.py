@@ -678,7 +678,16 @@ ggi['db_gene_symbol'].map(cats.drop_duplicates('partner').set_index('partner')['
 ggi['db_gene_symbol'].map(cats.drop_duplicates('partner').set_index('partner')['category']).value_counts().sum()
 
 
-# In[41]:
+# In[44]:
+
+
+print(len(ggi))
+ggi = ggi.merge(cats, left_on='db_gene_symbol', right_on='partner').drop_duplicates()
+print(len(ggi))
+ggi.cofactor_type.value_counts()
+
+
+# In[45]:
 
 
 def categorize_PPI_partner(row):
@@ -686,35 +695,45 @@ def categorize_PPI_partner(row):
         return 'TF'
     elif row['is_tf_cf']:
         return 'cofactor'
+    elif row['category'] == "signaling":
+        return 'signaling'
     else:
         return 'other'
 
 ggi['partner_category'] = ggi.apply(categorize_PPI_partner, axis=1)
-ggi['partner_category'].value_counts()[['TF', 'cofactor', 'other']].plot.pie()
+ggi['partner_category'].value_counts()[['TF', 'cofactor', 'signaling', 'other']].plot.pie()
 
 
-# In[42]:
+# In[46]:
 
 
 len(ggi)
 
 
-# In[43]:
+# In[47]:
+
+
+len(ggi.db_gene_symbol.unique())
+
+
+# In[48]:
 
 
 ggi['partner_category'].value_counts()
 
 
-# In[44]:
+# In[50]:
 
 
 ys = np.array([len(ggi[ggi["partner_category"] == "TF"]), len(ggi[ggi["partner_category"] == "cofactor"]),
+               len(ggi[ggi["partner_category"] == "signaling"]),
               len(ggi[ggi["partner_category"] == "other"])])
-labels = ["TF", "cofactor", "other"]
-colors = [sns.color_palette("Set2")[2], sns.color_palette("Set2")[1], "darkgray"]
+labels = ["TF", "cofactor", "signaling", "other"]
+colors = [sns.color_palette("Set2")[2], sns.color_palette("Set2")[1], sns.color_palette("Set2")[5], "darkgray"]
 
 fig, ax = plt.subplots(figsize=(2.0, 2.0), subplot_kw=dict(aspect="equal"))
-ws, ls, ns = ax.pie(ys, colors=colors, labels=labels, autopct='%1.0f%%', startangle=-120, explode=(0.02, 0.2, 0.05))
+ws, ls, ns = ax.pie(ys, colors=colors, labels=labels, autopct='%1.0f%%', startangle=-120, 
+                    explode=(0.02, 0.2, 0.05, 0.05))
 
 for n, w in zip(ns, ws):
     w.set_linewidth(0.5)
@@ -724,32 +743,23 @@ for n, w in zip(ns, ws):
 fig.savefig("../figures/PPIs-gene-level-manual-categories_simplified.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[45]:
-
-
-print(len(ggi))
-ggi = ggi.merge(cats, left_on='db_gene_symbol', right_on='partner').drop_duplicates()
-print(len(ggi))
-ggi.cofactor_type.value_counts()
-
-
-# In[46]:
+# In[51]:
 
 
 ggi[ggi["partner_category"] != "cofactor"].cofactor_type.value_counts()
 
 
-# In[55]:
+# In[52]:
 
 
 cofacs = ggi[ggi["partner_category"] == "cofactor"]
 
-ys = np.array([len(cofacs[cofacs["cofactor_type"] == "coactivator"]), 
-               len(cofacs[cofacs["cofactor_type"] == "corepressor"]),
+ys = np.array([len(cofacs[cofacs["cofactor_type"] == "corepressor"]), 
+               len(cofacs[cofacs["cofactor_type"] == "coactivator"]),
                len(cofacs[cofacs["cofactor_type"] == "both"]),
                len(cofacs[cofacs["cofactor_type"] == "unknown"])])
 labels = ["coactivator", "corepressor", "both", "unknown"]
-colors = [sns.color_palette("Set2")[0], sns.color_palette("Set2")[3], sns.color_palette("Set2")[4], "darkgray"]
+colors = [sns.color_palette("Set2")[3], sns.color_palette("Set2")[0], sns.color_palette("Set2")[4], "darkgray"]
 
 fig, ax = plt.subplots(figsize=(2.25, 2.25), subplot_kw=dict(aspect="equal"))
 ws, ls, ns = ax.pie(ys, colors=colors, labels=labels, autopct='%1.0f%%', startangle=-90, 

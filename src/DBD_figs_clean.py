@@ -603,7 +603,7 @@ df["color"] = df.apply(re_color, axis=1, palette=palette)
 df.sample(5)
 
 
-# In[30]:
+# In[29]:
 
 
 # try distance from DBD
@@ -756,13 +756,13 @@ axs[0].set_ylabel('Change in number of PDI\nin alternative isoform')
 fig.savefig('../figures/DBD_or_flank_change_vs_PDI_composite_alt_with_distance_colored_annotated.pdf', bbox_inches='tight')
 
 
-# In[70]:
+# In[30]:
 
 
 df.dbd_affected.value_counts()
 
 
-# In[140]:
+# In[31]:
 
 
 # check low values
@@ -816,14 +816,14 @@ fig.savefig('../figures/disordered-pct-alt-sequence_alt-isoforms-full-DBD-diff-P
             bbox_inches='tight')
 
 
-# In[154]:
+# In[32]:
 
 
 x = list(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['delta_pdi_trunc'] != 0), 'f_disorder_difference'])
 y = list(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['delta_pdi_trunc'] == 0), 'f_disorder_difference'])
 
 
-# In[156]:
+# In[33]:
 
 
 stats.mannwhitneyu(x, y)
@@ -831,7 +831,7 @@ stats.mannwhitneyu(x, y)
 
 # ## exon diagrams
 
-# In[144]:
+# In[34]:
 
 
 fig, ax = plt.subplots(figsize=(4, 2))
@@ -840,7 +840,7 @@ tfs["HEY1"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=ax
 fig.savefig("../figures/HEY1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[151]:
+# In[35]:
 
 
 fig, ax = plt.subplots(figsize=(7, 0.75))
@@ -849,7 +849,7 @@ tfs["HEY1"].exon_diagram(ax=ax)
 fig.savefig("../figures/HEY1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[159]:
+# In[36]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1.5))
@@ -858,7 +858,7 @@ tfs["CREB1"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax
 fig.savefig("../figures/CREB1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[161]:
+# In[37]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1))
@@ -867,7 +867,7 @@ tfs["CREB1"].exon_diagram(ax=ax)
 fig.savefig("../figures/CREB1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[118]:
+# In[38]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1.5))
@@ -876,7 +876,7 @@ tfs["TBX5"].exon_diagram(ax=ax)
 fig.savefig("../figures/TBX5_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[120]:
+# In[39]:
 
 
 fig, ax = plt.subplots(figsize=(4, 2))

@@ -15,6 +15,16 @@ from isoform_pairwise_metrics import paralog_pair_ppi_table
 
 COLOR_PURPLE = (155 / 255, 97 / 255, 153 / 255)
 
+## kaia's added code
+PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+                "rc": {"font.size":7,"axes.titlesize":7,
+                       "axes.labelsize":7, 'axes.linewidth':0.5,
+                       "legend.fontsize":6, "xtick.labelsize":6,
+                       "ytick.labelsize":6, "xtick.major.size": 3.0,
+                       "ytick.major.size": 3.0, "axes.edgecolor": "black",
+                       "xtick.major.pad": 3.0, "ytick.major.pad": 3.0}}
+PAPER_FONTSIZE = 7
+
 
 def violinplot_reflected(*args, **kwargs):
     """
@@ -348,7 +358,7 @@ def y1h_pdi_per_tf_gene_plot(
     )
 
 
-def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):
+def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None, xlim=None):
     if ax is None:
         ax = plt.gca()
     rep_columns = [c for c in data.columns if c.startswith("M1H_rep")]
@@ -381,11 +391,19 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):
         y=clones[::n_reps],
         width=data.loc[data["gene"] == tf_gene_name, rep_columns].mean(axis=1).values,
         edgecolor="black",
-        color="lightgrey",
+        color="slategrey",
         alpha=0.5,
         height=0.6,
     )
-    ax.scatter(y=clones, x=values, alpha=0.5, color="black")
+    
+    # swarmplot to make points more visible
+    df = pd.DataFrame()
+    df["clone"] = clones
+    df["value"] = values
+    sns.stripplot(data=df, x="value", y="clone", ax=ax, color="white", linewidth=1, edgecolor="black",
+                  size=4)
+    ax.set_ylabel("")
+    
     ax.set_yticks(
         clones[::n_reps]
     )  # needed to avoid truncating clones with missing data
@@ -395,7 +413,11 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None):
             for c, v in zip(clones[::n_reps], values[::n_reps])
         ]
     )
-    ax.set_xlim(-3, 12)
+    
+    if xlim == None:
+        ax.set_xlim(-3, 12)
+    else:
+        ax.set_xlim(xlim)
     ax.set_ylim(-0.5, len(clones[::n_reps]) - 0.5)
     ax.set_xlabel("Log2 M1H readout")
     ax.axvline(0, linestyle="-", color="black")
@@ -508,3 +530,93 @@ def mimic_r_boxplot(ax):
             line.set_mec(col)
             if "fliers" in elem:
                 line.set_alpha(0.5)
+                
+def annotate_pval(ax, x1, x2, y, h, text_y, val, fontsize):
+    from decimal import Decimal
+    ax.plot([x1, x1, x2, x2], [y, y+h, y+h, y], lw=1, c="black", linewidth=0.5)
+    if val < 0.0001:
+        text = "{:.2e}".format(Decimal(val))
+        #text = "**"
+    elif val < 0.05:
+        text = "%.4f" % val
+        #text = "*"
+    else:
+        text = "%.4f" % val
+        #text = "n.s."
+    ax.text((x1+x2)*.5, text_y, text, ha='center', va='bottom', color="black", size=fontsize)
+
+def nice_boxplot(df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylabel, log_scale, ylim, title, figf):
+    fig = plt.figure(figsize=(2,2.5))
+
+    ax = sns.boxplot(data=df, y=ycat, x=xcat,
+                     order=xorder, palette=pal,
+                     fliersize=0)
+
+    sns.swarmplot(data=df, y=ycat, x=xcat,
+                  order=xorder, palette=pal, ax=ax,
+                  size=4, edgecolor="black", linewidth=0.5, alpha=0.5)
+
+    # calculate differences
+    for comp, xs, y, d_y in zip([(xorder[0], xorder[1]), (xorder[0], xorder[2]), 
+                                 (xorder[0], xorder[3]), (xorder[1], xorder[2])],
+                                [(0, 1), (0, 2), (0, 3), (1, 2)], pys, [0, 0, 0, 0]):
+        cat_a = comp[0]
+        cat_b = comp[1]
+        dist_a = list(df[(df[xcat] == cat_a)][ycat])
+        dist_b = list(df[(df[xcat] == cat_b)][ycat])
+
+        u, p = mannwhitneyu(dist_a, dist_b, alternative="two-sided")
+        print(p)
+
+        annotate_pval(ax, xs[0], xs[1], y, 0, y-(y*d_y), p, PAPER_FONTSIZE)
+
+def nice_violinplot(df, ycat, xcat, pal, xorder, pys, ay, xlabel, xticklabels, ylabel, log_scale, ylim, title, figf):
+    fig = plt.figure(figsize=(2,2))
+
+    ax = sns.violinplot(data=df, y=ycat, x=xcat,
+                        order=xorder, palette=pal,
+                        cut=0, inner="quartiles", scale="width")
+
+    # edit quartile lines
+    for l in ax.lines:
+        l.set_linestyle('--')
+        l.set_linewidth(0.6)
+        l.set_color('black')
+        l.set_alpha(0.5)
+    for l in ax.lines[1::3]:
+        l.set_linestyle('-')
+        l.set_linewidth(1.0)
+        l.set_color('black')
+        l.set_alpha(1)
+
+    # calculate differences
+    for comp, xs, y, d_y in zip([(xorder[0], xorder[1]), (xorder[0], xorder[2]), 
+                                 (xorder[0], xorder[3]), (xorder[1], xorder[2])],
+                                [(0, 1), (0, 2), (0, 3), (1, 2)], pys, [0, 0, 0, 0]):
+        cat_a = comp[0]
+        cat_b = comp[1]
+        dist_a = list(df[(df[xcat] == cat_a)][ycat])
+        dist_b = list(df[(df[xcat] == cat_b)][ycat])
+
+        u, p = mannwhitneyu(dist_a, dist_b, alternative="two-sided")
+        print(p)
+
+        annotate_pval(ax, xs[0], xs[1], y, 0, y-(y*d_y), p, PAPER_FONTSIZE)
+
+    # add N to plot
+    for i, label in enumerate(xorder):
+        n = len(df[(df[xcat] == label) & (~pd.isnull(ycat))])
+        print(n)
+        ax.annotate(str(n), xy=(i, ay), xycoords="data", xytext=(0, 0), textcoords="offset pixels",
+                    ha="center", va="top", color=pal[label], size=PAPER_FONTSIZE)
+
+    ax.set_xlabel(xlabel)
+    ax.set_xticklabels(xticklabels, ha="right", va="top", rotation=30)
+    ax.set_ylabel(ylabel)
+    if log_scale:
+        ax.set_yscale("log")
+    ax.set_ylim(ylim)
+
+    ax.set_title(title)
+
+    fig.savefig(figf, dpi="figure", bbox_inches="tight")

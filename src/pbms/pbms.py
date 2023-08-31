@@ -1,17 +1,22 @@
 
 # coding: utf-8
 
-# In[65]:
+# In[1]:
 
 
 from ast import literal_eval
 import numpy as np
 from scipy import stats
 from matplotlib import pyplot as plt
+from matplotlib import patches
 import matplotlib.cm as cm
 import matplotlib as mpl
 import pandas as pd
 import seaborn as sns
+import sys
+
+# import utils
+sys.path.append("../")
 
 from data_loading import *
 from isoform_pairwise_metrics import *
@@ -28,7 +33,7 @@ tfs = load_annotated_6k_collection()
 # In[3]:
 
 
-y1h_baits_f = "../data/internal/Y1H_DNA_baits.fa"
+y1h_baits_f = "../../data/internal/Y1H_DNA_baits.fa"
 
 
 # ## 1. import baits and y1h results
@@ -60,51 +65,51 @@ y1h
 
 # ## CREB1
 
-# In[163]:
+# In[6]:
 
 
-kfit_dat = pd.read_table("../data/internal/pbms/CREB1_kfit_dat.csv", sep=",")
-da_dat = pd.read_table("../data/internal/pbms/CREB1_da_dat.csv", sep=",")
+kfit_dat = pd.read_table("../../data/processed/pbms/CREB1kfit_dat.csv", sep=",")
+da_dat = pd.read_table("../../data/processed/pbms/CREB1da_dat.csv", sep=",")
 
 
-# In[164]:
+# In[7]:
 
 
 kfit_ref = kfit_dat[kfit_dat["cname"] == "CREB1-ref"]
 kfit_alt = kfit_dat[kfit_dat["cname"] == "CREB1-alt"]
 
 
-# In[165]:
+# In[8]:
 
 
 kfit_vs = kfit_ref.merge(kfit_alt, on=["seq"], suffixes=("_ref", "_alt"))
 
 
-# In[166]:
+# In[9]:
 
 
 da_alt = da_dat[da_dat["cname"] == "CREB1-alt"]
 
 
-# In[167]:
+# In[10]:
 
 
 kfit_vs = kfit_vs.merge(da_alt[["seq", "contrastQ", "contrastQ_cut", "contrastAverage", "contrastDifference"]], on="seq")
 
 
-# In[168]:
+# In[11]:
 
 
 kfit_vs.contains_any_motif_ref.value_counts()
 
 
-# In[177]:
+# In[12]:
 
 
 kfit_vs.affinityEstimate_ref.max()
 
 
-# In[182]:
+# In[13]:
 
 
 creb1_y1h = (y1h.loc[y1h["tf"] == "CREB1", y1h.columns[1:]].copy().set_index("unique_acc"))
@@ -112,7 +117,7 @@ creb1_y1h = creb1_y1h.loc[:, creb1_y1h.any(axis=0)]
 creb1_y1h
 
 
-# In[183]:
+# In[14]:
 
 
 creb1_baits = list(creb1_y1h.columns)
@@ -120,13 +125,13 @@ creb1_baits = dna[dna["id_upper"].isin(creb1_baits)]
 creb1_baits
 
 
-# In[114]:
+# In[15]:
 
 
 kfit_vs.columns
 
 
-# In[197]:
+# In[16]:
 
 
 fig, ax = plt.subplots(1, 1, figsize=(2, 2))
@@ -172,10 +177,10 @@ ax.set_title("CREB1-1")
 #                 ha="left", va="top", fontsize=7,
 #                 bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
     
-fig.savefig("../figures/CREB1_isoforms_pbm_scatter.pdf", dpi="figure", bbox_inches="tight")
+fig.savefig("../../figures/CREB1_isoforms_pbm_scatter.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[198]:
+# In[17]:
 
 
 # add colors to kfit_vs
@@ -195,7 +200,7 @@ kfit_vs["%s_rgb" % colname] = kfit_vs.apply(get_rgb, colname=colname, m=m, axis=
 kfit_vs.sample(5)
 
 
-# In[199]:
+# In[18]:
 
 
 def vals_per_bait(row, kfit_vs, colname, alt_suffix, ascending):
@@ -219,7 +224,7 @@ def vals_per_bait(row, kfit_vs, colname, alt_suffix, ascending):
     return "%s_%s_%s_%s_%s" % (largest_kmer, largest_val, xval, yval, rgb)
 
 
-# In[200]:
+# In[19]:
 
 
 creb1_baits["tmp"] = creb1_baits.apply(vals_per_bait, axis=1, 
@@ -234,7 +239,7 @@ creb1_baits["rgb"] = creb1_baits["rgb"].apply(literal_eval)
 creb1_baits
 
 
-# In[201]:
+# In[20]:
 
 
 colors = creb1_baits[["id_upper", "rgb"]].set_index("id_upper").T
@@ -244,7 +249,7 @@ colors = colors.loc[["CREB1-2", "CREB1-1"]]
 colors
 
 
-# In[202]:
+# In[21]:
 
 
 annot = creb1_baits[["id_upper", "val_diff"]].set_index("id_upper").T
@@ -254,7 +259,7 @@ annot = annot.loc[["CREB1-2", "CREB1-1"]]
 annot
 
 
-# In[203]:
+# In[22]:
 
 
 fig, ax = plt.subplots(1, 1, figsize=(2, 2.5))
@@ -262,10 +267,10 @@ y1h_pdi_per_tf_gene_plot("CREB1", data=y1h, ax=ax,
                          iso_order=["CREB1-2", "CREB1-1"], bait_colors=colors, bait_annot=annot)
 
 plt.colorbar(m, ax=ax, orientation="horizontal", shrink=0.75, label="largest ∆ PBM affinity\nacross 8-mers in bait")
-plt.savefig('../figures/CREB1_y1h_with_pbm.pdf', bbox_inches='tight', dpi="figure")
+plt.savefig('../../figures/CREB1_y1h_with_pbm.pdf', bbox_inches='tight', dpi="figure")
 
 
-# In[205]:
+# In[23]:
 
 
 def y1h_pdi_per_tf_gene_plot(
@@ -310,15 +315,14 @@ def y1h_pdi_per_tf_gene_plot(
 
 # ## TBX5
 
-# In[233]:
+# In[24]:
 
 
-kfit_dat = pd.read_table("../data/internal/pbms/TBX5_kfit_dat.csv", sep=",")
-ds_dat = pd.read_table("../data/internal/pbms/TBX5_ds_dat.csv", sep=",")
-da_dat = pd.read_table("../data/internal/pbms/TBX5_da_dat.csv", sep=",")
+kfit_dat = pd.read_table("../../data/processed/pbms/TBX5kfit_dat.csv", sep=",")
+da_dat = pd.read_table("../../data/processed/pbms/TBX5da_dat.csv", sep=",")
 
 
-# In[239]:
+# In[25]:
 
 
 kfit_ref = kfit_dat[kfit_dat["cname"] == "TBX5C05-REF"]
@@ -326,7 +330,7 @@ kfit_3 = kfit_dat[kfit_dat["cname"] == "TBX5A05"]
 kfit_2 = kfit_dat[kfit_dat["cname"] == "TBX5B05"]
 
 
-# In[240]:
+# In[26]:
 
 
 kfit_vs = kfit_ref.merge(kfit_2, on=["seq"], suffixes=("_ref", ""))
@@ -334,33 +338,33 @@ kfit_vs = kfit_vs.merge(kfit_3, on=["seq"], suffixes=("_iso2", "_iso3"))
 kfit_vs.head()
 
 
-# In[241]:
+# In[27]:
 
 
 da_3 = da_dat[da_dat["cname"] == "TBX5A05"]
 da_2 = da_dat[da_dat["cname"] == "TBX5B05"]
 
 
-# In[242]:
+# In[28]:
 
 
 kfit_vs = kfit_vs.merge(da_2[["seq", "contrastQ", "contrastQ_cut"]], on="seq")
 kfit_vs = kfit_vs.merge(da_3[["seq", "contrastQ", "contrastQ_cut"]], on="seq", suffixes=("_iso2", "_iso3"))
 
 
-# In[243]:
+# In[29]:
 
 
 kfit_vs.contains_any_motif_ref.value_counts()
 
 
-# In[244]:
+# In[30]:
 
 
 kfit_vs.affinityEstimate_iso3.min()
 
 
-# In[245]:
+# In[31]:
 
 
 fig, axarr = plt.subplots(1, 2, figsize=(4, 2))
@@ -400,10 +404,10 @@ for i, suffix in enumerate(["iso2", "iso3"]):
     ax.set_title(titles[i])
     
 axarr[0].set_ylabel("alternative PBM affinity")
-fig.savefig("../figures/TBX5_isoforms_pbm_scatter.pdf", dpi="figure", bbox_inches="tight")
+fig.savefig("../../figures/TBX5_isoforms_pbm_scatter.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[246]:
+# In[32]:
 
 
 # add colors to kfit_vs
@@ -418,13 +422,13 @@ kfit_vs["%s_rgb" % colname] = kfit_vs.apply(get_rgb, colname=colname, m=m, axis=
 kfit_vs.sample(5)
 
 
-# In[269]:
+# In[33]:
 
 
 kfit_vs[["contrastDifference_iso2", "contrastDifference_iso3"]].min().min()
 
 
-# In[271]:
+# In[34]:
 
 
 # add colors to kfit_vs
@@ -443,7 +447,7 @@ kfit_vs["%s_rgb" % colname] = kfit_vs.apply(get_rgb, colname=colname, m=m, axis=
 kfit_vs.sample(5)
 
 
-# In[272]:
+# In[35]:
 
 
 tbx5_y1h = (y1h.loc[y1h["tf"] == "TBX5", y1h.columns[1:]].copy().set_index("unique_acc"))
@@ -451,7 +455,7 @@ tbx5_y1h = tbx5_y1h.loc[:, tbx5_y1h.any(axis=0)]
 tbx5_y1h
 
 
-# In[273]:
+# In[36]:
 
 
 tbx5_baits = list(tbx5_y1h.columns)
@@ -459,7 +463,7 @@ tbx5_baits = dna[dna["id_upper"].isin(tbx5_baits)]
 tbx5_baits
 
 
-# In[274]:
+# In[37]:
 
 
 tbx5_baits["tmp_iso2"] = tbx5_baits.apply(vals_per_bait, axis=1, 
@@ -473,7 +477,7 @@ tbx5_baits["rgb_iso2"] = tbx5_baits["tmp_iso2"].str.split("_", expand=True)[4].a
 tbx5_baits["rgb_iso2"] = tbx5_baits["rgb_iso2"].apply(literal_eval)
 
 
-# In[275]:
+# In[38]:
 
 
 tbx5_baits["tmp_iso3"] = tbx5_baits.apply(vals_per_bait, axis=1, 
@@ -487,7 +491,7 @@ tbx5_baits["rgb_iso3"] = tbx5_baits["tmp_iso3"].str.split("_", expand=True)[4].a
 tbx5_baits["rgb_iso3"] = tbx5_baits["rgb_iso3"].apply(literal_eval)
 
 
-# In[276]:
+# In[39]:
 
 
 colors = tbx5_baits[["id_upper", "rgb_iso2", "rgb_iso3"]].set_index("id_upper").T
@@ -497,7 +501,7 @@ colors = colors.loc[["TBX5-1", "TBX5-2", "TBX5-3"]]
 colors
 
 
-# In[277]:
+# In[40]:
 
 
 annot = tbx5_baits[["id_upper", "val_diff_iso2", "val_diff_iso3"]].set_index("id_upper").T
@@ -507,7 +511,7 @@ annot = annot.loc[["TBX5-1", "TBX5-2", "TBX5-3"]]
 annot
 
 
-# In[279]:
+# In[41]:
 
 
 def binary_profile_matrix(
@@ -641,7 +645,7 @@ def isoform_display_name(s):
     return s.split("|")[0] + "-" + s.split("|")[1].split("/")[0]
 
 
-# In[281]:
+# In[42]:
 
 
 fig, ax = plt.subplots(1, 1, figsize=(5, 5))
@@ -649,22 +653,22 @@ y1h_pdi_per_tf_gene_plot("TBX5", data=y1h, ax=ax,
                          iso_order=["TBX5-1", "TBX5-2", "TBX5-3"], bait_colors=colors, bait_annot=annot)
 
 plt.colorbar(m, ax=ax, orientation="horizontal", shrink=0.75, label="largest ∆ PBM affinity across 8-mers in bait")
-plt.savefig('../figures/TBX5_y1h_with_pbm.pdf', bbox_inches='tight', dpi="figure")
+plt.savefig('../../figures/TBX5_y1h_with_pbm.pdf', bbox_inches='tight', dpi="figure")
 
 
-# In[296]:
+# In[43]:
 
 
 np.mean([-0.72, -0.38, -0.88, -0.60, -0.62, -0.16])
 
 
-# In[297]:
+# In[44]:
 
 
 np.mean([-0.36, -0.88, -0.72, -0.53, -0.72, -0.51, -0.13])
 
 
-# In[288]:
+# In[45]:
 
 
 def vals_per_bait_last50(row, kfit_vs, colname, alt_suffix, ascending):
@@ -688,7 +692,7 @@ def vals_per_bait_last50(row, kfit_vs, colname, alt_suffix, ascending):
     return "%s_%s_%s_%s_%s" % (largest_kmer, largest_val, xval, yval, rgb)
 
 
-# In[289]:
+# In[46]:
 
 
 tbx5_baits["tmp_iso2_l5"] = tbx5_baits.apply(vals_per_bait_last50, axis=1, 
@@ -702,7 +706,7 @@ tbx5_baits["rgb_iso2_l5"] = tbx5_baits["tmp_iso2_l5"].str.split("_", expand=True
 tbx5_baits["rgb_iso2_l5"] = tbx5_baits["rgb_iso2_l5"].apply(literal_eval)
 
 
-# In[290]:
+# In[47]:
 
 
 tbx5_baits["tmp_iso3_l5"] = tbx5_baits.apply(vals_per_bait_last50, axis=1, 
@@ -716,7 +720,7 @@ tbx5_baits["rgb_iso3_l5"] = tbx5_baits["tmp_iso3_l5"].str.split("_", expand=True
 tbx5_baits["rgb_iso3_l5"] = tbx5_baits["rgb_iso3_l5"].apply(literal_eval)
 
 
-# In[291]:
+# In[48]:
 
 
 colors = tbx5_baits[["id_upper", "rgb_iso2_l5", "rgb_iso3_l5"]].set_index("id_upper").T
@@ -726,7 +730,7 @@ colors = colors.loc[["TBX5-1", "TBX5-2", "TBX5-3"]]
 colors
 
 
-# In[292]:
+# In[49]:
 
 
 annot = tbx5_baits[["id_upper", "val_diff_iso2_l5", "val_diff_iso3_l5"]].set_index("id_upper").T
@@ -736,7 +740,7 @@ annot = annot.loc[["TBX5-1", "TBX5-2", "TBX5-3"]]
 annot
 
 
-# In[293]:
+# In[50]:
 
 
 fig, ax = plt.subplots(1, 1, figsize=(5, 5))
@@ -744,5 +748,5 @@ y1h_pdi_per_tf_gene_plot("TBX5", data=y1h, ax=ax,
                          iso_order=["TBX5-1", "TBX5-2", "TBX5-3"], bait_colors=colors, bait_annot=annot)
 
 plt.colorbar(m, ax=ax, orientation="horizontal", shrink=0.75, label="largest ∆ PBM affinity across 8-mers in bait")
-plt.savefig('../figures/TBX5_y1h_with_pbm_last50.pdf', bbox_inches='tight', dpi="figure")
+plt.savefig('../../figures/TBX5_y1h_with_pbm_last50.pdf', bbox_inches='tight', dpi="figure")
 

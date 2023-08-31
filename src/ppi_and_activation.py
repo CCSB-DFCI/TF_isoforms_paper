@@ -15,7 +15,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-import plotting
+from plotting import mimic_r_boxplot
 
 from data_loading import (load_y2h_isoform_data, 
     load_m1h_activation_data, 
@@ -90,7 +90,7 @@ print('of {} PPI partners, {} are expressed in HEK293 cells'.format(len(all_part
       len(all_partners.intersection(hek_expressed_genes))))
 
 
-# In[ ]:
+# In[10]:
 
 
 pairs = pairs_of_isoforms_comparison_table(isoforms=load_valid_isoform_clones(),
@@ -144,12 +144,17 @@ pairs = add_restricted_ppi_columns(pairs,
                            label='corepressors'
 )
 pairs = add_restricted_ppi_columns(pairs, 
+                           rows=(y2h['db_gene_symbol'].isin(corepressor_partners) &
+                                 y2h['db_gene_symbol'].isin(hek_expressed_genes)),
+                           label='corepressors_HEK'
+)
+pairs = add_restricted_ppi_columns(pairs, 
                            rows=y2h['db_gene_symbol'].isin(tf_gene_symbols),
                            label='tfs'
 )
 
 
-# In[ ]:
+# In[11]:
 
 
 def scatter_with_correlation(x, y, pairs=pairs, x_label=None, y_label=None):
@@ -191,10 +196,10 @@ scatter_with_correlation(
     y_label='Absolute log-2 fold-change in activation')
 
 
-# In[ ]:
+# In[26]:
 
 
-def bar_activation_vs_ppi(x, y, pairs=pairs, x_label=None, y_label=None):
+def bar_activation_vs_ppi(x, y, pairs=pairs, x_label=None, y_label=None, color=None):
     """
     TODO:
         - calculate p-value properly
@@ -208,7 +213,9 @@ def bar_activation_vs_ppi(x, y, pairs=pairs, x_label=None, y_label=None):
         x_label = x
     if y_label is None:
         y_label = y
-    fig, ax = plt.subplots(1, 1, figsize=(3.75, 2.25))
+    if color is None:
+        color = sns.color_palette("Set2")[1]
+    fig, ax = plt.subplots(1, 1, figsize=(3.25, 2.25))
 
     def bin_delta_ppi(delta_ppi):
         if pd.isnull(delta_ppi):
@@ -228,8 +235,10 @@ def bar_activation_vs_ppi(x, y, pairs=pairs, x_label=None, y_label=None):
                   x=x + '_binned',
                   y=y,
                   order=['loss', 'equal', 'gain'],
-                  alpha=0.5,
-                  color='grey',
+                  alpha=0.75,
+                  color=color,
+                  linewidth=1,
+                  edgecolor="black",
                   ax=ax)
     if False:
         sns.pointplot(data=df,
@@ -239,14 +248,13 @@ def bar_activation_vs_ppi(x, y, pairs=pairs, x_label=None, y_label=None):
                     alpha=0.5,
                     color='black',
                     ax=ax)
-        mimic_r_boxplot(ax)
     if True:
         sns.boxplot(data=df,
                     x=x + '_binned',
                     y=y,
                     order=['loss', 'equal', 'gain'],
-                    boxprops={'facecolor': 'w'}, 
                     fliersize=0,
+                    color=color,
                     ax=ax)
         mimic_r_boxplot(ax)
     else:
@@ -286,7 +294,7 @@ bar_activation_vs_ppi(
     y_label='log-2 fold-change in activation')
 
 
-# In[ ]:
+# In[27]:
 
 
 bar_activation_vs_ppi(
@@ -297,7 +305,7 @@ bar_activation_vs_ppi(
     y_label='log-2 fold-change in activation')
 
 
-# In[37]:
+# In[28]:
 
 
 bar_activation_vs_ppi(
@@ -308,7 +316,7 @@ bar_activation_vs_ppi(
     y_label='log-2 fold-change in activation')
 
 
-# In[38]:
+# In[29]:
 
 
 bar_activation_vs_ppi(
@@ -319,7 +327,7 @@ bar_activation_vs_ppi(
     y_label='log-2 fold-change in activation')
 
 
-# In[39]:
+# In[31]:
 
 
 bar_activation_vs_ppi(
@@ -327,10 +335,11 @@ bar_activation_vs_ppi(
     x='ppi_delta_n_coactivators_HEK',
     y='activation_fold_change',
     x_label='Difference in number of coactivator PPIs\nrestricted to those expressed in HEK293 cells',
-    y_label='log-2 fold-change in activation')
+    y_label='log-2 fold-change in activation',
+    color=sns.color_palette("Set2")[0])
 
 
-# In[16]:
+# In[32]:
 
 
 # TEST what is the outlier on the left
@@ -342,7 +351,19 @@ bar_activation_vs_ppi(
                         ascending=False))
 
 
-# In[17]:
+# In[33]:
+
+
+bar_activation_vs_ppi(
+    pairs=pairs.loc[(pairs['m1h_min'] < -1) | (pairs['m1h_max'] > 1), :],
+    x='ppi_delta_n_corepressors_HEK',
+    y='activation_fold_change',
+    x_label='Difference in number of corepressor PPIs\nrestricted to those expressed in HEK293 cells',
+    y_label='log-2 fold-change in activation',
+    color=sns.color_palette("Set2")[3])
+
+
+# In[28]:
 
 
 # this is not correct
@@ -355,7 +376,7 @@ bar_activation_vs_ppi(
     y_label='log-2 fold-change in activation')
 
 
-# In[18]:
+# In[29]:
 
 
 bar_activation_vs_ppi(
@@ -366,7 +387,7 @@ bar_activation_vs_ppi(
     y_label='log-2 fold-change in activation')
 
 
-# In[19]:
+# In[30]:
 
 
 scatter_with_correlation(
@@ -376,7 +397,7 @@ scatter_with_correlation(
     y_label='log-2 fold-change in activation')
 
 
-# In[20]:
+# In[31]:
 
 
 scatter_with_correlation(

@@ -157,25 +157,14 @@ plt.savefig('../figures/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tigh
 
 # ## M1H
 
-# In[23]:
+# In[14]:
 
 
 gene_name = "RFX3"
 
 fig, ax = plt.subplots(1, 1, figsize=(3, 1.2))
 
-m1h_activation_per_tf_gene_plot("RFX3", data=m1h, ax=ax)
-plt.savefig('../figures/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
-
-
-# In[18]:
-
-
-gene_name = "TBPL1"
-
-fig, ax = plt.subplots(1, 1, figsize=(3, 1.2))
-
-m1h_activation_per_tf_gene_plot("TBPL1", data=m1h, ax=ax)
+df = m1h_activation_per_tf_gene_plot("RFX3", data=m1h, ax=ax, xlim=(0, 6))
 plt.savefig('../figures/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
