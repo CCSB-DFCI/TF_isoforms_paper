@@ -4,6 +4,8 @@
 # ## Explore TF isoform expression data
 # 
 # kaia cleaning up luke's original code
+# 
+# something changed about this code -- dig into it later -- plots look different
 
 # In[1]:
 

@@ -1,9 +1,7 @@
 
 # coding: utf-8
 
-# ## Explore TF isoform expression data
-# 
-# kaia cleaning up luke's original code
+# ## Figure 1: Gencode Analyses: TF isoform annotations, expression patterns, domains
 
 # In[1]:
 
@@ -165,33 +163,9 @@ len(alt_isos)
 (means_gtex.loc[means_gtex.index.isin(alt_isos), :].sum(axis=1) >= 1).sum()
 
 
-# ## 2. cumulative plot: % of samples with isoforms ≥ 1 TPM in both datasets
+# ## 2. isoforms per family
 
 # In[14]:
-
-
-n_samples_gtex = df_gtex.shape[1]
-n_samples_gt1_gtex = (df_gtex >= 1).sum(axis=1)
-n_samples_dev = df_dev.shape[1]
-n_samples_gt1_dev = (df_dev >= 1).sum(axis=1)
-
-fig, ax = plt.subplots(1, 1, figsize=(2, 2))
-ax.plot([i / n_samples_gtex * 100 for i in range(1, n_samples_gtex + 1)],
-        [(n_samples_gt1_gtex >= i).sum() for i in range(1, n_samples_gtex + 1)],
-        label='GTEx')
-ax.plot([i / n_samples_dev * 100 for i in range(1, n_samples_dev + 1)],
-        [(n_samples_gt1_dev >= i).sum() for i in range(1, n_samples_dev + 1)],
-        label='Cardoso Moreira')
-ax.legend()
-ax.set_ylabel('Isoforms with ≥ 1 TPM')
-ax.set_xlabel('% of samples')
-fig.savefig('../../figures/n-isoforms-vs-pct-samples_GTEx-vs-development_line-plot.pdf',
-            bbox_inches='tight')
-
-
-# ## 3. isoforms per family
-
-# In[15]:
 
 
 # number of isoforms vs gene expression, publications, and exons 
@@ -204,7 +178,7 @@ gn = tpm_per_gene.max(axis=1).rename('TPM - gene-level, max across GTEx tissues'
 gn['n_isoforms'] = gn.index.map(genes_gtex.value_counts())
 
 
-# In[16]:
+# In[15]:
 
 
 fam = load_tf_families()
@@ -213,51 +187,51 @@ gn['is_nuclear_receptor'] = (gn['family'] == 'Nuclear receptor')
 gn.head()
 
 
-# In[17]:
+# In[16]:
 
 
 len(gn)
 
 
-# In[18]:
+# In[17]:
 
 
 len(gn[gn["n_isoforms"] > 1])
 
 
-# In[19]:
+# In[18]:
 
 
 gn.n_isoforms.mean()
 
 
-# In[112]:
+# In[19]:
 
 
 gn[gn["family"] == "Homeodomain"].n_isoforms.mean()
 
 
-# In[113]:
+# In[20]:
 
 
 gn[gn["family"] == "Nuclear receptor"].n_isoforms.mean()
 
 
-# In[20]:
+# In[21]:
 
 
 gn.sort_values(by="n_isoforms", ascending=False).head()
 
 
-# In[21]:
+# In[22]:
 
 
 fam_members = pd.DataFrame(gn['family'].value_counts()).reset_index()
-fam_members_ov12 = fam_members[fam_members["family"] >= 12]
-fam_members_ov12
+fam_members_ov20 = fam_members[fam_members["family"] >= 20]
+fam_members_ov20
 
 
-# In[131]:
+# In[23]:
 
 
 def collapse_families(row, families_to_keep):
@@ -271,7 +245,7 @@ gn['family_updated'] = gn.apply(collapse_families, axis=1,
 gn.family_updated.value_counts()
 
 
-# In[134]:
+# In[24]:
 
 
 def annotate(data, **kws):
@@ -289,28 +263,28 @@ g.map_dataframe(sns.histplot, "n_isoforms", binwidth=1)
 g.map_dataframe(annotate)
 g.set_axis_labels("# unique isoforms", "# genes")
 g.set_titles(row_template="{row_name}")
-g.savefig("../../figures/GENCODE_iso_counts_per_family.pdf", bbox_inches="tight", dpi="figure")
+g.savefig("../../figures/fig1/GENCODE_iso_counts_per_family.pdf", bbox_inches="tight", dpi="figure")
 
 
-# ## 4. downsample GTEx
+# ## 3. downsample GTEx
 # 
 # GTEx has more samples per condition than Dev, but Dev has more conditions
 
-# In[23]:
+# In[25]:
 
 
 # conditions (body sites): gtex
 len(metadata_gtex['body_site'].value_counts())
 
 
-# In[24]:
+# In[26]:
 
 
 # samples per body site: gtex
 metadata_gtex['body_site'].value_counts()
 
 
-# In[25]:
+# In[27]:
 
 
 # conditions (body sites): dev
@@ -318,7 +292,7 @@ metadata_dev['body_site'] = metadata_dev['organism_part'] + ' ' + metadata_dev['
 len(metadata_dev['body_site'].value_counts())
 
 
-# In[26]:
+# In[28]:
 
 
 # samples per body site: dev
@@ -328,7 +302,7 @@ metadata_dev['body_site'].value_counts()
 # ### loop through GTEx tissues and pick the # of samples by randomly matching to a dev dataset
 # this is inherently unstable when sampling w/o replacement as will end up with times where there are more samps in the dev that you're randomly matching to than the gtex (rare but happens)
 
-# In[27]:
+# In[29]:
 
 
 # loop through gtex tissues
@@ -360,43 +334,43 @@ if metadata_gtex_dummy.index.duplicated().any():
     raise UserWarning('Unexpected duplicates')
 
 
-# In[28]:
+# In[30]:
 
 
 metadata_gtex_dummy.shape
 
 
-# In[29]:
+# In[31]:
 
 
 len(metadata_gtex_dummy.body_site.unique())
 
 
-# In[30]:
+# In[32]:
 
 
 len(metadata_gtex_dummy.body_site.str.split("_", expand=True)[0].unique())
 
 
-# In[31]:
+# In[33]:
 
 
 metadata_dev.shape
 
 
-# In[32]:
+# In[34]:
 
 
 len(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).unique())
 
 
-# In[33]:
+# In[35]:
 
 
 df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).unique()
 
 
-# In[34]:
+# In[36]:
 
 
 tmp = metadata_dev.groupby(["organism_part", "dev_stage"])["BioSample"].agg("count").reset_index()
@@ -406,24 +380,24 @@ tmp.sort_values(by="BioSample")
 # #### this dataframe is now the same shape as the dev data in both # of samples and # of "sites"
 # gets to the same # of "sites" by re-sampling among GTEx tissues
 
-# In[35]:
+# In[37]:
 
 
 # write this file so we can load it in the DN section later
 metadata_gtex_dummy.to_csv("../../data/processed/metadata_gtex_dummy.csv")
 
 
-# In[36]:
+# In[38]:
 
 
 means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean()
 
 
-# ## 5. histograms: isoforms per gene + thresholded on expression
+# ## 4. histograms: isoforms per gene + thresholded on expression
 
 # ### GTEx: all
 
-# In[37]:
+# In[39]:
 
 
 # plot number of isoforms above 1 TPM
@@ -470,13 +444,13 @@ for ax in axs:
     pctax = ax.secondary_yaxis('right', functions=(num2pct, pct2num))
     pctax.set_ylabel('% of TF genes')
     pctax.set_yticks(range(0, 46, 5), minor=True)
-fig.savefig('../../figures/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx.pdf',
+fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx.pdf',
             bbox_inches='tight')
 
 
 # ### GTEx: downsample
 
-# In[38]:
+# In[40]:
 
 
 # plot number of isoforms above 1 TPM
@@ -506,13 +480,13 @@ for ax in axs:
     pctax = ax.secondary_yaxis('right', functions=(num2pct, pct2num))
     pctax.set_ylabel('% of TF genes_gtex')
     pctax.set_yticks(range(0, 46, 5), minor=True)
-fig.savefig('../../figures/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_downsamp.pdf',
+fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_downsamp.pdf',
             bbox_inches='tight')
 
 
 # ### Dev
 
-# In[39]:
+# In[41]:
 
 
 # plot number of isoforms above 1 TPM
@@ -542,546 +516,13 @@ for ax in axs:
     pctax = ax.secondary_yaxis('right', functions=(num2pct, pct2num))
     pctax.set_ylabel('% of TF genes_dev')
     pctax.set_yticks(range(0, 46, 5), minor=True)
-fig.savefig('../../figures/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_dev.pdf',
+fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_dev.pdf',
             bbox_inches='tight')
 
 
-# ## 6. pie charts: num isoforms in each expression bucket
-
-# ### GTEx: all
-
-# In[40]:
-
-
-p = (means_gtex.loc[means_gtex.index.isin(alt_isos), :] >= 1).any(axis=1).sum()
-n = means_gtex.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 1 TPM in at least one tissue')
-
-p = (means_gtex.loc[means_gtex.index.isin(alt_isos), :] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_gtex.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 5 TPM in at least one tissue')
-
-p = (means_gtex.loc[means_gtex.index.isin(ref_isos), :] >= 1).any(axis=1).sum()
-n = means_gtex.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 1 TPM in at least one tissue')
-
-p = (means_gtex.loc[means_gtex.index.isin(ref_isos), :] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_gtex.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 5 TPM in at least one tissue')
-
-# pie chart
-fig, axs = plt.subplots(1, 2)
-max_vals = means_gtex.max(axis=1)
-
-for isos, ax in zip([ref_isos, alt_isos], axs):
-    ax.pie([(max_vals[max_vals.index.isin(isos)] < 1).sum(),
-                ((max_vals[max_vals.index.isin(isos)] >= 1) &
-                (max_vals[max_vals.index.isin(isos)] <= 5)).sum(),
-                (max_vals[max_vals.index.isin(isos)] > 5).sum()
-                ],
-            labels=['< 1 TPM',
-                    '1 - 5 TPM',
-                    '> 5 TPM'],
-            counterclock=False,
-            startangle=90,
-            autopct='%.0f%%')
-axs[0].set_title('MANE select isoforms')
-axs[1].set_title('Alternative isoforms')
-plt.subplots_adjust(wspace=0.4)
-fig.savefig('../../figures/GTEx-max-expression_by-reference-vs-alternative_pie.pdf',
-            bbox_inches='tight')
-
-
-# #### GTEx all: exclude testis
-
-# In[41]:
-
-
-# Exlclude testis
-cols = [c for c in means_gtex.columns if c != 'Testis']
-p = (means_gtex.loc[means_gtex.index.isin(alt_isos), cols] >= 1).any(axis=1).sum()
-n = means_gtex.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 1 TPM in at least one tissue')
-
-p = (means_gtex.loc[means_gtex.index.isin(alt_isos), cols] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_gtex.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 5 TPM in at least one tissue')
-
-p = (means_gtex.loc[means_gtex.index.isin(ref_isos), cols] >= 1).any(axis=1).sum()
-n = means_gtex.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 1 TPM in at least one tissue')
-
-p = (means_gtex.loc[means_gtex.index.isin(ref_isos), cols] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_gtex.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 5 TPM in at least one tissue')
-
-# pie chart
-fig, axs = plt.subplots(1, 2)
-max_vals = means_gtex.loc[:, cols].max(axis=1)
-
-for isos, ax in zip([ref_isos, alt_isos], axs):
-    ax.pie([(max_vals[max_vals.index.isin(isos)] < 1).sum(),
-                ((max_vals[max_vals.index.isin(isos)] >= 1) &
-                (max_vals[max_vals.index.isin(isos)] <= 5)).sum(),
-                (max_vals[max_vals.index.isin(isos)] > 5).sum()
-                ],
-            labels=['< 1 TPM',
-                    '1 - 5 TPM',
-                    '> 5 TPM'],
-            counterclock=False,
-            startangle=90,
-            autopct='%.0f%%')
-axs[0].set_title('MANE select isoforms')
-axs[1].set_title('Alternative isoforms')
-plt.subplots_adjust(wspace=0.4)
-fig.savefig('../../figures/GTEx-max-expression_by-reference-vs-alternative_no-testis_pie.pdf',
-            bbox_inches='tight')
-
-
-# ### GTEx: downsample
+# ## 5. ref v alt 2D heatmaps: max expression
 
 # In[42]:
-
-
-p = (means_gtex_downsample.loc[means_gtex_downsample.index.isin(alt_isos), :] >= 1).any(axis=1).sum()
-n = means_gtex_downsample.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 1 TPM in at least one tissue')
-
-p = (means_gtex_downsample.loc[means_gtex_downsample.index.isin(alt_isos), :] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_gtex_downsample.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 5 TPM in at least one tissue')
-
-p = (means_gtex_downsample.loc[means_gtex_downsample.index.isin(ref_isos), :] >= 1).any(axis=1).sum()
-n = means_gtex_downsample.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 1 TPM in at least one tissue')
-
-p = (means_gtex_downsample.loc[means_gtex_downsample.index.isin(ref_isos), :] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_gtex_downsample.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 5 TPM in at least one tissue')
-
-# pie chart
-fig, axs = plt.subplots(1, 2)
-max_vals = means_gtex_downsample.max(axis=1)
-
-for isos, ax in zip([ref_isos, alt_isos], axs):
-    ax.pie([(max_vals[max_vals.index.isin(isos)] < 1).sum(),
-                ((max_vals[max_vals.index.isin(isos)] >= 1) &
-                (max_vals[max_vals.index.isin(isos)] <= 5)).sum(),
-                (max_vals[max_vals.index.isin(isos)] > 5).sum()
-                ],
-            labels=['< 1 TPM',
-                    '1 - 5 TPM',
-                    '> 5 TPM'],
-            counterclock=False,
-            startangle=90,
-            autopct='%.0f%%')
-axs[0].set_title('MANE select isoforms')
-axs[1].set_title('Alternative isoforms')
-plt.subplots_adjust(wspace=0.4)
-fig.savefig('../../figures/downsampled-GTEx-control-max-expression_by-reference-vs-alternative_pie.pdf',
-            bbox_inches='tight')
-
-
-# In[43]:
-
-
-# Exlclude testis
-cols = [c for c in means_gtex_downsample.columns if 'Testis' not in c]
-p = (means_gtex_downsample.loc[means_gtex_downsample.index.isin(alt_isos), cols] >= 1).any(axis=1).sum()
-n = means_gtex_downsample.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 1 TPM in at least one tissue')
-
-p = (means_gtex_downsample.loc[means_gtex_downsample.index.isin(alt_isos), cols] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_gtex_downsample.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 5 TPM in at least one tissue')
-
-p = (means_gtex_downsample.loc[means_gtex_downsample.index.isin(ref_isos), cols] >= 1).any(axis=1).sum()
-n = means_gtex_downsample.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 1 TPM in at least one tissue')
-
-p = (means_gtex_downsample.loc[means_gtex_downsample.index.isin(ref_isos), cols] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_gtex_downsample.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 5 TPM in at least one tissue')
-
-# pie chart
-fig, axs = plt.subplots(1, 2)
-max_vals = means_gtex_downsample.loc[:, cols].max(axis=1)
-
-for isos, ax in zip([ref_isos, alt_isos], axs):
-    ax.pie([(max_vals[max_vals.index.isin(isos)] < 1).sum(),
-                ((max_vals[max_vals.index.isin(isos)] >= 1) &
-                (max_vals[max_vals.index.isin(isos)] <= 5)).sum(),
-                (max_vals[max_vals.index.isin(isos)] > 5).sum()
-                ],
-            labels=['< 1 TPM',
-                    '1 - 5 TPM',
-                    '> 5 TPM'],
-            counterclock=False,
-            startangle=90,
-            autopct='%.0f%%')
-axs[0].set_title('MANE select isoforms')
-axs[1].set_title('Alternative isoforms')
-plt.subplots_adjust(wspace=0.4)
-fig.savefig('../../figures/downsampled-GTEx-max-expression_by-reference-vs-alternative_no-testis_pie.pdf',
-            bbox_inches='tight')
-
-
-# ### Dev
-
-# In[44]:
-
-
-p = (means_dev.loc[means_dev.index.isin(alt_isos), :] >= 1).any(axis=1).sum()
-n = means_dev.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 1 TPM in at least one tissue/dev stage')
-
-p = (means_dev.loc[means_dev.index.isin(alt_isos), :] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_dev.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 5 TPM in at least one tissue/dev stage')
-
-p = (means_dev.loc[means_dev.index.isin(ref_isos), :] >= 1).any(axis=1).sum()
-n = means_dev.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 1 TPM in at least one tissue/dev stage')
-
-p = (means_dev.loc[means_dev.index.isin(ref_isos), :] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_dev.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 5 TPM in at least one tissue/dev stage')
-
-# pie chart
-fig, axs = plt.subplots(1, 2)
-max_vals = means_dev.max(axis=1)
-
-for isos, ax in zip([ref_isos, alt_isos], axs):
-    ax.pie([(max_vals[max_vals.index.isin(isos)] < 1).sum(),
-                ((max_vals[max_vals.index.isin(isos)] >= 1) &
-                (max_vals[max_vals.index.isin(isos)] <= 5)).sum(),
-                (max_vals[max_vals.index.isin(isos)] > 5).sum()
-                ],
-            labels=['< 1 TPM',
-                    '1 - 5 TPM',
-                    '> 5 TPM'],
-            counterclock=False,
-            startangle=90,
-            autopct='%.0f%%')
-axs[0].set_title('MANE select isoforms')
-axs[1].set_title('Alternative isoforms')
-plt.subplots_adjust(wspace=0.4)
-fig.savefig('../../figures/developmental-max-expression_by-reference-vs-alternative_pie.pdf',
-            bbox_inches='tight')
-
-
-# #### Dev: no testis
-
-# In[45]:
-
-
-cols = [c for c in means_dev.columns if 'testis' not in c]
-p = (means_dev.loc[means_dev.index.isin(alt_isos), cols] >= 1).any(axis=1).sum()
-n = means_dev.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 1 TPM in at least one tissue/dev stage')
-
-p = (means_dev.loc[means_dev.index.isin(alt_isos), cols] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_dev.index.isin(alt_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) alternative isoforms ≥ 5 TPM in at least one tissue/dev stage')
-
-p = (means_dev.loc[means_dev.index.isin(ref_isos), cols] >= 1).any(axis=1).sum()
-n = means_dev.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 1 TPM in at least one tissue/dev stage')
-
-p = (means_dev.loc[means_dev.index.isin(ref_isos), cols] >= np.log2(5 + 1)).any(axis=1).sum()
-n = means_dev.index.isin(ref_isos).sum()
-print(f'{p} out of {n} ({p/n:.0%}) MANE select isoforms ≥ 5 TPM in at least one tissue/dev stage')
-
-# pie chart
-fig, axs = plt.subplots(1, 2)
-max_vals = means_dev.loc[:, cols].max(axis=1)
-
-for isos, ax in zip([ref_isos, alt_isos], axs):
-    ax.pie([(max_vals[max_vals.index.isin(isos)] < 1).sum(),
-                ((max_vals[max_vals.index.isin(isos)] >= 1) &
-                (max_vals[max_vals.index.isin(isos)] <= 5)).sum(),
-                (max_vals[max_vals.index.isin(isos)] > 5).sum()
-                ],
-            labels=['< 1 TPM',
-                    '1 - 5 TPM',
-                    '> 5 TPM'],
-            counterclock=False,
-            startangle=90,
-            autopct='%.0f%%')
-axs[0].set_title('MANE select isoforms')
-axs[1].set_title('Alternative isoforms')
-plt.subplots_adjust(wspace=0.4)
-fig.savefig('../../figures/developmental-max-expression_by-reference-vs-alternative_no-testis_pie.pdf',
-            bbox_inches='tight')
-
-
-# ## 7. distribution of TPMs across isoforms
-
-# ### GTEx: all
-
-# In[46]:
-
-
-fig, axs = plt.subplots(2, 1, sharex=True)
-n_bins = 110
-x_max = 11
-axs[1].hist(means_gtex.max(axis=1)[means_gtex.index.isin(alt_isos)],
-            bins=n_bins,
-            range=(0, x_max))
-axs[0].hist(means_gtex.max(axis=1)[means_gtex.index.isin(ref_isos)],
-            bins=n_bins,
-            range=(0, x_max))
-axs[0].text(x=8, y=30, s='MANE select isoforms')
-axs[1].text(x=8, y=120, s='Alternative isoforms')
-for ax in axs:
-    ax.set_ylabel('Number of isoforms')
-    for loc in ['top', 'right']:
-        ax.spines[loc].set_visible(False)
-axs[1].set_xlabel('Expression, max across GTEx tissues – TPM')
-x_ticks = [0, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000]
-axs[1].set_xticks([np.log2(x + 1) for x in x_ticks])
-axs[1].set_xticklabels(x_ticks)
-fig.savefig('../../figures/expression_GTEX_GENCODE-isoforms_by-reference-vs-alternative.pdf',
-            bbox_inches='tight')
-
-
-# ### GTEx: downsample
-
-# In[47]:
-
-
-# plot distribution of isoforms by TPM
-fig, axs = plt.subplots(2, 1, sharex=True)
-n_bins = 110
-x_max = 11
-axs[1].hist(means_gtex_downsample.max(axis=1)[means_gtex_downsample.index.isin(alt_isos)],
-            bins=n_bins,
-            range=(0, x_max))
-axs[0].hist(means_gtex_downsample.max(axis=1)[means_gtex_downsample.index.isin(ref_isos)],
-            bins=n_bins,
-            range=(0, x_max))
-axs[0].text(x=8, y=axs[0].get_ylim()[1] * 0.95, s='MANE select isoforms')
-axs[1].text(x=8, y=axs[1].get_ylim()[1] * 0.95, s='Alternative isoforms')
-for ax in axs:
-    ax.set_ylabel('Number of isoforms')
-    for loc in ['top', 'right']:
-        ax.spines[loc].set_visible(False)
-axs[1].set_xlabel('Expression, max across GTEx tissues – TPM')
-x_ticks = [0, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000]
-axs[1].set_xticks([np.log2(x + 1) for x in x_ticks])
-axs[1].set_xticklabels(x_ticks)
-fig.savefig('../../figures/expression_downsampled-GTEX-control_GENCODE-isoforms_by-reference-vs-alternative.pdf',
-            bbox_inches='tight')
-
-
-# ### Dev
-
-# In[48]:
-
-
-# plot distribution of isoforms by TPM
-fig, axs = plt.subplots(2, 1, sharex=True)
-n_bins = 110
-x_max = 11
-axs[1].hist(means_dev.max(axis=1)[means_dev.index.isin(alt_isos)],
-            bins=n_bins,
-            range=(0, x_max))
-axs[0].hist(means_dev.max(axis=1)[means_dev.index.isin(ref_isos)],
-            bins=n_bins,
-            range=(0, x_max))
-axs[0].text(x=8, y=axs[0].get_ylim()[1] * 0.95, s='MANE select isoforms')
-axs[1].text(x=8, y=axs[1].get_ylim()[1] * 0.95, s='Alternative isoforms')
-for ax in axs:
-    ax.set_ylabel('Number of isoforms')
-    for loc in ['top', 'right']:
-        ax.spines[loc].set_visible(False)
-axs[1].set_xlabel('Expression, max across Cardoso Moreira tissues/timepoint – TPM')
-x_ticks = [0, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000]
-axs[1].set_xticks([np.log2(x + 1) for x in x_ticks])
-axs[1].set_xticklabels(x_ticks)
-fig.savefig('../../figures/expression_development_GENCODE-isoforms_by-reference-vs-alternative.pdf',
-            bbox_inches='tight')
-
-
-# ## 8. distribution of ratios across isoforms
-
-# ### GTEx: all
-
-# In[49]:
-
-
-# percentage of alternative isoform
-# plot distribution of fraction of gene expression for ref and alt
-
-# fraction where gene tpm > 1
-
-per_gene_gtex = ((2 ** df_gtex - 1)
-                .groupby(genes_gtex)
-                .transform('sum'))
-f_gtex = (((2 ** df_gtex - 1) / per_gene_gtex)
-        .groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1)
-        .mean())
-f_gtex = f_gtex * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1).mean() >= 1).applymap(lambda x: {False: np.nan, True: 1}[x])  # only count fractions if gene TPM is >= 1
-
-f_gtex = f_gtex * 100
-fig, axs = plt.subplots(2, 1, sharex=True)
-n_bins=100
-axs[0].hist(f_gtex.max(axis=1).loc[f_gtex.index.isin(ref_isos)].values,
-            range=(0, 100),
-            bins=n_bins)
-axs[1].hist(f_gtex.max(axis=1).loc[f_gtex.index.isin(alt_isos)].values,
-            range=(0, 100),
-            bins=n_bins)
-axs[1].set_xlabel('% of gene expression, GTEx, maximum across tissues')
-axs[0].set_title('MANE select isoforms')
-axs[1].set_title('Alternative isoforms')
-for ax in axs:
-    ax.set_ylabel('Number of isoforms')
-    for pos in ['top', 'right']:
-        ax.spines[pos].set_visible(False)
-plt.subplots_adjust(hspace=0.6)
-fig.savefig('../../figures/expression-fraction-GTEx-max-across-tissues_ref-vs-alt_hist.pdf',
-            bbox_inches='tight')
-
-
-# ### GTEx: downsample
-
-# In[50]:
-
-
-genes_gtex
-
-
-# In[51]:
-
-
-# percentage of alternative isoform
-# plot distribution of fraction of gene expression for ref and alt
-
-# has to be fraction where isoform TPM is at least 1, right (fill na with 0)
-
-per_gene_gtex = ((2 ** df_gtex - 1)
-                .groupby(genes_gtex)
-                .transform('sum'))
-f_gtex_downsample = (((2 ** df_gtex - 1) / per_gene_gtex)
-        .groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1)
-        .mean())
-f_gtex_downsample = f_gtex_downsample * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean() >= 1).applymap(lambda x: {False: np.nan, True: 1}[x])  # only count fractions if gene TPM is >= 1
-
-f_gtex_downsample = f_gtex_downsample * 100
-fig, axs = plt.subplots(2, 1, sharex=True)
-n_bins=100
-axs[0].hist(f_gtex_downsample.max(axis=1).loc[f_gtex_downsample.index.isin(ref_isos)].values,
-            range=(0, 100),
-            bins=n_bins)
-axs[1].hist(f_gtex_downsample.max(axis=1).loc[f_gtex_downsample.index.isin(alt_isos)].values,
-            range=(0, 100),
-            bins=n_bins)
-axs[1].set_xlabel('% of gene expression, downsampled GTEx, maximum across dummy tissues')
-axs[0].set_title('MANE select isoforms')
-axs[1].set_title('Alternative isoforms')
-for ax in axs:
-    ax.set_ylabel('Number of isoforms')
-    for pos in ['top', 'right']:
-        ax.spines[pos].set_visible(False)
-plt.subplots_adjust(hspace=0.6)
-fig.savefig('../../figures/expression-fraction-downsampled-GTEx-control-max-across-tissues_ref-vs-alt_hist.pdf',
-            bbox_inches='tight')
-
-
-# ### Dev
-
-# In[52]:
-
-
-# percentage of alternative isoform
-# plot distribution of fraction of gene expression for ref and alt
-
-# has to be fraction where isoform TPM is at least 1, right (fill na with 0)
-
-per_gene_dev = ((2 ** df_dev - 1)
-                .groupby(genes_dev)
-                .transform('sum'))
-f_dev = (((2 ** df_dev - 1) / per_gene_dev)
-        .groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']),
-         axis=1)
-        .mean())
-f_dev = f_dev * ((per_gene_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']),
-                                             axis=1)
-                                             .mean() >= 1)
-                                         .applymap(lambda x: {False: np.nan, True: 1}[x]))  # only count fractions if gene TPM is >= 1
-
-f_dev = f_dev * 100
-fig, axs = plt.subplots(2, 1, sharex=True)
-n_bins=100
-axs[0].hist(f_dev.max(axis=1).loc[f_dev.index.isin(ref_isos)].values,
-            range=(0, 100),
-            bins=n_bins)
-axs[1].hist(f_dev.max(axis=1).loc[f_dev.index.isin(alt_isos)].values,
-            range=(0, 100),
-            bins=n_bins)
-axs[1].set_xlabel('% of gene expression, Cardoso Moreira, maximum across tissues')
-axs[0].set_title('MANE select isoforms')
-axs[1].set_title('Alternative isoforms')
-for ax in axs:
-    ax.set_ylabel('Number of isoforms')
-    for pos in ['top', 'right']:
-        ax.spines[pos].set_visible(False)
-plt.subplots_adjust(hspace=0.6)
-fig.savefig('../../figures/expression-fraction-development-max-across-tissues_ref-vs-alt_hist.pdf',
-            bbox_inches='tight')
-
-
-# #### aside: calculating isoforms that switch
-
-# In[53]:
-
-
-TPM_THRESHOLD = 2
-per_gene_dev = ((2 ** df_dev - 1)
-                .groupby(genes_dev)
-                .transform('sum'))
-f_dev = (((2 ** df_dev - 1) / per_gene_dev)
-        .groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']),
-         axis=1)
-        .mean())
-f_dev = f_dev * ((per_gene_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']),
-                                             axis=1)
-                                             .mean() >= TPM_THRESHOLD)
-                                         .applymap(lambda x: {False: np.nan, True: 1}[x]))  # only count fractions if gene TPM is >= 1
-f_dev = f_dev * 100
-
-per_gene_gtex = ((2 ** df_gtex - 1)
-                .groupby(genes_gtex)
-                .transform('sum'))
-f_gtex = (((2 ** df_gtex - 1) / per_gene_gtex)
-        .groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1)
-        .mean())
-f_gtex = f_gtex * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1).mean() >= TPM_THRESHOLD).applymap(lambda x: {False: np.nan, True: 1}[x])  # only count fractions if gene TPM is >= 1
-f_gtex = f_gtex * 100
-
-# alternative isoform > 50% in dev with corresponding ref iso > 50% in either
-# plus some magnitude of change?
-putative_switching_alt_isos = set(f_dev.loc[f_dev.index.isin(alt_isos) &
-                                           (f_dev.max(axis=1) > 50), :].index.values)
-print(len(putative_switching_alt_isos))
-valid_ref_isos = (set(f_dev.loc[f_dev.index.isin(ref_isos) &
-                               (f_dev.max(axis=1) > 50), :].index.values)
-                        .union(
-                  set(f_gtex.loc[f_gtex.index.isin(ref_isos) &
-                               (f_gtex.max(axis=1) > 50), :].index.values)
-                        ))
-if not (genes_gtex == genes_dev).all():
-        raise UserWarning()
-genes = genes_gtex
-genes_with_valid_ref_isos = {genes[iso] for iso in valid_ref_isos}
-switching_alt_isos = {iso for iso in putative_switching_alt_isos if genes[iso] in genes_with_valid_ref_isos}
-print(len(switching_alt_isos))
-
-
-# ## 9. ref v alt 2D heatmaps: max expression
-
-# In[54]:
 
 
 ref_alt_map = pd.DataFrame([ref_isos]).T
@@ -1099,7 +540,7 @@ print(len(ref_alt_map_nonan))
 ref_alt_map_nonan.head()
 
 
-# In[55]:
+# In[43]:
 
 
 ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
@@ -1107,7 +548,7 @@ ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
 
 # ### GTEx: all
 
-# In[56]:
+# In[44]:
 
 
 means_gtex["max_gtex"] = means_gtex.max(axis=1)
@@ -1122,7 +563,7 @@ means_gtex_ri = means_gtex.reset_index()
 means_gtex_ri["UID_rep"] = means_gtex_ri["UID"].str.replace("_", "|")
 
 
-# In[57]:
+# In[45]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex", "min_gtex"]], left_on="ref", 
@@ -1131,7 +572,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex"
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[58]:
+# In[46]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1171,13 +612,13 @@ print(ar)
 
 ax.plot([-0.3,11.5], [-0.3, 11.5], color="black", linestyle="dashed")
 
-fig.savefig('../../figures/expression-scatter-ref_v_alt-gtex.pdf',
+fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-gtex.pdf',
             bbox_inches='tight')
 
 
 # ### GTEx: downsampled
 
-# In[59]:
+# In[47]:
 
 
 means_gtex_downsample["max_gtex_downsample"] = means_gtex_downsample.max(axis=1)
@@ -1192,7 +633,7 @@ means_gtex_downsample_ri = means_gtex_downsample.reset_index()
 means_gtex_downsample_ri["UID_rep"] = means_gtex_downsample_ri["UID"].str.replace("_", "|")
 
 
-# In[60]:
+# In[48]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep", "max_gtex_downsample",
@@ -1203,7 +644,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep",
                                             left_on="alt", right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[61]:
+# In[49]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1243,13 +684,13 @@ print(ar)
 
 ax.plot([-0.3,11.5], [-0.3, 11.5], color="black", linestyle="dashed")
 
-fig.savefig('../../figures/expression-scatter-ref_v_alt-gtex-downsample.pdf',
+fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-gtex-downsample.pdf',
             bbox_inches='tight')
 
 
 # ### Dev
 
-# In[62]:
+# In[50]:
 
 
 means_dev["max_dev"] = means_dev.max(axis=1)
@@ -1264,7 +705,7 @@ means_dev_ri = means_dev.reset_index()
 means_dev_ri["UID_rep"] = means_dev_ri["UID"].str.replace("_", "|")
 
 
-# In[63]:
+# In[51]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", "min_dev"]], left_on="ref", 
@@ -1273,7 +714,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", 
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[64]:
+# In[52]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1313,17 +754,36 @@ print(ar)
 
 ax.plot([-0.3,11.5], [-0.3, 11.5], color="black", linestyle="dashed")
 
-fig.savefig('../../figures/expression-scatter-ref_v_alt-dev.pdf',
+fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-dev.pdf',
             bbox_inches='tight')
 
 
-# ## 10. per isoform: max v min ratio
+# ## 6. per isoform: max v min ratio
 # 
 # removing NaNs - not counting anything where *gene* expression < 1
 
 # ### GTEx: all
 
-# In[65]:
+# In[53]:
+
+
+# percentage of alternative isoform
+# plot distribution of fraction of gene expression for ref and alt
+
+# fraction where gene tpm > 1
+
+per_gene_gtex = ((2 ** df_gtex - 1)
+                .groupby(genes_gtex)
+                .transform('sum'))
+f_gtex = (((2 ** df_gtex - 1) / per_gene_gtex)
+        .groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1)
+        .mean())
+f_gtex = f_gtex * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1).mean() >= 1).applymap(lambda x: {False: np.nan, True: 1}[x])  # only count fractions if gene TPM is >= 1
+
+f_gtex = f_gtex * 100
+
+
+# In[54]:
 
 
 print(len(f_gtex))
@@ -1336,7 +796,7 @@ f_gtex_ri = f_gtex_nonan.reset_index()
 f_gtex_ri["UID_rep"] = f_gtex_ri["UID"].str.replace("_", "|")
 
 
-# In[66]:
+# In[55]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gtex", "min_ratio_gtex"]], left_on="ref", 
@@ -1345,7 +805,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gte
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[67]:
+# In[56]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1367,11 +827,11 @@ ax.set_xlabel("max isoform fraction")
 ax.set_ylabel("min isoform fraction")
 ax.set_title("n=%s ref isoforms" % len(df))
 
-fig.savefig('../../figures/expression-ratio-scatter-ref-gtex.pdf',
+fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-gtex.pdf',
             bbox_inches='tight')
 
 
-# In[68]:
+# In[57]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1392,13 +852,39 @@ ax.set_yticks([0, 20, 40, 60, 80, 100])
 ax.set_xlabel("min isoform fraction")
 ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s alt isoforms" % len(df))
-fig.savefig('../../figures/expression-ratio-scatter-alt-gtex.pdf',
+fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-gtex.pdf',
             bbox_inches='tight')
 
 
 # ### GTEx: downsample
 
-# In[69]:
+# In[58]:
+
+
+MIN_THRESH = 20
+MAX_THRESH = 80
+
+
+# In[59]:
+
+
+# percentage of alternative isoform
+# plot distribution of fraction of gene expression for ref and alt
+
+# has to be fraction where isoform TPM is at least 1, right (fill na with 0)
+
+per_gene_gtex = ((2 ** df_gtex - 1)
+                .groupby(genes_gtex)
+                .transform('sum'))
+f_gtex_downsample = (((2 ** df_gtex - 1) / per_gene_gtex)
+        .groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1)
+        .mean())
+f_gtex_downsample = f_gtex_downsample * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean() >= 1).applymap(lambda x: {False: np.nan, True: 1}[x])  # only count fractions if gene TPM is >= 1
+
+f_gtex_downsample = f_gtex_downsample * 100
+
+
+# In[60]:
 
 
 print(len(f_gtex_downsample))
@@ -1412,7 +898,7 @@ f_gtex_downsample_ri = f_gtex_downsample_nonan.reset_index()
 f_gtex_downsample_ri["UID_rep"] = f_gtex_downsample_ri["UID"].str.replace("_", "|")
 
 
-# In[70]:
+# In[61]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "max_ratio_gtex_downsample", 
@@ -1423,7 +909,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "ma
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[71]:
+# In[62]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1431,8 +917,8 @@ fig = plt.figure(figsize=(2, 1.5))
 df = ref_alt_map_nonan[["ref", "min_ratio_gtex_downsample_ref", "max_ratio_gtex_downsample_ref"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_gtex_downsample_ref"])) & (~pd.isnull(df["max_ratio_gtex_downsample_ref"]))]
 
-n_switches = df[(df["min_ratio_gtex_downsample_ref"] < 10) & (df["max_ratio_gtex_downsample_ref"] > 90)]
-n_off = df[(df["min_ratio_gtex_downsample_ref"] < 10) & (df["max_ratio_gtex_downsample_ref"] < 10)]
+n_switches = df[(df["min_ratio_gtex_downsample_ref"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_ref"] > MAX_THRESH)]
+n_off = df[(df["min_ratio_gtex_downsample_ref"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_ref"] < MIN_THRESH)]
 print(len(n_switches))
 p_switches_ref_gtex_ds = len(n_switches)/len(df)
 p_off_ref_gtex_ds = len(n_off)/len(df)
@@ -1450,11 +936,11 @@ ax.set_yticks([0, 20, 40, 60, 80, 100])
 ax.set_xlabel("min isoform fraction")
 ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s ref isoforms" % len(df))
-fig.savefig('../../figures/expression-ratio-scatter-ref-gtex-downsample.pdf',
+fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-gtex-downsample.pdf',
             bbox_inches='tight')
 
 
-# In[72]:
+# In[63]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1462,8 +948,8 @@ fig = plt.figure(figsize=(2, 1.5))
 df = ref_alt_map_nonan[["alt", "min_ratio_gtex_downsample_alt", "max_ratio_gtex_downsample_alt"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_gtex_downsample_alt"])) & (~pd.isnull(df["max_ratio_gtex_downsample_alt"]))]
 
-n_switches = df[(df["min_ratio_gtex_downsample_alt"] < 10) & (df["max_ratio_gtex_downsample_alt"] > 90)]
-n_off = df[(df["min_ratio_gtex_downsample_alt"] < 10) & (df["max_ratio_gtex_downsample_alt"] < 10)]
+n_switches = df[(df["min_ratio_gtex_downsample_alt"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_alt"] > MAX_THRESH)]
+n_off = df[(df["min_ratio_gtex_downsample_alt"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_alt"] < MIN_THRESH)]
 print(len(n_switches))
 p_switches_alt_gtex_ds = len(n_switches)/len(df)
 p_off_alt_gtex_ds = len(n_off)/len(df)
@@ -1483,20 +969,43 @@ ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s alt isoforms" % len(df))
 
 # add lines to distinguish events
-ax.plot([10, 0], [10, 10], linestyle="dotted", color="black")
-ax.plot([10, 10], [0, 10], linestyle="dotted", color="black")
-ax.plot([0, 10], [90, 90], linestyle="dotted", color="black")
-ax.plot([10, 10], [90, 100], linestyle="dotted", color="black")
-ax.text(10, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
-ax.text(10, 95, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
+ax.plot([MIN_THRESH, 0], [MIN_THRESH, MIN_THRESH], linestyle="dotted", color="black")
+ax.plot([MIN_THRESH, MIN_THRESH], [0, MIN_THRESH], linestyle="dotted", color="black")
+ax.plot([0, MIN_THRESH], [MAX_THRESH, MAX_THRESH], linestyle="dotted", color="black")
+ax.plot([MIN_THRESH, MIN_THRESH], [MAX_THRESH, 100], linestyle="dotted", color="black")
+ax.text(MIN_THRESH, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
+ax.text(MIN_THRESH, MAX_THRESH+5, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
 
-fig.savefig('../../figures/expression-ratio-scatter-alt-gtex-downsample.pdf',
+fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-gtex-downsample.pdf',
             bbox_inches='tight')
 
 
 # ### Dev
 
-# In[73]:
+# In[64]:
+
+
+# percentage of alternative isoform
+# plot distribution of fraction of gene expression for ref and alt
+
+# has to be fraction where isoform TPM is at least 1, right (fill na with 0)
+
+per_gene_dev = ((2 ** df_dev - 1)
+                .groupby(genes_dev)
+                .transform('sum'))
+f_dev = (((2 ** df_dev - 1) / per_gene_dev)
+        .groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']),
+         axis=1)
+        .mean())
+f_dev = f_dev * ((per_gene_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']),
+                                             axis=1)
+                                             .mean() >= 1)
+                                         .applymap(lambda x: {False: np.nan, True: 1}[x]))  # only count fractions if gene TPM is >= 1
+
+f_dev = f_dev * 100
+
+
+# In[65]:
 
 
 print(len(f_dev))
@@ -1509,7 +1018,7 @@ f_dev_ri = f_dev_nonan.reset_index()
 f_dev_ri["UID_rep"] = f_dev_ri["UID"].str.replace("_", "|")
 
 
-# In[74]:
+# In[66]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev", "min_ratio_dev"]], left_on="ref", 
@@ -1518,7 +1027,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev"
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[75]:
+# In[67]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1526,8 +1035,8 @@ fig = plt.figure(figsize=(2, 1.5))
 df = ref_alt_map_nonan[["ref", "min_ratio_dev_ref", "max_ratio_dev_ref"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_dev_ref"])) & (~pd.isnull(df["max_ratio_dev_ref"]))]
 
-n_switches = df[(df["min_ratio_dev_ref"] < 10) & (df["max_ratio_dev_ref"] > 90)]
-n_off = df[(df["min_ratio_dev_ref"] < 10) & (df["max_ratio_dev_ref"] < 10)]
+n_switches = df[(df["min_ratio_dev_ref"] < MIN_THRESH) & (df["max_ratio_dev_ref"] > MAX_THRESH)]
+n_off = df[(df["min_ratio_dev_ref"] < MIN_THRESH) & (df["max_ratio_dev_ref"] < MIN_THRESH)]
 print(len(n_switches))
 p_switches_ref_dev = len(n_switches)/len(df)
 p_off_ref_dev = len(n_off)/len(df)
@@ -1546,19 +1055,11 @@ ax.set_xlabel("min isoform fraction")
 ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s ref isoforms" % len(df))
 
-# # add lines to distinguish events
-# ax.plot([20, 0], [20, 20], linestyle="dotted", color="black")
-# ax.plot([20, 20], [0, 20], linestyle="dotted", color="black")
-# ax.plot([0, 20], [70, 70], linestyle="dotted", color="black")
-# ax.plot([20, 20], [70, 100], linestyle="dotted", color="black")
-# ax.text(20, 10, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
-# ax.text(20, 85, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[0])
-
-fig.savefig('../../figures/expression-ratio-scatter-ref-dev.pdf',
+fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-dev.pdf',
             bbox_inches='tight')
 
 
-# In[76]:
+# In[68]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1566,8 +1067,8 @@ fig = plt.figure(figsize=(2, 1.5))
 df = ref_alt_map_nonan[["alt", "min_ratio_dev_alt", "max_ratio_dev_alt"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_dev_alt"])) & (~pd.isnull(df["max_ratio_dev_alt"]))]
 
-n_switches = df[(df["min_ratio_dev_alt"] < 10) & (df["max_ratio_dev_alt"] > 90)]
-n_off = df[(df["min_ratio_dev_alt"] < 10) & (df["max_ratio_dev_alt"] < 10)]
+n_switches = df[(df["min_ratio_dev_alt"] < MIN_THRESH) & (df["max_ratio_dev_alt"] > MAX_THRESH)]
+n_off = df[(df["min_ratio_dev_alt"] < MIN_THRESH) & (df["max_ratio_dev_alt"] < MIN_THRESH)]
 print(len(n_switches))
 p_switches_alt_dev = len(n_switches)/len(df)
 p_off_alt_dev = len(n_off)/len(df)
@@ -1587,18 +1088,18 @@ ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s alt isoforms" % len(df))
 
 # add lines to distinguish events
-ax.plot([10, 0], [10, 10], linestyle="dotted", color="black")
-ax.plot([10, 10], [0, 10], linestyle="dotted", color="black")
-ax.plot([0, 10], [90, 90], linestyle="dotted", color="black")
-ax.plot([10, 10], [90, 100], linestyle="dotted", color="black")
-ax.text(10, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
-ax.text(10, 95, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
+ax.plot([MIN_THRESH, 0], [MIN_THRESH, MIN_THRESH], linestyle="dotted", color="black")
+ax.plot([MIN_THRESH, MIN_THRESH], [0, MIN_THRESH], linestyle="dotted", color="black")
+ax.plot([0, MIN_THRESH], [MAX_THRESH, MAX_THRESH], linestyle="dotted", color="black")
+ax.plot([MIN_THRESH, MIN_THRESH], [MAX_THRESH, 100], linestyle="dotted", color="black")
+ax.text(MIN_THRESH, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
+ax.text(MIN_THRESH, MAX_THRESH+5, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
 
-fig.savefig('../../figures/expression-ratio-scatter-alt-dev.pdf',
+fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-dev.pdf',
             bbox_inches='tight')
 
 
-# In[77]:
+# In[69]:
 
 
 bar = pd.DataFrame.from_dict({"gtex_ds_ref": {"switch": p_switches_ref_gtex_ds*100, "low": p_off_ref_gtex_ds*100},
@@ -1611,7 +1112,7 @@ bar = bar[["index", "low", "switch", "shift"]]
 bar
 
 
-# In[78]:
+# In[70]:
 
 
 palette = {"low": "lightgrey",
@@ -1620,11 +1121,11 @@ palette = {"low": "lightgrey",
 palette
 
 
-# In[79]:
+# In[71]:
 
 
 gtex_bar = bar[bar["index"].str.contains("gtex")]
-ax = gtex_bar.plot.bar(x="index", stacked=True, color=palette.values(), figsize=(1.4, 1.4))
+ax = gtex_bar.plot.bar(x="index", stacked=True, color=palette.values(), figsize=(1, 1))
 ax.set_ylabel("% of isoforms")
 ax.set_xlabel("")
 #ax.set_title("GTEx")
@@ -1632,15 +1133,15 @@ ax.set_xlabel("")
 plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
 ax.set_xticklabels(["ref", "alt"], ha="right", va="top", rotation=30)
 
-plt.savefig('../../figures/expression-switch-bar-gtex.pdf',
+plt.savefig('../../figures/fig1/expression-switch-bar-gtex.pdf',
             bbox_inches='tight')
 
 
-# In[80]:
+# In[72]:
 
 
 dev_bar = bar[bar["index"].str.contains("dev")]
-ax = dev_bar.plot.bar(x="index", stacked=True, color=palette.values(), figsize=(1.4, 1.4))
+ax = dev_bar.plot.bar(x="index", stacked=True, color=palette.values(), figsize=(1, 1))
 ax.set_ylabel("% of isoforms")
 ax.set_xlabel("")
 #ax.set_title("dev")
@@ -1648,13 +1149,13 @@ ax.set_xlabel("")
 plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
 ax.set_xticklabels(["ref", "alt"], ha="right", va="top", rotation=30)
 
-plt.savefig('../../figures/expression-switch-bar-dev.pdf',
+plt.savefig('../../figures/fig1/expression-switch-bar-dev.pdf',
             bbox_inches='tight')
 
 
 # ### example plot: TF gene whose isoform ratios change across tissues
 
-# In[81]:
+# In[73]:
 
 
 tmp = ref_alt_map_nonan
@@ -1667,7 +1168,15 @@ tmp["dg_alt"] = tmp["mm_dev_alt"]-tmp["mm_gtex_ds_alt"]
 #tmp.sort_values(by="dg_alt", ascending=False).head(30)
 
 
-# In[82]:
+# In[74]:
+
+
+if not (genes_gtex == genes_dev).all():
+        raise UserWarning()
+genes = genes_gtex
+
+
+# In[75]:
 
 
 def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim, means, cols, fig_suffix):
@@ -1696,48 +1205,11 @@ def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim,
     axes[1].legend(loc='lower left', bbox_to_anchor=(1, 0))
     axes[0].axhline(y=1, color='black', linewidth=0.5, linestyle="dashed")
     plt.subplots_adjust(hspace=0.25)
-    plt.savefig('../../figures/expression_' + gene_name + '_' + fig_suffix + '.pdf',
+    plt.savefig('../../figures/fig1/expression_' + gene_name + '_' + fig_suffix + '.pdf',
                 bbox_inches='tight')
 
 
-# In[83]:
-
-
-liver_cols = [x for x in means_dev.columns if "liver" in x]
-kidney_cols = [x for x in means_dev.columns if "kidney" in x]
-developmental_tissue_expression_plot("HIF1A", "Spectral", (6, 1.75), (0, 6), means_dev, liver_cols + kidney_cols, 
-                                     "means_dev_liver_kidney")
-
-
-# In[84]:
-
-
-liver_cols = [x for x in means_gtex.columns if "Liver" in x]
-kidney_cols = [x for x in means_gtex.columns if "Kidney" in x]
-developmental_tissue_expression_plot("HIF1A", "Spectral", (0.35, 1.75), (0, 6), means_gtex, liver_cols + kidney_cols, 
-                                     "means_gtex_liver_kidney")
-
-
-# In[85]:
-
-
-tmp_nn = tmp[(~pd.isnull(tmp["min_ratio_dev_alt"])) & (~pd.isnull(tmp["max_ratio_dev_alt"]))]
-tmp_srt = tmp_nn[(tmp_nn["max_ratio_dev_alt"] > 90) & (tmp_nn["min_ratio_dev_alt"] < 10)]
-tmp_srt[["gene", "ref", "alt", "max_ratio_dev_alt", 
-         "min_ratio_dev_alt", "max_dev_alt", "min_dev_alt"]].sort_values(by="max_ratio_dev_alt", ascending=False).head(20)
-
-
-# In[86]:
-
-
-notestis_cols = [x for x in means_dev.columns if "testis" not in x]
-notestis_cols = [x for x in notestis_cols if "_dev" not in x]
-notestis_cols = [x for x in notestis_cols if "ovary" not in x]
-developmental_tissue_expression_plot("PKNOX1", "Spectral", (5, 1.75), (0, 6), means_dev, notestis_cols, 
-                                     "means_dev_notestis")
-
-
-# In[87]:
+# In[76]:
 
 
 heart_cols = [x for x in means_dev.columns if "heart" in x]
@@ -1746,7 +1218,7 @@ developmental_tissue_expression_plot("HEY2", "Spectral", (4, 1.75), (0, 6), mean
                                      "means_dev_heart_ovary")
 
 
-# In[88]:
+# In[77]:
 
 
 heart_cols = [x for x in means_gtex.columns if "Heart" in x]
@@ -1755,90 +1227,42 @@ developmental_tissue_expression_plot("HEY2", "Spectral", (0.5, 1.75), (0, 6), me
                                      "means_gtex_heart_ovary")
 
 
-# In[89]:
+# In[78]:
 
 
-heart_cols = [x for x in means_dev.columns if "heart" in x]
-ovary_cols = [x for x in means_dev.columns if "ovary" in x]
-developmental_tissue_expression_plot("TBX5", "Set2", (5, 1.75), (0, 12), means_dev, heart_cols + ovary_cols, 
-                                     "means_dev_heart_ovary")
+ss_alt_gtex = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_gtex_downsample_alt"] > MIN_THRESH)].gene.unique())
+ss_alt_gtex
 
 
-# In[90]:
+# In[79]:
 
 
-gtex_cols = [x for x in means_gtex.columns if "_gtex" not in x]
-developmental_tissue_expression_plot("TBX5", "Set2", (6, 1.75), (0, 6), means_gtex, gtex_cols, 
-                                     "means_gtex")
+ss_alt_dev = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_dev_alt"] > MIN_THRESH)].gene.unique())
+ss_alt_dev
 
 
-# In[91]:
+# In[80]:
 
 
-ss_alt = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_gtex_downsample_alt"] >= 10)].gene.unique())
-ss_alt
+tot_genes = len(ref_alt_map_nonan.gene.unique())
+tot_genes
 
 
-# In[92]:
+# In[81]:
 
 
-ss_alt = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_dev_alt"] >= 10)].gene.unique())
-ss_alt
+ss_alt_gtex/tot_genes
 
 
-# In[93]:
+# In[82]:
 
 
-len(ref_alt_map_nonan.gene.unique())
+ss_alt_dev/tot_genes
 
 
-# In[94]:
+# ## 7. calculate domain switches in annotated isoforms
 
-
-864/909
-
-
-# ## 11. plot number of transcripts over time from Gencode
-
-# In[95]:
-
-
-genc = pd.read_table("../../data/external/gencode_history.txt")
-genc.head()
-
-
-# In[96]:
-
-
-genc_melt = pd.melt(genc, id_vars=["release", "freeze_date"])
-genc_melt.head()
-
-
-# In[97]:
-
-
-fig = plt.figure(figsize=(4.5, 1.5))
-
-ax = sns.lineplot(data=genc_melt[~genc_melt["variable"].isin(["n_tx", "n_genes"])], 
-                  x="release", y="value", hue="variable")
-sns.scatterplot(data=genc_melt[~genc_melt["variable"].isin(["n_tx", "n_genes"])], 
-                  x="release", y="value", hue="variable", ax=ax)
-
-_ = ax.set_xticks(list(genc_melt["release"].unique()))
-
-ax.set_xlabel("Gencode release")
-ax.set_ylabel("count")
-
-plt.legend(loc=2, bbox_to_anchor=(1.05, 1), labels=["protein-coding genes", 
-                                                    "protein-coding transcripts", 
-                                                    "full-length protein-coding transcripts"])
-
-fig.savefig("../../figures/Gencode_over_time.pdf", bbox_inches="tight", dpi="figure")
-
-
-# ### # make domain figure - move this into domain notebook at some point
-
-# In[98]:
+# In[83]:
 
 
 # loop through ref/alt pairs above and calculate total num AAs inserted/deleted/frameshifted
@@ -1998,7 +1422,7 @@ ref_alt_map_nonan["perc_f_eff"] = tot_perc_f_eff
 ref_alt_map_nonan.sample(5)
 
 
-# In[99]:
+# In[84]:
 
 
 def mimic_r_boxplot(ax):
@@ -2023,7 +1447,7 @@ def mimic_r_boxplot(ax):
                 line.set_alpha(0.5)
 
 
-# In[100]:
+# In[85]:
 
 
 def comp_cat(row):
@@ -2035,7 +1459,7 @@ def comp_cat(row):
         return "total"
 
 
-# In[101]:
+# In[86]:
 
 
 to_plot = pd.melt(ref_alt_map_nonan, id_vars=["ref", "gene", "alt"], value_vars=["n_ins", "perc_ins",
@@ -2053,7 +1477,7 @@ to_plot["dom_cat"] = to_plot.apply(comp_cat, axis=1)
 to_plot.sample(5)
 
 
-# In[102]:
+# In[87]:
 
 
 fig = plt.figure(figsize=(2.3, 1.25))
@@ -2071,47 +1495,47 @@ ax.set_title("alt v. ref TF isoforms")
 handles, labels = ax.get_legend_handles_labels()
 labels = ["all", "Pfam", "effector"]
 ax.legend(handles, labels, loc=2, bbox_to_anchor=(1.01, 1))
-fig.savefig('../../figures/domain-overall-boxplot.pdf',
+fig.savefig('../../figures/fig1/domain-overall-boxplot.pdf',
             bbox_inches='tight')
 
 
-# In[103]:
+# In[88]:
 
 
 to_plot[to_plot["n_or_perc"] == "perc"].groupby(["type", "dom_cat"]).agg("median")
 
 
-# In[104]:
+# In[89]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f_dom"] > 0])
 
 
-# In[105]:
+# In[90]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_ins"] >= 10])
 
 
-# In[106]:
+# In[91]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f"] >= 10])
 
 
-# In[107]:
+# In[92]:
 
 
 len(ref_alt_map_nonan)
 
 
-# In[108]:
+# In[93]:
 
 
 214/2305
 
 
-# In[109]:
+# In[94]:
 
 
 len(ref_alt_map_nonan[(ref_alt_map_nonan["perc_dd_eff"] > 0) |
@@ -2119,7 +1543,7 @@ len(ref_alt_map_nonan[(ref_alt_map_nonan["perc_dd_eff"] > 0) |
                       (ref_alt_map_nonan["perc_f_eff"] > 0)])
 
 
-# In[110]:
+# In[95]:
 
 
 684/2305
