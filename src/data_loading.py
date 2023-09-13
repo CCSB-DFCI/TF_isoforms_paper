@@ -1770,7 +1770,94 @@ def load_annotated_6k_collection(
                 iso.add_aa_seq_feature(
                     category="effector_domain",
                     name=row["Domain type"],
-                    accession=row["Effector domain ID"],
+                    accession="Soto_" + row["Effector domain ID"],
+                    start=iso.aa_seq.find(row["Sequence"]),
+                    end=iso.aa_seq.find(row["Sequence"]) + len(row["Sequence"]),
+                    description=desc,
+                )
+
+    ##### High throughput effector domain data #####
+    tycko = pd.concat(
+        [
+            pd.read_excel(
+                "../data/external/Tycko-et-al_Cell_2020_Table-S4.xlsx",
+                sheet_name=sheet_name,
+            )
+            for sheet_name in ["NucRepr_data", "NucAct_data", "Tiling Repressors"]
+        ]
+    )
+    tycko = tycko.loc[tycko["Hit"], :]
+    tycko["Sequence"] = tycko["Sequence"].fillna(tycko["Extended Domain sequence"])
+    tycko["Domain type"] = "RD"
+    tycko.loc[tycko["Avg Act"].notnull(), "Domain type"] = "AD"
+    # TODO: fix this, it's very ugly at the moment
+    tycko["domain_accession"] = (
+        "Tycko_"
+        + tycko["Domain type"]
+        + "_"
+        + tycko["Gene entry name"].fillna("")
+        + "_"
+        + tycko["Domain ID"].fillna("")
+        + "_"
+        + ("tile-" + tycko["Tile number"].astype(str)).fillna("")
+    )
+
+    delrosso = pd.concat(
+        [
+            pd.read_excel(
+                "../data/external/DelRosso-et-al_Nature_2023_Supplementary-Table-2.xlsx",
+                sheet_name=sheet_name,
+            )
+            for sheet_name in ["Activation Domains", "Repression Domains"]
+        ]
+    )
+    delrosso["Domain type"] = delrosso["Domain type"].map(
+        {"AD": "AD", "pEF": "RD", "PGK": "RD", "PGKandpEF": "RD"}
+    )
+    # I looked at the DelRosso data and the HGNC names are consistent with
+    # what we're using. The UniProt ACs have some disagreements
+    # For 3% of these domains, the start and end positions don't match
+    # the sequnece lenght.
+    # There are 19 out of 475 that don't map to our cloned isoforms.
+    # Some could be becuase of missing the reference sequence, but
+    # I looked at a couple and they are due to small sequence differences
+    # (e.g. FOXD4L1). Ignoring for now.
+    #  - Luke
+
+    for tf in genes.values():  # skipping the gene name matching with this one
+        for _i, row in tycko.iterrows():
+            desc = "Tycko et al. Cell 2020"
+            for iso in tf.orfs:
+                if row["Sequence"] not in iso.aa_seq:
+                    continue
+                if len(re.findall("(?={})".format(row["Sequence"]), iso.aa_seq)) != 1:
+                    raise UserWarning(
+                        "Problem mapping effector domain: {} {}".format(row, iso)
+                    )
+                iso.add_aa_seq_feature(
+                    category="effector_domain",
+                    name=row["Domain type"],
+                    accession=row["domain_accession"],
+                    start=iso.aa_seq.find(row["Sequence"]),
+                    end=iso.aa_seq.find(row["Sequence"]) + len(row["Sequence"]),
+                    description=desc,
+                )
+    for tf in genes.values():
+        for _i, row in delrosso.loc[delrosso["HGNC symbol"] == tf.name, :].iterrows():
+            desc = "DelRosso et al. Nature 2022"
+            for iso in tf.orfs:
+                if row["Sequence"] not in iso.aa_seq:
+                    continue
+                if len(re.findall("(?={})".format(row["Sequence"]), iso.aa_seq)) != 1:
+                    raise UserWarning(
+                        "Problem mapping effector domain: {} {}".format(row, iso)
+                    )
+                iso.add_aa_seq_feature(
+                    category="effector_domain",
+                    name=row["Domain type"],
+                    accession="DelRosso_{}_{}_{}".format(
+                        row["Domain type"], row["HGNC symbol"], row["Domain"]
+                    ),
                     start=iso.aa_seq.find(row["Sequence"]),
                     end=iso.aa_seq.find(row["Sequence"]) + len(row["Sequence"]),
                     description=desc,

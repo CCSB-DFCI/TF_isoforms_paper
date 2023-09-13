@@ -1117,7 +1117,7 @@ class Gene(GenomicFeature):
         gs = gridspec.GridSpecFromSubplotSpec(
             len(isoforms), 1, subplot_spec=ax.get_subplotspec(), hspace=2
         )
-        
+
         max_seq_len = max(len(iso.aa_seq) for iso in isoforms)
 
         aligner = Align.PairwiseAligner()
@@ -1295,6 +1295,8 @@ class Gene(GenomicFeature):
             ax.set_yticks([])
 
             def _extract_pmid(s):
+                if "PMID: " not in s:
+                    return []
                 return [
                     l[len("PMID: ") :] for l in s.splitlines() if l.startswith("PMID: ")
                 ][0].split(", ")
@@ -1311,7 +1313,7 @@ class Gene(GenomicFeature):
                         pmids = _extract_pmid(d.description)
                         if len(pmids) == 1:
                             url = "https://pubmed.ncbi.nlm.nih.gov/" + pmids[0]
-                        else:
+                        elif len(pmids) > 1:
                             url = "https://pubmed.ncbi.nlm.nih.gov/?term=" + "+".join(
                                 pmids
                             )
