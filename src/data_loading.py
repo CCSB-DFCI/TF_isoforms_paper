@@ -80,6 +80,14 @@ def cache_with_pickle(func):
 
 
 def load_valid_isoform_clones():
+    """
+
+    TODO: this is including PCGF6 which has an insertion relative
+    to the reference geneome, so that it's not consistent with the
+    load_annotated_6k set. Check the PCGF6 sequences and probably
+    remove from here.
+
+    """
     df = pd.read_csv(
         DATA_DIR / "processed/valid-unique-isoform-clones_2021-07-20.tsv", sep="\t"
     )
@@ -265,8 +273,6 @@ def load_tf_isoform_y2h_screen_results():
 
 def load_y2h_isoform_data(
     require_at_least_one_ppi_per_isoform=True,
-    add_missing_data=False,
-    filter_for_valid_clones=True,
     require_at_least_two_partners=False,
 ):
     """
@@ -285,7 +291,7 @@ def load_y2h_isoform_data(
         pandas.DataFrame
 
     """
-    y2h = load_isoform_and_paralog_y2h_data(add_missing_data, filter_for_valid_clones)
+    y2h = load_isoform_and_paralog_y2h_data()
     ppi = y2h.loc[
         (y2h["category"] == "tf_isoform_ppis"),
         ["ad_clone_acc", "ad_gene_symbol", "db_gene_symbol", "Y2H_result"],
@@ -409,7 +415,6 @@ def load_y2h_paralogs_additional_data():
 
 
 def load_isoform_and_paralog_y2h_data(
-    add_missing_data=False,
     add_partner_cateogories=False,
     remove_keratin_associated_proteins=True,
 ):
@@ -442,26 +447,6 @@ def load_isoform_and_paralog_y2h_data(
             :,
         ]
 
-    if add_missing_data:
-        all_possible_ints = (
-            pd.merge(
-                df.loc[
-                    df["category"] == "tf_isoform_ppis",
-                    ["ad_gene_symbol", "db_gene_symbol", "category"],
-                ].drop_duplicates(),
-                valid_clones,
-                left_on="ad_gene_symbol",
-                right_on="gene",
-            )
-            .drop(columns="gene")
-            .rename(columns={"clone_name": "ad_clone_name"})
-        )
-        df = pd.merge(
-            df,
-            all_possible_ints,
-            on=["ad_gene_symbol", "db_gene_symbol", "ad_clone_name", "category"],
-            how="outer",
-        )
     if add_partner_cateogories:
         cat_info = load_ppi_partner_categories()
         cats = cat_info.groupby("category")["partner"].apply(set).to_dict()
