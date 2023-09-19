@@ -465,6 +465,10 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
     df = df.sort_values(["tf", "unique_acc"])
     if y1h["unique_acc"].isnull().any():
         raise UserWarning("unexpected missing values")
+    # HACK GATA2|3/4|12A02 & GATA2|4/4|11A12 have duplicate rows with no hits
+    y1h = y1h.drop_duplicates()
+    if y1h["unique_acc"].duplicated().any():
+        raise UserWarning("unexpected duplicates")
     return df
 
 
