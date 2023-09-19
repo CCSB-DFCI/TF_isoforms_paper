@@ -61,8 +61,6 @@ def load_annotated_gencode_tfs(
     path_MANE_select=DATA_DIR / "external/MANE.GRCh38.v0.95.summary.txt",
     path_APPRIS=DATA_DIR
     / "external/APPRIS-annotations_human_GRCh38.p13_ensembl104.tsv",
-    path_effector_domains=DATA_DIR
-    / "external/Soto-et-al_MolCell_2022_Supplementary-tables.xlsx",
 ):
     import pyranges  # this import is hidden as it's causing installation problems
 
@@ -138,9 +136,15 @@ def load_annotated_gencode_tfs(
             transcript_name, gene_name = nt_seq[transcript_id].name.split("|")[4:6]
             if transcript_name not in unique_pc_transcripts:
                 continue
-            cds = _extract_region(nt_seq[transcript_id], "CDS", raise_error=True)
-            utr5 = _extract_region(nt_seq[transcript_id], "UTR5", raise_error=False)
-            utr3 = _extract_region(nt_seq[transcript_id], "UTR3", raise_error=False)
+            cds = _extract_mRNA_sequence_region_from_fasta(
+                nt_seq[transcript_id], "CDS", raise_error=True
+            )
+            utr5 = _extract_mRNA_sequence_region_from_fasta(
+                nt_seq[transcript_id], "UTR5", raise_error=False
+            )
+            utr3 = _extract_mRNA_sequence_region_from_fasta(
+                nt_seq[transcript_id], "UTR3", raise_error=False
+            )
             exons = []
             columns = [
                 "gene_id",
@@ -182,120 +186,18 @@ def load_annotated_gencode_tfs(
             uniprot_ac=ensembl_to_uniprot.get(gene_id, None),
         )
         genes[gene_name].tf_family = tf_family[gene_name]
-
-    pfam = load_pfam_domains_gencode()
-    pfam["gene_name"] = pfam["query name"].apply(
-        lambda x: "-".join(x.split("|")[0].split("-")[:-1])
+    _add_Pfam_domains_gencode(
+        genes,
+        transcript_name_to_ensembl_gene_id=transcript_name_to_ensembl_gene_id,
+        genes_to_rename=genes_to_rename,
+        unique_pc_transcripts=unique_pc_transcripts,
     )
-    pfam["ensembl_gene_id"] = (
-        pfam["query name"]
-        .apply(lambda x: x.split("|")[0])
-        .map(transcript_name_to_ensembl_gene_id)
-    )
-    for _i, row in pfam.iterrows():
-        gene_name = row["gene_name"]
-        ensembl_gene_id = row["ensembl_gene_id"]
-        if ensembl_gene_id in genes_to_rename:
-            gene_name = genes_to_rename[ensembl_gene_id]
-        transcript_name = row["query name"].split("|")[0]
-        if gene_name not in genes or transcript_name not in genes[gene_name]:
-            continue
-        if transcript_name not in unique_pc_transcripts:
-            continue
-        genes[gene_name][transcript_name].add_aa_seq_feature(
-            category="Pfam_domain",
-            name=row["target name"],
-            accession=row["pfam_ac"],
-            start=row["env_coord_from"] - 1,
-            end=row["env_coord_to"],
-        )
     _make_c2h2_zf_arrays(genes)
     _add_dbd_flanks(genes)
-
-    mane = pd.read_csv(path_MANE_select, sep="\t")
-    mane_select = set(
-        mane.loc[mane["MANE_status"] == "MANE Select", "Ensembl_nuc"]
-        .str.slice(0, 15)
-        .values
+    _add_MANE_and_APPRIS_annoations(
+        genes=genes, path_MANE_select=path_MANE_select, path_APPRIS=path_APPRIS
     )
-    for tf in genes.values():
-        if tf.ensembl_gene_id not in mane["Ensembl_Gene"].str.slice(0, 15).values:
-            continue  # not all genes have a MANE select isoform
-        for iso in tf.orfs:
-            if hasattr(iso, "clone_acc") and iso.is_novel_isoform():
-                continue
-            iso.is_MANE_select_transcript = any(
-                t in mane_select for t in iso.ensembl_transcript_ids
-            )
-
-    appris = pd.read_csv(path_APPRIS, sep="\t")
-    if appris["Transcript stable ID"].duplicated().any():
-        raise UserWarning(
-            "Unexpected duplicate ensembl transcript IDs in {}".format(path_APPRIS)
-        )
-    appris = appris.set_index("Transcript stable ID")["APPRIS annotation"].to_dict()
-
-    def _consolidate_appris_annotations(annotations):
-        return sorted(
-            list(annotations), key=lambda x: int(x[-1]) - 99 * x.startswith("principal")
-        )[0]
-
-    for tf in genes.values():
-        for iso in tf.orfs:
-            if hasattr(iso, "clone_acc") and iso.is_novel_isoform():
-                continue
-            annotations = {
-                appris[tid] for tid in iso.ensembl_transcript_ids if tid in appris
-            }
-            if len(annotations) > 0:
-                iso.APPRIS_annotation = _consolidate_appris_annotations(annotations)
-
-    reg_dom = pd.read_excel(path_effector_domains, sheet_name="Table S2")
-    reg_dom["TF name"] = (
-        reg_dom["ENSEMBL gene ID"].map(genes_to_rename).fillna(reg_dom["TF name"])
-    )
-    domain_type_full = {
-        "AD": "Activation domain",
-        "RD": "Repression domain",
-        "Bif": "Bi-functional domain",
-    }
-    all_ensembl_gene_ids = {tf.ensembl_gene_id for tf in genes.values()}
-    if not (
-        reg_dom["TF name"].isin(genes.keys())
-        == reg_dom["ENSEMBL gene ID"].isin(all_ensembl_gene_ids)
-    ).all():
-        print(
-            reg_dom.loc[
-                reg_dom["TF name"].isin(genes.keys())
-                != reg_dom["ENSEMBL gene ID"].isin(all_ensembl_gene_ids),
-                ["TF name", "ENSEMBL gene ID"],
-            ]
-        )
-        raise UserWarning(
-            "Problem with inconsistent gene names between effector domain file and cloned TFs"
-        )
-    for tf in genes.values():
-        for _i, row in reg_dom.loc[reg_dom["TF name"] == tf.name, :].iterrows():
-            desc = domain_type_full[row["Domain type"]]
-            desc += "\nassay: " + row["Assay"]
-            desc += "\nPMID: {}".format(row["Reference (PMID)"])
-            if pd.notnull(row["Notes"]):
-                desc += "Notes: " + row["Notes"]
-            for iso in tf.orfs:
-                if row["Sequence"] not in iso.aa_seq:
-                    continue
-                if len(re.findall("(?={})".format(row["Sequence"]), iso.aa_seq)) != 1:
-                    raise UserWarning(
-                        "Problem mapping effector domain: {} {}".format(row, iso)
-                    )
-                iso.add_aa_seq_feature(
-                    category="effector_domain",
-                    name=row["Domain type"],
-                    accession=row["Effector domain ID"],
-                    start=iso.aa_seq.find(row["Sequence"]),
-                    end=iso.aa_seq.find(row["Sequence"]) + len(row["Sequence"]),
-                    description=desc,
-                )
+    _add_effector_domains(genes)
 
     return genes
 
@@ -308,8 +210,6 @@ def load_annotated_6k_collection(
     path_MANE_select=DATA_DIR / "external/MANE.GRCh38.v0.95.summary.txt",
     path_APPRIS=DATA_DIR
     / "external/APPRIS-annotations_human_GRCh38.p13_ensembl104.tsv",
-    path_effector_domains=DATA_DIR
-    / "external/Soto-et-al_MolCell_2022_Supplementary-tables.xlsx",
     path_disorder=DATA_DIR / "processed/TFiso1_disorder-and-ss_from-alphafold.tsv",
 ):
     """ """
@@ -319,7 +219,6 @@ def load_annotated_6k_collection(
     algn = pyranges.read_gtf(path_6k_gtf).df
     algn = algn.loc[algn["Start"] < algn["End"], :]  # filter out problematic rows
     nt_seq = {r.name: r for r in SeqIO.parse(path_6k_fa, format="fasta")}
-    pfam = load_pfam_domains_6k()
     clones = load_valid_isoform_clones()
     algn = algn.loc[algn["transcript_id"].isin(clones["clone_acc"].unique()), :]
     nt_seq = {k: v for k, v in nt_seq.items() if k in clones["clone_acc"].unique()}
@@ -382,24 +281,7 @@ def load_annotated_6k_collection(
             uniprot_ac=ensembl_to_uniprot.get(hgnc_to_ensembl[gene_name], None),
         )
         genes[gene_name].tf_family = tf_family[gene_name]
-    pfam["gene_name"] = pfam["query name"].apply(lambda x: x.split("|")[0])
-    for _i, row in pfam.iterrows():
-        gene_name = row["gene_name"]
-        iso_name = (
-            row["query name"].split("|")[0]
-            + "-"
-            + row["query name"].split("|")[1].split("/")[0]
-        )
-        if gene_name not in genes or iso_name not in genes[gene_name]:
-            continue
-        genes[gene_name][iso_name].add_aa_seq_feature(
-            category="Pfam_domain",
-            name=row["target name"],
-            accession=row["pfam_ac"],
-            start=row["env_coord_from"] - 1,
-            end=row["env_coord_to"],
-            description=row["description of target"],
-        )
+    _add_Pfam_domains_6k(genes)
     _make_c2h2_zf_arrays(genes)
     _add_dbd_flanks(genes)
 
@@ -431,6 +313,69 @@ def load_annotated_6k_collection(
             continue  # different strand isoforms???
         genes[gene_name].add_isoforms(isoforms)
 
+    _add_MANE_and_APPRIS_annoations(
+        genes=genes, path_MANE_select=path_MANE_select, path_APPRIS=path_APPRIS
+    )
+    _add_effector_domains(genes=genes)
+    _add_disordered_regions(genes=genes, path_disorder=path_disorder)
+
+    return genes
+
+
+def _add_Pfam_domains_6k(genes):
+    pfam = load_pfam_domains_6k()
+    pfam["gene_name"] = pfam["query name"].apply(lambda x: x.split("|")[0])
+    for _i, row in pfam.iterrows():
+        gene_name = row["gene_name"]
+        iso_name = (
+            row["query name"].split("|")[0]
+            + "-"
+            + row["query name"].split("|")[1].split("/")[0]
+        )
+        if gene_name not in genes or iso_name not in genes[gene_name]:
+            continue
+        genes[gene_name][iso_name].add_aa_seq_feature(
+            category="Pfam_domain",
+            name=row["target name"],
+            accession=row["pfam_ac"],
+            start=row["env_coord_from"] - 1,
+            end=row["env_coord_to"],
+            description=row["description of target"],
+        )
+
+
+def _add_Pfam_domains_gencode(
+    genes, transcript_name_to_ensembl_gene_id, genes_to_rename, unique_pc_transcripts
+):
+    pfam = load_pfam_domains_gencode()
+    pfam["gene_name"] = pfam["query name"].apply(
+        lambda x: "-".join(x.split("|")[0].split("-")[:-1])
+    )
+    pfam["ensembl_gene_id"] = (
+        pfam["query name"]
+        .apply(lambda x: x.split("|")[0])
+        .map(transcript_name_to_ensembl_gene_id)
+    )
+    for _i, row in pfam.iterrows():
+        gene_name = row["gene_name"]
+        ensembl_gene_id = row["ensembl_gene_id"]
+        if ensembl_gene_id in genes_to_rename:
+            gene_name = genes_to_rename[ensembl_gene_id]
+        transcript_name = row["query name"].split("|")[0]
+        if gene_name not in genes or transcript_name not in genes[gene_name]:
+            continue
+        if transcript_name not in unique_pc_transcripts:
+            continue
+        genes[gene_name][transcript_name].add_aa_seq_feature(
+            category="Pfam_domain",
+            name=row["target name"],
+            accession=row["pfam_ac"],
+            start=row["env_coord_from"] - 1,
+            end=row["env_coord_to"],
+        )
+
+
+def _add_MANE_and_APPRIS_annoations(genes, path_MANE_select, path_APPRIS):
     mane = pd.read_csv(path_MANE_select, sep="\t")
     mane_select = set(
         mane.loc[mane["MANE_status"] == "MANE Select", "Ensembl_nuc"]
@@ -470,7 +415,17 @@ def load_annotated_6k_collection(
             if len(annotations) > 0:
                 iso.APPRIS_annotation = _consolidate_appris_annotations(annotations)
 
-    reg_dom = pd.read_excel(path_effector_domains, sheet_name="Table S2")
+
+def _add_effector_domains(genes):
+    path_Soto_et_al = (
+        DATA_DIR / "external/Soto-et-al_MolCell_2022_Supplementary-tables.xlsx"
+    )
+    path_Tycko_et_al = DATA_DIR / "external/Tycko-et-al_Cell_2020_Table-S4.xlsx"
+    path_DelRosso_et_al = (
+        DATA_DIR / "external/DelRosso-et-al_Nature_2023_Supplementary-Table-2.xlsx"
+    )
+
+    reg_dom = pd.read_excel(path_Soto_et_al, sheet_name="Table S2")
     domain_type_full = {
         "AD": "Activation domain",
         "RD": "Repression domain",
@@ -514,13 +469,9 @@ def load_annotated_6k_collection(
                     description=desc,
                 )
 
-    ##### High throughput effector domain data #####
     tycko = pd.concat(
         [
-            pd.read_excel(
-                "../data/external/Tycko-et-al_Cell_2020_Table-S4.xlsx",
-                sheet_name=sheet_name,
-            )
+            pd.read_excel(path_Tycko_et_al, sheet_name=sheet_name)
             for sheet_name in ["NucRepr_data", "NucAct_data", "Tiling Repressors"]
         ]
     )
@@ -542,10 +493,7 @@ def load_annotated_6k_collection(
 
     delrosso = pd.concat(
         [
-            pd.read_excel(
-                "../data/external/DelRosso-et-al_Nature_2023_Supplementary-Table-2.xlsx",
-                sheet_name=sheet_name,
-            )
+            pd.read_excel(path_DelRosso_et_al, sheet_name=sheet_name)
             for sheet_name in ["Activation Domains", "Repression Domains"]
         ]
     )
@@ -601,6 +549,12 @@ def load_annotated_6k_collection(
                     description=desc,
                 )
 
+
+def _add_disordered_regions(genes, path_disorder):
+    """
+    NOTE: this is just implemented for the cloned isoforms, not the full
+    GENCODE set.
+    """
     disorder = pd.read_csv(path_disorder, sep="\t")
     clones_with_disorder_data = set(disorder["clone_name"].unique())
     for tf in genes.values():
@@ -622,8 +576,6 @@ def load_annotated_6k_collection(
                             iso.name
                         )
                     )
-
-    return genes
 
 
 def _filter_gencode_gtf(out_file_path, genes_subset):
@@ -691,7 +643,7 @@ def updated_gene_names():
     return df.set_index("Ensembl ID")["HGNC symbol TF DB v1.01"].to_dict()
 
 
-def _extract_region(rec, region, raise_error=True):  # TODO: improve name
+def _extract_mRNA_sequence_region_from_fasta(rec, region, raise_error=True):
     """
     Get subset of nucleotide sequence that correpsonds to different
     regions (e.g. CDS, 3'UTR) when bounds of regions are specified
