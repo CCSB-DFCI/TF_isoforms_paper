@@ -13,7 +13,7 @@ import pandas as pd
 from Bio import SeqIO
 import tqdm
 
-import isolib
+from . import isolib
 from .utils import cache_with_pickle, DATA_DIR, CACHE_DIR
 from .TF_data import load_human_tf_db, load_tf_families
 from .clones_and_assays_data import load_valid_isoform_clones

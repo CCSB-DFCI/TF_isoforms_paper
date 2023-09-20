@@ -401,44 +401,45 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
         pandas.DataFrame: yeast one-hybrid data, one row for each isoform,
         one column for each bait
     """
-    df = pd.read_excel(
+    df_long = pd.read_excel(
         DATA_DIR / "internal/TF isoforms eY1H calls 14JUL23.xlsx",
         sheet_name="List format",
     )
-    if df["Bait"].isnull().any():
+    if df_long["Bait"].isnull().any():
         raise UserWarning("unexpected missing values")
-    if df["isoform ID"].isnull().any():
+    if df_long["isoform ID"].isnull().any():
         raise UserWarning("unexpected missing values")
-    df["Binary"] = df["Binary"].map({"yes": True, "no": False, "inconclusive": np.nan})
+    df_long["Binary"] = df_long["Binary"].map(
+        {"yes": True, "no": False, "inconclusive": np.nan}
+    )
 
-    y1h = (
+    df = (
         pd.concat(
-            [df["isoform ID"], pd.get_dummies(df["Bait"])],
+            [df_long["isoform ID"], pd.get_dummies(df_long["Bait"])],
             axis=1,
         )
         .groupby(["isoform ID"])
         .sum()
         > 0
     ).reset_index()
-    for _i, row in df.loc[df["Binary"] == False, :].iterrows():
-        y1h.loc[(y1h["isoform ID"] == row["isoform ID"]), row["Bait"]] = False
-    for _i, row in df.loc[df["Binary"].isnull(), :].iterrows():
-        y1h.loc[(y1h["isoform ID"] == row["isoform ID"]), row["Bait"]] = np.nan
+    for _i, row in df_long.loc[df_long["Binary"] == False, :].iterrows():
+        df.loc[(df["isoform ID"] == row["isoform ID"]), row["Bait"]] = False
+    for _i, row in df_long.loc[df_long["Binary"].isnull(), :].iterrows():
+        df.loc[(df["isoform ID"] == row["isoform ID"]), row["Bait"]] = np.nan
     clones = load_valid_isoform_clones()
     if clones["clone_name"].duplicated().any():
         raise UserWarning("unexpected duplicates")
     clone_acc = clones.set_index("clone_name")["clone_acc"]
     gene_symbol = clones.set_index("clone_name")["gene"]
-    y1h["tf"] = y1h["isoform ID"].map(gene_symbol)
-    y1h["unique_acc"] = y1h["isoform ID"].map(clone_acc)
-    y1h = y1h.drop(columns=["isoform ID"])
-    y1h = y1h.loc[:, list(y1h.columns[-2:]) + list(y1h.columns[:-2])]
+    df["tf"] = df["isoform ID"].map(gene_symbol)
+    df["unique_acc"] = df["isoform ID"].map(clone_acc)
+    df = df.drop(columns=["isoform ID"])
+    df = df.loc[:, list(df.columns[-2:]) + list(df.columns[:-2])]
+
     # HACK adding data that is missing from excel file
-    y1h.loc[y1h["tf"] == "TCF4", "HS1597"] = True
+    df.loc[df["tf"] == "TCF4", "HS1597"] = True
 
-    df = y1h  # Lazy coding
     df[df.columns[2:]] = df[df.columns[2:]].astype("boolean")
-
     zeros = pd.read_csv(DATA_DIR / "internal/a2_juan_isoforms_wo_pdi.tsv", sep="\t")
     zeros = zeros.loc[~zeros["unique_acc"].isin(df["unique_acc"].values), :]
     zeros = pd.concat(
@@ -463,11 +464,11 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
         pY1H = load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment()
         df = pd.merge(df, pY1H, on=["tf", "unique_acc"], how="outer")
     df = df.sort_values(["tf", "unique_acc"])
-    if y1h["unique_acc"].isnull().any():
+    if df["unique_acc"].isnull().any():
         raise UserWarning("unexpected missing values")
     # HACK GATA2|3/4|12A02 & GATA2|4/4|11A12 have duplicate rows with no hits
-    y1h = y1h.drop_duplicates()
-    if y1h["unique_acc"].duplicated().any():
+    df = df.drop_duplicates()
+    if df["unique_acc"].duplicated().any():
         raise UserWarning("unexpected duplicates")
     return df
 
