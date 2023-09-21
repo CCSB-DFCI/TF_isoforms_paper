@@ -26,7 +26,7 @@ def load_ref_vs_alt_isoforms_table():
     return pd.read_csv(fpath, sep="\t")
 
 
-def _pairs_of_ref_vs_alt_isoforms_comparison_table(tfs, y2h=None, y1h=None, m1h=None):
+def _pairs_of_ref_vs_alt_isoforms_comparison_table(tfs):
     iso_pairs = []
     for tf in tfs.values():
         ref = tf.cloned_reference_isoform
@@ -109,6 +109,7 @@ def _pairs_of_ref_vs_alt_isoforms_comparison_table(tfs, y2h=None, y1h=None, m1h=
 
 def _write_TF_iso_ref_vs_alt_table(outpath):
     tfs = load_annotated_6k_collection()
+    df = _pairs_of_ref_vs_alt_isoforms_comparison_table(tfs)
     m1h = load_m1h_activation_data()
     m1h["mean"] = m1h[["M1H_rep1", "M1H_rep2", "M1H_rep3"]].mean(axis=1)
     m1h["abs_mean"] = m1h["mean"].abs()
@@ -116,8 +117,6 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
     if y1h["unique_acc"].duplicated().any():
         raise UserWarning("unexpected duplicates")
     y1h = y1h.set_index("unique_acc")
-    y2h = load_y2h_isoform_data()
-    df = _pairs_of_ref_vs_alt_isoforms_comparison_table(tfs, y2h=y2h, y1h=y1h, m1h=m1h)
 
     def load_dbd_affected():
         df = pd.concat(
@@ -164,89 +163,9 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
     if df["aa_seq_pct_id"].isnull().any():
         raise UserWarning("Unexpected missing sequence similarity values")
 
+    y2h = load_y2h_isoform_data()
     y2h_complete = load_y2h_isoform_data(require_at_least_one_ppi_per_isoform=False)
-    n_ppi = (
-        y2h_complete.loc[(y2h_complete["Y2H_result"] == True), :]
-        .groupby("ad_clone_acc")
-        .size()
-    )
-    df["n_positive_PPI_ref"] = df["clone_acc_ref"].map(n_ppi)
-    df["n_positive_PPI_alt"] = df["clone_acc_alt"].map(n_ppi)
-    # BUG MISSING 0's here!
-    df.loc[
-        df["n_positive_PPI_ref"].isnull()
-        & df["clone_acc_ref"].isin(
-            y2h_complete.loc[
-                (y2h_complete["Y2H_result"] == False), "ad_clone_acc"
-            ].unique()
-        ),
-        "n_positive_PPI_ref",
-    ] = 0
-    df.loc[
-        df["n_positive_PPI_alt"].isnull()
-        & df["clone_acc_alt"].isin(
-            y2h_complete.loc[
-                (y2h_complete["Y2H_result"] == False), "ad_clone_acc"
-            ].unique()
-        ),
-        "n_positive_PPI_alt",
-    ] = 0
-
-    def ppi_metric(row, data, function, suffixes=("_a", "_b")):
-        ad_a = row["clone_acc" + suffixes[0]]
-        ad_b = row["clone_acc" + suffixes[1]]
-        pair = data.loc[data["ad_clone_acc"].isin([ad_a, ad_b]), :].pivot(
-            values="Y2H_result", index="db_gene_symbol", columns="ad_clone_acc"
-        )
-        if ad_a not in pair.columns or ad_b not in pair.columns:
-            return np.nan
-        # remove any partner with AA / NC / NS / NaN in either
-        pair = pair.loc[pair.notnull().all(axis=1), :].astype(int).astype(bool)
-        # remove partners that tested negative in both
-        pair = pair.loc[pair.any(axis=1), :]
-        if pair.shape[0] > 0:
-            return function(
-                set(pair.index[pair[ad_a]].values), set(pair.index[pair[ad_b]].values)
-            )
-        else:
-            return np.nan
-
-    df["n_PPI_successfully_tested_in_ref_and_alt"] = df.apply(
-        ppi_metric,
-        data=y2h_complete,
-        suffixes=("_ref", "_alt"),
-        function=number_tested_partners,
-        axis=1,
-    )
-    df["n_positive_PPI_ref_filtered"] = df.apply(
-        ppi_metric,
-        data=y2h_complete,
-        suffixes=("_ref", "_alt"),
-        function=lambda a, b: len(a),
-        axis=1,
-    )
-    df["n_positive_PPI_alt_filtered"] = df.apply(
-        ppi_metric,
-        data=y2h_complete,
-        suffixes=("_ref", "_alt"),
-        function=lambda a, b: len(b),
-        axis=1,
-    )
-    df["n_shared_PPI"] = df.apply(
-        ppi_metric,
-        data=y2h_complete,
-        suffixes=("_ref", "_alt"),
-        function=number_shared_partners,
-        axis=1,
-    )
-    df["PPI_jaccard"] = df.apply(
-        ppi_metric,
-        data=y2h_complete,
-        suffixes=("_ref", "_alt"),
-        function=jaccard_index,
-        axis=1,
-    )
-
+    _add_PPI_columns(df=df, y2h=y2h_complete)
     ppi_partner_cats = load_ppi_partner_categories()
     tfdb = load_human_tf_db()
     fam = load_tf_families()
@@ -337,6 +256,94 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
         axis=1,
     )
 
+    _add_PDI_columns(df=df, y1h=y1h)
+    _add_activation_columns(df=df, m1h=m1h)
+    df.to_csv(outpath, sep="\t", index=False)
+
+
+def _add_PPI_columns(df, y2h):
+    n_ppi = y2h.loc[(y2h["Y2H_result"] == True), :].groupby("ad_clone_acc").size()
+    df["n_positive_PPI_ref"] = df["clone_acc_ref"].map(n_ppi)
+    df["n_positive_PPI_alt"] = df["clone_acc_alt"].map(n_ppi)
+    # BUG MISSING 0's here!
+    df.loc[
+        df["n_positive_PPI_ref"].isnull()
+        & df["clone_acc_ref"].isin(
+            y2h.loc[(y2h["Y2H_result"] == False), "ad_clone_acc"].unique()
+        ),
+        "n_positive_PPI_ref",
+    ] = 0
+    df.loc[
+        df["n_positive_PPI_alt"].isnull()
+        & df["clone_acc_alt"].isin(
+            y2h.loc[(y2h["Y2H_result"] == False), "ad_clone_acc"].unique()
+        ),
+        "n_positive_PPI_alt",
+    ] = 0
+
+    def ppi_metric(row, data, function, suffixes=("_a", "_b")):
+        ad_a = row["clone_acc" + suffixes[0]]
+        ad_b = row["clone_acc" + suffixes[1]]
+        pair = data.loc[data["ad_clone_acc"].isin([ad_a, ad_b]), :].pivot(
+            values="Y2H_result", index="db_gene_symbol", columns="ad_clone_acc"
+        )
+        if ad_a not in pair.columns or ad_b not in pair.columns:
+            return np.nan
+        # remove any partner with AA / NC / NS / NaN in either
+        pair = pair.loc[pair.notnull().all(axis=1), :].astype(int).astype(bool)
+        # remove partners that tested negative in both
+        pair = pair.loc[pair.any(axis=1), :]
+        if pair.shape[0] > 0:
+            return function(
+                set(pair.index[pair[ad_a]].values), set(pair.index[pair[ad_b]].values)
+            )
+        else:
+            return np.nan
+
+    df["n_PPI_successfully_tested_in_ref_and_alt"] = df.apply(
+        ppi_metric,
+        data=y2h,
+        suffixes=("_ref", "_alt"),
+        function=number_tested_partners,
+        axis=1,
+    )
+    df["n_positive_PPI_ref_filtered"] = df.apply(
+        ppi_metric,
+        data=y2h,
+        suffixes=("_ref", "_alt"),
+        function=lambda a, b: len(a),
+        axis=1,
+    )
+    df["n_positive_PPI_alt_filtered"] = df.apply(
+        ppi_metric,
+        data=y2h,
+        suffixes=("_ref", "_alt"),
+        function=lambda a, b: len(b),
+        axis=1,
+    )
+    df["n_shared_PPI"] = df.apply(
+        ppi_metric,
+        data=y2h,
+        suffixes=("_ref", "_alt"),
+        function=number_shared_partners,
+        axis=1,
+    )
+    df["n_PPI_diff"] = (
+        df["n_PPI_successfully_tested_in_ref_and_alt"] - df["n_shared_PPI"]
+    )
+    df["PPI_delta_n"] = (
+        df["n_positive_PPI_alt_filtered"] - df["n_positive_PPI_ref_filtered"]
+    )
+    df["PPI_jaccard"] = df.apply(
+        ppi_metric,
+        data=y2h,
+        suffixes=("_ref", "_alt"),
+        function=jaccard_index,
+        axis=1,
+    )
+
+
+def _add_PDI_columns(df, y1h):
     def pdi_metric(row, data, function, suffixes=("_a", "_b")):
         clone_acc_a = row["clone_acc" + suffixes[0]]
         clone_acc_b = row["clone_acc" + suffixes[1]]
@@ -391,13 +398,15 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
     df["PDI_jaccard"] = df.apply(
         pdi_metric, data=y1h, suffixes=("_ref", "_alt"), function=jaccard_index, axis=1
     )
+
+
+def _add_activation_columns(df, m1h):
     df["at_least_one_isoform_in_gene_abs_activation_gte_2fold"] = df["gene_symbol"].map(
         m1h.groupby("gene")["abs_mean"].max() >= 1
     )
     df["activation_ref"] = df["clone_acc_ref"].map(m1h.set_index("clone_acc")["mean"])
     df["activation_alt"] = df["clone_acc_alt"].map(m1h.set_index("clone_acc")["mean"])
     df["activation_fold_change_log2"] = df["activation_alt"] - df["activation_ref"]
-    df.to_csv(outpath, sep="\t", index=False)
 
 
 def tissue_expression_similarity_per_isoform():
