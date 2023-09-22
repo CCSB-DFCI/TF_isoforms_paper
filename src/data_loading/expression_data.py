@@ -41,7 +41,7 @@ def load_gtex_gencode():
     df.index = df.index.map(lambda x: _convert_to_merged_protein_isoform_ids(x, tfs))
     df = df.loc[df.index != "fail", :]
     df = df.groupby("UID").sum()
-    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.orfs]):
+    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.isoforms]):
         raise UserWarning("Something went wrong")
     genes = genes.loc[genes.isin({tf.ensembl_gene_id for tf in tfs.values()})]
     genes.index = genes.index.map(
@@ -103,7 +103,7 @@ def load_gtex_remapped():
     df.index = df.index.map(lambda x: _convert_to_joint_clone_and_ensembl_id(x, tfs))
     df = df.loc[df.index != "fail", :]
     df = df.groupby("UID").sum()
-    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.orfs]):
+    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.isoforms]):
         raise UserWarning("Something went wrong")
 
     def extract_gene_name_from_joint_id(s):
@@ -159,7 +159,7 @@ def load_developmental_tissue_expression_gencode():
     df.index = df.index.map(lambda x: _convert_to_merged_protein_isoform_ids(x, tfs))
     df = df.loc[df.index != "fail", :]
     df = df.groupby("UID").sum()
-    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.orfs]):
+    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.isoforms]):
         raise UserWarning("Something went wrong")
     genes = genes.loc[genes.isin({tf.ensembl_gene_id for tf in tfs.values()})]
     genes.index = genes.index.map(
@@ -217,7 +217,7 @@ def load_developmental_tissue_expression_remapped():
     df.index = df.index.map(lambda x: _convert_to_joint_clone_and_ensembl_id(x, tfs))
     df = df.loc[df.index != "fail", :]
     df = df.groupby("UID").sum()
-    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.orfs]):
+    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.isoforms]):
         raise UserWarning("Something went wrong")
 
     def extract_gene_name_from_joint_id(s):

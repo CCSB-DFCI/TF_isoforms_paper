@@ -290,9 +290,9 @@ def load_annotated_6k_collection(
     )
     uncloned_orfs = defaultdict(list)
     for tf in genes.values():
-        for gencode_isoform in tfs_gencode[tf.name].orfs:
+        for gencode_isoform in tfs_gencode[tf.name].isoforms:
             clone_match = False
-            for cloned_isoform in tf.orfs:
+            for cloned_isoform in tf.isoforms:
                 if gencode_isoform.exons == cloned_isoform.exons:
                     cloned_isoform.ensembl_transcript_ids = (
                         gencode_isoform.ensembl_transcript_ids
@@ -385,7 +385,7 @@ def _add_MANE_and_APPRIS_annoations(genes, path_MANE_select, path_APPRIS):
     for tf in genes.values():
         if tf.ensembl_gene_id not in mane["Ensembl_Gene"].str.slice(0, 15).values:
             continue  # not all genes have a MANE select isoform
-        for iso in tf.orfs:
+        for iso in tf.isoforms:
             if hasattr(iso, "clone_acc") and iso.is_novel_isoform():
                 iso.is_MANE_select_transcript = False
             else:
@@ -406,7 +406,7 @@ def _add_MANE_and_APPRIS_annoations(genes, path_MANE_select, path_APPRIS):
         )[0]
 
     for tf in genes.values():
-        for iso in tf.orfs:
+        for iso in tf.isoforms:
             if hasattr(iso, "clone_acc") and iso.is_novel_isoform():
                 continue
             annotations = {
@@ -453,7 +453,7 @@ def _add_effector_domains(genes):
             desc += "\nPMID: {}".format(row["Reference (PMID)"])
             if pd.notnull(row["Notes"]):
                 desc += "Notes: " + row["Notes"]
-            for iso in tf.orfs:
+            for iso in tf.isoforms:
                 if row["Sequence"] not in iso.aa_seq:
                     continue
                 if len(re.findall("(?={})".format(row["Sequence"]), iso.aa_seq)) != 1:
@@ -513,7 +513,7 @@ def _add_effector_domains(genes):
     for tf in genes.values():  # skipping the gene name matching with this one
         for _i, row in tycko.iterrows():
             desc = "Tycko et al. Cell 2020"
-            for iso in tf.orfs:
+            for iso in tf.isoforms:
                 if row["Sequence"] not in iso.aa_seq:
                     continue
                 if len(re.findall("(?={})".format(row["Sequence"]), iso.aa_seq)) != 1:
@@ -531,7 +531,7 @@ def _add_effector_domains(genes):
     for tf in genes.values():
         for _i, row in delrosso.loc[delrosso["HGNC symbol"] == tf.name, :].iterrows():
             desc = "DelRosso et al. Nature 2022"
-            for iso in tf.orfs:
+            for iso in tf.isoforms:
                 if row["Sequence"] not in iso.aa_seq:
                     continue
                 if len(re.findall("(?={})".format(row["Sequence"]), iso.aa_seq)) != 1:
@@ -669,7 +669,7 @@ def _make_c2h2_zf_arrays(tfs, MAX_NUM_AA_C2H2_ZF_SEPERATION=10):
     C2H2_ZF_PFAM_CLAN_AC = "CL0361"
     c2h2_zf_pfam_ids = {k for k, v in clans.items() if v == C2H2_ZF_PFAM_CLAN_AC}
     for gene in tfs.values():
-        for orf in gene.orfs:
+        for orf in gene.isoforms:
             zfs = [d for d in orf.aa_seq_features if d.accession in c2h2_zf_pfam_ids]
             if len(zfs) < 2:
                 continue
@@ -706,7 +706,7 @@ def _make_c2h2_zf_arrays(tfs, MAX_NUM_AA_C2H2_ZF_SEPERATION=10):
 
 def _add_dbd_flanks(genes):
     for gene in genes.values():
-        for isoform in gene.orfs:
+        for isoform in gene.isoforms:
             for dbd in isoform.dna_binding_domains:
                 start_n = max(0, dbd.start - 15)
                 end_n = dbd.start
