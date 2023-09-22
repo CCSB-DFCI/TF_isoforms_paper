@@ -3,8 +3,6 @@ from itertools import combinations
 import numpy as np
 import pandas as pd
 
-from data_loading import load_seq_comparison_data
-
 
 def paralog_pair_ppi_table(data, tf_gene_a, tf_gene_b):
     gene_a_partners = data.loc[
@@ -63,71 +61,6 @@ def isoforms_of_paralogs_pairs(paralog_pairs, isoforms):
     ).rename(columns={"aa_seq": "aa_seq_b", "clone_acc": "clone_acc_b"})
     pairs = pairs.drop(columns=["gene_x", "gene_y"])
     return pairs
-
-
-def pairs_of_paralogs_and_isoforms_comparison_table(
-    isoforms,
-    paralog_pairs,
-    y2h,
-    y1h,
-    m1h,
-    restrict_isoforms_to_those_with_paralogs=False,
-):
-    """
-
-    Restricted to isoforms pairs in the paralogs dataset.
-
-    Args:
-        isoforms (): [description]
-        paralog_pairs ([type]): [description]
-        y2h ([type]): [description]
-        y1h ([type]): [description]
-        m1h ([type]): [description]
-
-    Returns:
-        [type]: [description]
-
-    """
-    pairs = isoforms_of_paralogs_pairs(paralog_pairs, isoforms)
-    pairs["category"] = pairs["is_paralog_pair"].map(
-        {True: "paralogs", False: "non-paralog-control"}
-    )
-    pairs = pairs.drop(columns=["aa_seq_a", "aa_seq_b", "is_paralog_pair"])
-    iso_pairs = []
-    for tf_gene in isoforms["gene"].unique():
-        tf_iso = isoforms.loc[isoforms["gene"] == tf_gene, "clone_acc"].values
-        for iso_a, iso_b in combinations(tf_iso, 2):
-            iso_pairs.append((tf_gene, tf_gene, iso_a, iso_b))
-    iso_pairs = pd.DataFrame(
-        data=iso_pairs, columns=["tf_gene_a", "tf_gene_b", "clone_acc_a", "clone_acc_b"]
-    )
-    iso_pairs["category"] = "isoforms"
-    if restrict_isoforms_to_those_with_paralogs:
-        iso_pairs = iso_pairs.loc[
-            iso_pairs["tf_gene_a"].isin(pairs["tf_gene_a"])
-            | iso_pairs["tf_gene_a"].isin(pairs["tf_gene_b"]),
-            :,
-        ]
-    pairs = pd.concat([pairs, iso_pairs])
-    pairs["pair"] = pairs.apply(
-        lambda x: "_".join(sorted([x["clone_acc_a"], x["clone_acc_b"]])), axis=1
-    )
-    return _pairs_comparison_table(pairs, y2h, y1h, m1h)
-
-
-def pairs_of_isoforms_comparison_table(isoforms, y2h=None, y1h=None, m1h=None):
-    iso_pairs = []
-    for tf_gene in isoforms["gene"].unique():
-        tf_iso = isoforms.loc[isoforms["gene"] == tf_gene, "clone_acc"].values
-        for iso_a, iso_b in combinations(tf_iso, 2):
-            iso_pairs.append((tf_gene, iso_a, iso_b))
-    iso_pairs = pd.DataFrame(
-        data=iso_pairs, columns=["tf_gene_symbol", "clone_acc_a", "clone_acc_b"]
-    )
-    iso_pairs["pair"] = iso_pairs.apply(
-        lambda x: "_".join(sorted([x.clone_acc_a, x.clone_acc_b])), axis=1
-    )
-    return _pairs_comparison_table(iso_pairs, y2h, y1h, m1h)
 
 
 def _pairs_comparison_table(pairs, y2h, y1h, m1h):
@@ -196,59 +129,54 @@ def _pairs_comparison_table(pairs, y2h, y1h, m1h):
     return pairs
 
 
-def tissue_expression_similarity_per_isoform():
+def pairs_of_paralogs_and_isoforms_comparison_table(
+    isoforms,
+    paralog_pairs,
+    y2h,
+    y1h,
+    m1h,
+    restrict_isoforms_to_those_with_paralogs=False,
+):
     """
 
-    work in progress
+    Restricted to isoforms pairs in the paralogs dataset.
+
+    Args:
+        isoforms (): [description]
+        paralog_pairs ([type]): [description]
+        y2h ([type]): [description]
+        y1h ([type]): [description]
+        m1h ([type]): [description]
+
+    Returns:
+        [type]: [description]
 
     """
-    df, metadata, genes = load_gtex_remapped()
-    means = df.groupby(df.columns.map(metadata["body_site"]), axis=1).mean()
-    similarities = []
-    for gene in genes.unique():
-        vals = means.loc[genes == gene, :].copy()
-        # require at least 1 TPM at gene level per tissue
-        vals.loc[:, vals.sum(axis=0) < 1] = np.nan
-        # require at least 1 TPM in one tissue per isoform
-        vals.loc[(vals >= 1).sum(axis=1) == 0, :] = np.nan
-        pcc_corrected = vals.T.corr()
-        for iso_a, iso_b in combinations(genes.loc[genes == gene].index.values, 2):
-            similarities.append([iso_a, iso_b, pcc_corrected.loc[iso_a, iso_b]])
-    similarities = pd.DataFrame(
-        data=similarities, columns=["iso_a", "iso_b", "PCC_corrected"]
+    pairs = isoforms_of_paralogs_pairs(paralog_pairs, isoforms)
+    pairs["category"] = pairs["is_paralog_pair"].map(
+        {True: "paralogs", False: "non-paralog-control"}
     )
-    clones = load_valid_isoform_clones()
-
-    def get_pair_id(row):
-        return "_".join(
-            sorted(
-                [
-                    [
-                        x
-                        for x in row["iso_a"].split(" ")[0].split("_")
-                        if x in clones["clone_acc"].unique()
-                    ][0],
-                    [
-                        x
-                        for x in row["iso_b"].split(" ")[0].split("_")
-                        if x in clones["clone_acc"].unique()
-                    ][0],
-                ]
-            )
-        )
-
-    cloned = ~similarities["iso_a"].str.startswith("noclone") & ~similarities[
-        "iso_b"
-    ].str.startswith("noclone")
-    similarities = similarities.loc[cloned, :]
-    similarities["pair"] = similarities.apply(get_pair_id, axis=1)
-    if similarities["pair"].duplicated().any():
-        raise UserWarning("unexpected duplicates")
-    if not pairs["pair"].isin(similarities["pair"].values).all():
-        raise UserWarning("unexpected missing pairs")
-    pairs["tissue_expression_pcc"] = pairs["pair"].map(
-        similarities.set_index("pair")["PCC_corrected"]
+    pairs = pairs.drop(columns=["aa_seq_a", "aa_seq_b", "is_paralog_pair"])
+    iso_pairs = []
+    for tf_gene in isoforms["gene"].unique():
+        tf_iso = isoforms.loc[isoforms["gene"] == tf_gene, "clone_acc"].values
+        for iso_a, iso_b in combinations(tf_iso, 2):
+            iso_pairs.append((tf_gene, tf_gene, iso_a, iso_b))
+    iso_pairs = pd.DataFrame(
+        data=iso_pairs, columns=["tf_gene_a", "tf_gene_b", "clone_acc_a", "clone_acc_b"]
     )
+    iso_pairs["category"] = "isoforms"
+    if restrict_isoforms_to_those_with_paralogs:
+        iso_pairs = iso_pairs.loc[
+            iso_pairs["tf_gene_a"].isin(pairs["tf_gene_a"])
+            | iso_pairs["tf_gene_a"].isin(pairs["tf_gene_b"]),
+            :,
+        ]
+    pairs = pd.concat([pairs, iso_pairs])
+    pairs["pair"] = pairs.apply(
+        lambda x: "_".join(sorted([x["clone_acc_a"], x["clone_acc_b"]])), axis=1
+    )
+    return _pairs_comparison_table(pairs, y2h, y1h, m1h)
 
 
 def tissue_expression_similarity_per_gene():
