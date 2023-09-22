@@ -390,9 +390,9 @@ plt.savefig("../figures/isoform-categories_gencode_UpSet-plot.pdf", bbox_inches=
 # In[2]:
 
 
-from data_loading import load_annotated_6k_collection
+from data_loading import load_annotated_TFiso1_collection
 
-tfs_cloned = load_annotated_6k_collection()
+tfs_cloned = load_annotated_TFiso1_collection()
 
 
 # In[14]:

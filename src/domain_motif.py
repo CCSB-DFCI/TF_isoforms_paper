@@ -20,7 +20,7 @@ import seaborn as sns
 from data_loading import (
     load_isoform_and_paralog_y2h_data,
     load_valid_isoform_clones,
-    load_annotated_6k_collection,
+    load_annotated_TFiso1_collection,
     load_human_tf_db,
     load_tf_families,
     load_pfam_domains_horfeome,
@@ -68,7 +68,7 @@ def load_cofactors():
 # In[4]:
 
 
-tfs = load_annotated_6k_collection()
+tfs = load_annotated_TFiso1_collection()
 ppi = load_isoform_and_paralog_y2h_data()
 ppi = ppi.loc[ppi["category"] == "tf_isoform_ppis", :]
 ppi["gene_level_pair"] = ppi["ad_gene_symbol"] + "_" + ppi["db_gene_symbol"]

@@ -122,7 +122,7 @@ def _load_pfam_domains(fpath, cutoff_seq=0.01, cutoff_dom=0.01):
     return pfam
 
 
-def load_pfam_domains_6k():
+def load_pfam_domains_TFiso1():
     filtered_pfam_path = CACHE_DIR / "pfam_6K.tsv"
     if filtered_pfam_path.exists():
         return pd.read_csv(filtered_pfam_path, sep="\t")

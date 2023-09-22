@@ -1,4 +1,3 @@
-
 # coding: utf-8
 
 # In[1]:
@@ -17,8 +16,12 @@ import sys
 sys.path.append("../../..")
 from data_loading import *
 from isoform_pairwise_metrics import *
-from plotting import y1h_pdi_per_tf_gene_plot, m1h_activation_per_tf_gene_plot, COLOR_PURPLE
-from data_loading import load_annotated_6k_collection, load_y1h_pdi_data
+from plotting import (
+    y1h_pdi_per_tf_gene_plot,
+    m1h_activation_per_tf_gene_plot,
+    COLOR_PURPLE,
+)
+from data_loading import load_annotated_TFiso1_collection, load_y1h_pdi_data
 
 
 # ## functions
@@ -27,14 +30,13 @@ from data_loading import load_annotated_6k_collection, load_y1h_pdi_data
 
 
 def vals_per_bait(row, kfit_vs, colname, alt_suffix, ascending):
-    
     kmers = []
     seq = row.seq
     seq_len = row.seq_len
-    for i in range(0, seq_len-8):
-        kmer = seq[i:i+8]
+    for i in range(0, seq_len - 8):
+        kmer = seq[i : i + 8]
         kmers.append(kmer)
-        
+
     sub = kfit_vs[kfit_vs["seq"].isin(kmers)]
     sub["abs"] = np.abs(sub[colname])
     sub = sub.sort_values(by="abs", ascending=ascending)
@@ -42,7 +44,7 @@ def vals_per_bait(row, kfit_vs, colname, alt_suffix, ascending):
     largest_val = sub[colname].iloc[0]
     xval = sub["affinityEstimate_ref"].iloc[0]
     yval = sub["affinityEstimate_%s" % alt_suffix].iloc[0]
-    
+
     rgb = sub["%s_rgb" % colname].iloc[0]
     return "%s_%s_%s_%s_%s" % (largest_kmer, largest_val, xval, yval, rgb)
 
@@ -62,13 +64,25 @@ def get_rgb(row, colname, m):
 from matplotlib import pyplot as plt
 from matplotlib import patches
 
-PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
-                "rc": {"font.size":10,"axes.titlesize":10,
-                       "axes.labelsize":10, 'axes.linewidth':0.5,
-                       "legend.fontsize":10, "xtick.labelsize":10,
-                       "ytick.labelsize":10, "xtick.major.size": 3.0,
-                       "ytick.major.size": 3.0, "axes.edgecolor": "black",
-                       "xtick.major.pad": 3.0, "ytick.major.pad": 3.0}}
+PAPER_PRESET = {
+    "style": "ticks",
+    "font": "Helvetica",
+    "context": "paper",
+    "rc": {
+        "font.size": 10,
+        "axes.titlesize": 10,
+        "axes.labelsize": 10,
+        "axes.linewidth": 0.5,
+        "legend.fontsize": 10,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "xtick.major.size": 3.0,
+        "ytick.major.size": 3.0,
+        "axes.edgecolor": "black",
+        "xtick.major.pad": 3.0,
+        "ytick.major.pad": 3.0,
+    },
+}
 PAPER_FONTSIZE = 10
 
 sns.set(**PAPER_PRESET)
@@ -80,7 +94,7 @@ fontsize = PAPER_FONTSIZE
 # In[5]:
 
 
-tfs = load_annotated_6k_collection()
+tfs = load_annotated_TFiso1_collection()
 
 
 # In[6]:
@@ -98,7 +112,7 @@ seqs = []
 for record in SeqIO.parse(y1h_baits_f, "fasta"):
     ids.append(record.description)
     seqs.append(str(record.seq))
-    
+
 dna = pd.DataFrame()
 dna["id"] = ids
 dna["seq"] = seqs
@@ -150,7 +164,9 @@ da_2 = da_dat[da_dat["cname"] == "TBX5B05"]
 
 
 kfit_vs = kfit_vs.merge(da_2[["seq", "contrastQ", "contrastQ_cut"]], on="seq")
-kfit_vs = kfit_vs.merge(da_3[["seq", "contrastQ", "contrastQ_cut"]], on="seq", suffixes=("_iso2", "_iso3"))
+kfit_vs = kfit_vs.merge(
+    da_3[["seq", "contrastQ", "contrastQ_cut"]], on="seq", suffixes=("_iso2", "_iso3")
+)
 
 
 # In[14]:
@@ -171,6 +187,7 @@ def define_other_kmers(row):
     else:
         return "other k-mer"
 
+
 kfit_vs["contains_any_motif"] = kfit_vs.apply(define_other_kmers, axis=1)
 kfit_vs.contains_any_motif.value_counts()
 
@@ -190,38 +207,70 @@ markers = [",", ".", "o"]
 titles = ["TBX5-2", "TBX5-3"]
 
 for i, suffix in enumerate(["iso2", "iso3"]):
-    
     ax = axarr[i]
 
     for k, motif in enumerate(["other k-mer", "* TBX5 k-mer", "* ACGTGT k-mer"]):
-        for j, qval in enumerate(["(0.1,1]", "(0.01,0.1]", "(0.001,0.01]", "[0,0.001]"]):
-            
-            sub = kfit_vs[(kfit_vs["contrastQ_cut_%s" % suffix] == qval) & 
-                          (kfit_vs["contains_any_motif"] == motif)]
+        for j, qval in enumerate(
+            ["(0.1,1]", "(0.01,0.1]", "(0.001,0.01]", "[0,0.001]"]
+        ):
+            sub = kfit_vs[
+                (kfit_vs["contrastQ_cut_%s" % suffix] == qval)
+                & (kfit_vs["contains_any_motif"] == motif)
+            ]
             xs = sub["affinityEstimate_ref"]
             ys = sub["affinityEstimate_%s" % suffix]
-            
+
             color = sns.color_palette("Spectral_r", n_colors=4)[j]
             marker = markers[k]
-            
+
             if marker == "o":
-                ax.scatter(xs, ys, 15, marker=marker, edgecolors="black", facecolors=color, alpha=1, linewidth=0.5)
+                ax.scatter(
+                    xs,
+                    ys,
+                    15,
+                    marker=marker,
+                    edgecolors="black",
+                    facecolors=color,
+                    alpha=1,
+                    linewidth=0.5,
+                )
             elif marker == ",":
-                ax.scatter(xs, ys, 1, marker=".", edgecolors=color, facecolors='none', alpha=0.5)
+                ax.scatter(
+                    xs,
+                    ys,
+                    1,
+                    marker=".",
+                    edgecolors=color,
+                    facecolors="none",
+                    alpha=0.5,
+                )
             else:
-                ax.scatter(xs, ys, 30, marker=marker, edgecolors=color, facecolors='white', alpha=1)
-                
-    
+                ax.scatter(
+                    xs,
+                    ys,
+                    30,
+                    marker=marker,
+                    edgecolors=color,
+                    facecolors="white",
+                    alpha=1,
+                )
+
     ax.set_xlim((9.2, 13))
     ax.set_ylim((9.2, 13))
-    ax.plot([9.2, 13], [9.2, 13], color="black", linestyle="dashed", linewidth=1, zorder=1)
+    ax.plot(
+        [9.2, 13], [9.2, 13], color="black", linestyle="dashed", linewidth=1, zorder=1
+    )
     ax.set_xticks([10, 11, 12, 13])
     ax.set_yticks([10, 11, 12, 13])
     ax.set_xlabel("reference PBM affinity")
     ax.set_title(titles[i])
-    
+
 axarr[0].set_ylabel("alternative PBM affinity")
-fig.savefig("../../../../figures/TBX5_isoforms_pbm_scatter.pdf", dpi="figure", bbox_inches="tight")
+fig.savefig(
+    "../../../../figures/TBX5_isoforms_pbm_scatter.pdf",
+    dpi="figure",
+    bbox_inches="tight",
+)
 
 
 # In[18]:
@@ -251,8 +300,10 @@ kfit_vs[["contrastDifference_iso2", "contrastDifference_iso3"]].min().min()
 cmap_name = "Spectral"
 
 cmap = cm.get_cmap(cmap_name)
-norm = mpl.colors.Normalize(vmin=kfit_vs[["contrastDifference_iso2", "contrastDifference_iso3"]].min().min(), 
-                            vmax=kfit_vs[["contrastDifference_iso2", "contrastDifference_iso3"]].max().max())
+norm = mpl.colors.Normalize(
+    vmin=kfit_vs[["contrastDifference_iso2", "contrastDifference_iso3"]].min().min(),
+    vmax=kfit_vs[["contrastDifference_iso2", "contrastDifference_iso3"]].max().max(),
+)
 m = cm.ScalarMappable(norm=norm, cmap=cmap)
 
 colname = "contrastDifference_iso2"
@@ -265,7 +316,7 @@ kfit_vs["%s_rgb" % colname] = kfit_vs.apply(get_rgb, colname=colname, m=m, axis=
 # In[21]:
 
 
-tbx5_y1h = (y1h.loc[y1h["tf"] == "TBX5", y1h.columns[1:]].copy().set_index("unique_acc"))
+tbx5_y1h = y1h.loc[y1h["tf"] == "TBX5", y1h.columns[1:]].copy().set_index("unique_acc")
 tbx5_y1h = tbx5_y1h.loc[:, tbx5_y1h.any(axis=0)]
 
 
@@ -279,28 +330,58 @@ tbx5_baits = dna[dna["id_upper"].isin(tbx5_baits)]
 # In[23]:
 
 
-tbx5_baits["tmp_iso2"] = tbx5_baits.apply(vals_per_bait, axis=1, 
-                                       kfit_vs=kfit_vs, colname="contrastDifference_iso2", alt_suffix="iso2",
-                                       ascending=False)
-tbx5_baits["val_kmer_iso2"] = tbx5_baits["tmp_iso2"].str.split("_", expand=True)[0].astype(str)
-tbx5_baits["val_diff_iso2"] = tbx5_baits["tmp_iso2"].str.split("_", expand=True)[1].astype(float)
-tbx5_baits["xval_iso2"] = tbx5_baits["tmp_iso2"].str.split("_", expand=True)[2].astype(float)
-tbx5_baits["yval_iso2"] = tbx5_baits["tmp_iso2"].str.split("_", expand=True)[3].astype(float)
-tbx5_baits["rgb_iso2"] = tbx5_baits["tmp_iso2"].str.split("_", expand=True)[4].astype(str)
+tbx5_baits["tmp_iso2"] = tbx5_baits.apply(
+    vals_per_bait,
+    axis=1,
+    kfit_vs=kfit_vs,
+    colname="contrastDifference_iso2",
+    alt_suffix="iso2",
+    ascending=False,
+)
+tbx5_baits["val_kmer_iso2"] = (
+    tbx5_baits["tmp_iso2"].str.split("_", expand=True)[0].astype(str)
+)
+tbx5_baits["val_diff_iso2"] = (
+    tbx5_baits["tmp_iso2"].str.split("_", expand=True)[1].astype(float)
+)
+tbx5_baits["xval_iso2"] = (
+    tbx5_baits["tmp_iso2"].str.split("_", expand=True)[2].astype(float)
+)
+tbx5_baits["yval_iso2"] = (
+    tbx5_baits["tmp_iso2"].str.split("_", expand=True)[3].astype(float)
+)
+tbx5_baits["rgb_iso2"] = (
+    tbx5_baits["tmp_iso2"].str.split("_", expand=True)[4].astype(str)
+)
 tbx5_baits["rgb_iso2"] = tbx5_baits["rgb_iso2"].apply(literal_eval)
 
 
 # In[24]:
 
 
-tbx5_baits["tmp_iso3"] = tbx5_baits.apply(vals_per_bait, axis=1, 
-                                       kfit_vs=kfit_vs, colname="contrastDifference_iso3", alt_suffix="iso3",
-                                       ascending=False)
-tbx5_baits["val_kmer_iso3"] = tbx5_baits["tmp_iso3"].str.split("_", expand=True)[0].astype(str)
-tbx5_baits["val_diff_iso3"] = tbx5_baits["tmp_iso3"].str.split("_", expand=True)[1].astype(float)
-tbx5_baits["xval_iso3"] = tbx5_baits["tmp_iso3"].str.split("_", expand=True)[2].astype(float)
-tbx5_baits["yval_iso3"] = tbx5_baits["tmp_iso3"].str.split("_", expand=True)[3].astype(float)
-tbx5_baits["rgb_iso3"] = tbx5_baits["tmp_iso3"].str.split("_", expand=True)[4].astype(str)
+tbx5_baits["tmp_iso3"] = tbx5_baits.apply(
+    vals_per_bait,
+    axis=1,
+    kfit_vs=kfit_vs,
+    colname="contrastDifference_iso3",
+    alt_suffix="iso3",
+    ascending=False,
+)
+tbx5_baits["val_kmer_iso3"] = (
+    tbx5_baits["tmp_iso3"].str.split("_", expand=True)[0].astype(str)
+)
+tbx5_baits["val_diff_iso3"] = (
+    tbx5_baits["tmp_iso3"].str.split("_", expand=True)[1].astype(float)
+)
+tbx5_baits["xval_iso3"] = (
+    tbx5_baits["tmp_iso3"].str.split("_", expand=True)[2].astype(float)
+)
+tbx5_baits["yval_iso3"] = (
+    tbx5_baits["tmp_iso3"].str.split("_", expand=True)[3].astype(float)
+)
+tbx5_baits["rgb_iso3"] = (
+    tbx5_baits["tmp_iso3"].str.split("_", expand=True)[4].astype(str)
+)
 tbx5_baits["rgb_iso3"] = tbx5_baits["rgb_iso3"].apply(literal_eval)
 
 
@@ -316,7 +397,9 @@ colors = colors.loc[["TBX5-1", "TBX5-2", "TBX5-3"]]
 # In[26]:
 
 
-annot = tbx5_baits[["id_upper", "val_diff_iso2", "val_diff_iso3"]].set_index("id_upper").T
+annot = (
+    tbx5_baits[["id_upper", "val_diff_iso2", "val_diff_iso3"]].set_index("id_upper").T
+)
 annot.index = ["TBX5-2", "TBX5-3"]
 annot.loc["TBX5-1"] = ["NA"] * len(tbx5_baits)
 annot = annot.loc[["TBX5-1", "TBX5-2", "TBX5-3"]]
@@ -326,15 +409,27 @@ annot = annot.loc[["TBX5-1", "TBX5-2", "TBX5-3"]]
 
 
 fig, ax = plt.subplots(1, 1, figsize=(4, 2))
-y1h_pdi_per_tf_gene_plot("TBX5", data=y1h, ax=ax, 
-                         iso_order=["TBX5-1", "TBX5-2", "TBX5-3"], bait_colors=colors)
+y1h_pdi_per_tf_gene_plot(
+    "TBX5",
+    data=y1h,
+    ax=ax,
+    iso_order=["TBX5-1", "TBX5-2", "TBX5-3"],
+    bait_colors=colors,
+)
 
-plt.colorbar(m, ax=ax, orientation="horizontal", shrink=0.75, label="largest ∆ PBM affinity across 8-mers in bait")
-plt.savefig('../../../../figures/TBX5_y1h_with_pbm.pdf', bbox_inches='tight', dpi="figure")
+plt.colorbar(
+    m,
+    ax=ax,
+    orientation="horizontal",
+    shrink=0.75,
+    label="largest ∆ PBM affinity across 8-mers in bait",
+)
+plt.savefig(
+    "../../../../figures/TBX5_y1h_with_pbm.pdf", bbox_inches="tight", dpi="figure"
+)
 
 
 # In[35]:
 
 
 sns.color_palette("Spectral_r", n_colors=4)
-

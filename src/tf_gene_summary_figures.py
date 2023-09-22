@@ -18,7 +18,7 @@ from data_loading import (
     load_y1h_pdi_data,
     load_m1h_activation_data,
     load_valid_isoform_clones,
-    load_annotated_6k_collection,
+    load_annotated_TFiso1_collection,
 )
 from plotting import (
     y2h_ppi_per_tf_gene_plot,
@@ -42,7 +42,7 @@ y2h = y2h.loc[y2h["ad_clone_acc"].isin(isoforms["clone_acc"]).values, :]
 y1h = y1h.loc[y1h["unique_acc"].isin(isoforms["clone_acc"]).values, :]
 m1h = m1h.loc[m1h["clone_acc"].isin(isoforms["clone_acc"].values), :]
 
-tfs = load_annotated_6k_collection()
+tfs = load_annotated_TFiso1_collection()
 
 
 # In[12]:

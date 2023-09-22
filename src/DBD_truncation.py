@@ -21,7 +21,7 @@ from plotting import (
     m1h_activation_per_tf_gene_plot,
     COLOR_PURPLE,
 )
-from data_loading import load_annotated_6k_collection, load_y1h_pdi_data
+from data_loading import load_annotated_TFiso1_collection, load_y1h_pdi_data
 
 
 # In[2]:
@@ -30,7 +30,7 @@ from data_loading import load_annotated_6k_collection, load_y1h_pdi_data
 disorder = pd.read_csv(
     "../data/processed/TFiso1_disorder-and-ss_from-alphafold.tsv", sep="\t"
 )
-tfs = load_annotated_6k_collection()
+tfs = load_annotated_TFiso1_collection()
 
 # TODO: fix missing data
 clones_with_disorder_data = set(disorder["clone_name"].unique())
@@ -189,7 +189,7 @@ n_pdi = y1h.drop(columns="tf").set_index("unique_acc").sum(axis=1)
 # In[5]:
 
 
-tfs = load_annotated_6k_collection()
+tfs = load_annotated_TFiso1_collection()
 
 df = pd.concat(
     [g.aa_feature_disruption(g.cloned_reference_isoform.name) for g in tfs.values()]

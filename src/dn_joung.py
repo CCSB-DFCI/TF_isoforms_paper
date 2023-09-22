@@ -41,7 +41,7 @@ mpl.rcParams["figure.autolayout"] = False
 
 
 from data_loading import (
-    load_annotated_6k_collection,
+    load_annotated_TFiso1_collection,
     load_valid_isoform_clones,
     load_developmental_tissue_expression_gencode,
 )
@@ -418,7 +418,7 @@ print(len(joung_down_map))
 # In[15]:
 
 
-tfs = load_annotated_6k_collection()
+tfs = load_annotated_TFiso1_collection()
 
 
 # In[16]:

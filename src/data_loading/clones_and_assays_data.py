@@ -15,7 +15,7 @@ def load_valid_isoform_clones():
 
     TODO: this is including PCGF6 which has an insertion relative
     to the reference geneome, so that it's not consistent with the
-    load_annotated_6k set. Check the PCGF6 sequences and probably
+    load_annotated_TFiso1 set. Check the PCGF6 sequences and probably
     remove from here.
 
     """

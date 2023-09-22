@@ -18,7 +18,7 @@ from .utils import cache_with_pickle, DATA_DIR, CACHE_DIR
 from .TF_data import load_human_tf_db, load_tf_families
 from .clones_and_assays_data import load_valid_isoform_clones
 from .sequence_features import (
-    load_pfam_domains_6k,
+    load_pfam_domains_TFiso1,
     load_pfam_domains_gencode,
     load_pfam_clans,
 )
@@ -203,9 +203,9 @@ def load_annotated_gencode_tfs(
 
 
 @cache_with_pickle
-def load_annotated_6k_collection(
-    path_6k_gtf=DATA_DIR / "internal/c_6k_unique_acc_aligns.gtf",
-    path_6k_fa=DATA_DIR / "internal/j2_6k_unique_isoacc_and_nt_seqs.fa",
+def load_annotated_TFiso1_collection(
+    path_TFiso1_gtf=DATA_DIR / "internal/c_6k_unique_acc_aligns.gtf",
+    path_TFiso1_fa=DATA_DIR / "internal/j2_6k_unique_isoacc_and_nt_seqs.fa",
     path_gencode_aa_seq=DATA_DIR / "external/gencode.v30.pc_translations.fa",
     path_MANE_select=DATA_DIR / "external/MANE.GRCh38.v0.95.summary.txt",
     path_APPRIS=DATA_DIR
@@ -216,9 +216,9 @@ def load_annotated_6k_collection(
     import pyranges
 
     # note that pyranges switches the indexing to python 0-indexed, half-open interval
-    algn = pyranges.read_gtf(path_6k_gtf).df
+    algn = pyranges.read_gtf(path_TFiso1_gtf).df
     algn = algn.loc[algn["Start"] < algn["End"], :]  # filter out problematic rows
-    nt_seq = {r.name: r for r in SeqIO.parse(path_6k_fa, format="fasta")}
+    nt_seq = {r.name: r for r in SeqIO.parse(path_TFiso1_fa, format="fasta")}
     clones = load_valid_isoform_clones()
     algn = algn.loc[algn["transcript_id"].isin(clones["clone_acc"].unique()), :]
     nt_seq = {k: v for k, v in nt_seq.items() if k in clones["clone_acc"].unique()}
@@ -242,7 +242,7 @@ def load_annotated_6k_collection(
         orf_ids = algn.loc[algn["gene_id"] == gene_name, "transcript_id"].unique()
         missing = [orf for orf in orf_ids if orf not in nt_seq]
         if missing:
-            raise ValueError(", ".join(missing) + " not in " + path_6k_fa)
+            raise ValueError(", ".join(missing) + " not in " + path_TFiso1_fa)
         extra = [
             orf
             for orf in nt_seq.keys()
@@ -281,7 +281,7 @@ def load_annotated_6k_collection(
             uniprot_ac=ensembl_to_uniprot.get(hgnc_to_ensembl[gene_name], None),
         )
         genes[gene_name].tf_family = tf_family[gene_name]
-    _add_Pfam_domains_6k(genes)
+    _add_Pfam_domains_TFiso1(genes)
     _make_c2h2_zf_arrays(genes)
     _add_dbd_flanks(genes)
 
@@ -322,8 +322,8 @@ def load_annotated_6k_collection(
     return genes
 
 
-def _add_Pfam_domains_6k(genes):
-    pfam = load_pfam_domains_6k()
+def _add_Pfam_domains_TFiso1(genes):
+    pfam = load_pfam_domains_TFiso1()
     pfam["gene_name"] = pfam["query name"].apply(lambda x: x.split("|")[0])
     for _i, row in pfam.iterrows():
         gene_name = row["gene_name"]

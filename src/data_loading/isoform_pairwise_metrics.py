@@ -7,7 +7,7 @@ import pandas as pd
 from data_loading import (
     load_seq_comparison_data,
     load_dbd_accessions,
-    load_annotated_6k_collection,
+    load_annotated_TFiso1_collection,
     load_y2h_isoform_data,
     load_y1h_pdi_data,
     load_m1h_activation_data,
@@ -108,7 +108,7 @@ def _pairs_of_ref_vs_alt_isoforms_comparison_table(tfs):
 
 
 def _write_TF_iso_ref_vs_alt_table(outpath):
-    tfs = load_annotated_6k_collection()
+    tfs = load_annotated_TFiso1_collection()
     df = _pairs_of_ref_vs_alt_isoforms_comparison_table(tfs)
     m1h = load_m1h_activation_data()
     m1h["mean"] = m1h[["M1H_rep1", "M1H_rep2", "M1H_rep3"]].mean(axis=1)
