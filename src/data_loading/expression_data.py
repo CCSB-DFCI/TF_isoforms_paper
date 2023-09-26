@@ -98,8 +98,8 @@ def load_gtex_remapped():
         lambda x: "ZNF223" if x == "AC092072.1" else x
     )  # HACK for renamed gene
     clones = load_valid_isoform_clones()
-    df = df.loc[genes.isin(clones["gene"].unique()), :]
-    if genes[df.index].nunique() != clones["gene"].nunique():
+    df = df.loc[genes.isin(clones["gene_symbol"].unique()), :]
+    if genes[df.index].nunique() != clones["gene_symbol"].nunique():
         raise UserWarning("Unexpected missing genes")
     df = df.loc[genes != "PCGF6", :]
     tfs = load_annotated_TFiso1_collection()
@@ -212,8 +212,8 @@ def load_developmental_tissue_expression_remapped():
         lambda x: "ZNF223" if x == "AC092072.1" else x
     )  # HACK for renamed gene
     clones = load_valid_isoform_clones()
-    df = df.loc[genes.isin(clones["gene"].unique()), :]
-    if genes[df.index].nunique() != clones["gene"].nunique():
+    df = df.loc[genes.isin(clones["gene_symbol"].unique()), :]
+    if genes[df.index].nunique() != clones["gene_symbol"].nunique():
         raise UserWarning("Unexpected missing genes")
     df = df.loc[genes != "PCGF6", :]
     tfs = load_annotated_TFiso1_collection()

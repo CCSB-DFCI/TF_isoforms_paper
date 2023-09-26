@@ -556,6 +556,21 @@ def load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment():
     return df
 
 
+def load_PDI_luciferase_validation_experiment():
+    df = pd.read_excel(
+        DATA_DIR / "internal/2019-08-28 Luciferase results.xlsx",
+        sheet_name="Use for analyses",
+    )
+    df = df.rename(columns={"TF_Name": "gene_symbol", "unique_acc": "clone_acc"})
+    df = df.iloc[:, 0:15]
+    df["Y1H_positive"] = df["Interaction?"].map({"yes": True, "no": False})
+    if df.isnull().any().any():
+        raise UserWarning("Unexpected missing values")
+    if df.duplicated(subset=["Bait", "clone_acc"]).any():
+        raise UserWarning("unexpected duplicates")
+    return df
+
+
 def load_m1h_activation_data(add_missing_data=False):
     """ """
     df = pd.read_csv(DATA_DIR / "internal/a_m1h_final_table.tsv", sep="\t")
