@@ -327,9 +327,9 @@ def y1h_pdi_per_tf_gene_plot(
     bait_annot=None,
 ):
     tf = (
-        data.loc[data["tf"] == gene_name, data.columns[1:]]
+        data.loc[data["gene_symbol"] == gene_name, data.columns[1:]]
         .copy()
-        .set_index("unique_acc")
+        .set_index("clone_acc")
     )
     tf.index = tf.index.map(isoform_display_name)
     tf = tf.loc[:, tf.any(axis=0)]

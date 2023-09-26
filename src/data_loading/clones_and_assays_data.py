@@ -25,6 +25,7 @@ def load_valid_isoform_clones():
     df["clone_name"] = df["clone_acc"].map(
         lambda x: x.split("|")[0] + "-" + x.split("|")[1].split("/")[0]
     )
+    df = df.rename(columns={"gene": "gene_symbol"})
     return df
 
 
@@ -51,7 +52,7 @@ def define_valid_isoform_clones():
     y1h = load_y1h_pdi_data(include_pY1H_data=False)
     m1h = load_m1h_activation_data()
     df["in_m1h"] = df["clone_acc"].isin(m1h["clone_acc"])
-    df["in_y1h"] = df["clone_acc"].isin(y1h["unique_acc"])
+    df["in_y1h"] = df["clone_acc"].isin(y1h["clone_acc"])
     df["in_y2h"] = df["clone_name"].isin(
         y2h.loc[
             (y2h["category"] == "tf_isoform_ppis")
@@ -82,7 +83,7 @@ def define_valid_isoform_clones():
         DATA_DIR / "internal/c_conso_annot_table_man_annot.tsv", sep="\t"
     )
     df["is_novel_isoform"] = df["clone_acc"].map(
-        iso_annot.set_index("unique_acc")["gc_match"] == 0
+        iso_annot.set_index("clone_acc")["gc_match"] == 0
     )
     exclude_both_strands_genes = ["FOXD4L3", "NANOG"]
     df = df.loc[~df["gene"].isin(exclude_both_strands_genes), :]
@@ -200,7 +201,7 @@ def load_y2h_paralogs_additional_data():
     ].copy()
     pair_map = defaultdict(set)
     for _i, row in pairs.iterrows():
-        a, b = row["tf_gene_a"], row["tf_gene_b"]
+        a, b = row["gene_symbol_a"], row["gene_symbol_b"]
         pair_map[a].add(b)
         pair_map[b].add(a)
 
@@ -332,8 +333,8 @@ def load_paralog_pairs(filter_for_valid_clones=True):
         .loc[:, ["tf1", "tf2", "is_paralog_pair", "AAseq_identity%"]]
         .rename(
             columns={
-                "tf1": "tf_gene_a",
-                "tf2": "tf_gene_b",
+                "tf1": "gene_symbol_a",
+                "tf2": "gene_symbol_b",
                 "AAseq_identity%": "pct_aa_seq_identity",
             }
         )
@@ -342,11 +343,11 @@ def load_paralog_pairs(filter_for_valid_clones=True):
     if filter_for_valid_clones:
         valid_clones = load_valid_isoform_clones()
         df = df.loc[
-            df["tf_gene_a"].isin(valid_clones["gene"])
-            & df["tf_gene_b"].isin(valid_clones["gene"]),
+            df["gene_symbol_a"].isin(valid_clones["gene_symbol"])
+            & df["gene_symbol_b"].isin(valid_clones["gene_symbol"]),
             :,
         ]
-    if (df["tf_gene_a"] == df["tf_gene_b"]).any():
+    if (df["gene_symbol_a"] == df["gene_symbol_b"]).any():
         raise ValueError("Same gene twice, should be two different genes")
     return df
 
@@ -383,6 +384,7 @@ def load_ppi_partner_categories():
     df.loc[cf_rows, "cofactor_type"] = df.loc[cf_rows, "partner"].map(cofac_type)
     if not (df["partner"] == df["partner"].str.strip()).all():
         raise UserWarning("Possibly something wrong with gene names column")
+    df = df.rename(columns={"partner": "gene_symbol_partner"})
     return df
 
 
@@ -430,18 +432,19 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
     if clones["clone_name"].duplicated().any():
         raise UserWarning("unexpected duplicates")
     clone_acc = clones.set_index("clone_name")["clone_acc"]
-    gene_symbol = clones.set_index("clone_name")["gene"]
-    df["tf"] = df["isoform ID"].map(gene_symbol)
-    df["unique_acc"] = df["isoform ID"].map(clone_acc)
+    gene_symbol = clones.set_index("clone_name")["gene_symbol"]
+    df["gene_symbol"] = df["isoform ID"].map(gene_symbol)
+    df["clone_acc"] = df["isoform ID"].map(clone_acc)
     df = df.drop(columns=["isoform ID"])
     df = df.loc[:, list(df.columns[-2:]) + list(df.columns[:-2])]
 
     # HACK adding data that is missing from excel file
-    df.loc[df["tf"] == "TCF4", "HS1597"] = True
+    df.loc[df["gene_symbol"] == "TCF4", "HS1597"] = True
 
     df[df.columns[2:]] = df[df.columns[2:]].astype("boolean")
     zeros = pd.read_csv(DATA_DIR / "internal/a2_juan_isoforms_wo_pdi.tsv", sep="\t")
-    zeros = zeros.loc[~zeros["unique_acc"].isin(df["unique_acc"].values), :]
+    zeros = zeros.rename(columns={"tf": "gene_symbol", "clone_acc": "clone_acc"})
+    zeros = zeros.loc[~zeros["clone_acc"].isin(df["clone_acc"].values), :]
     zeros = pd.concat(
         [zeros, pd.DataFrame(data=False, index=zeros.index, columns=df.columns[2:])],
         axis=1,
@@ -453,22 +456,20 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
         isoforms = load_valid_isoform_clones()
         df = pd.merge(
             df,
-            isoforms.loc[:, ["gene", "clone_acc"]].rename(
-                columns={"gene": "tf", "clone_acc": "unique_acc"}
-            ),
-            on=["tf", "unique_acc"],
+            isoforms.loc[:, ["gene_symbol", "clone_acc"]],
+            on=["gene_symbol", "clone_acc"],
             how="outer",
         )
     df[df.columns[2:]] = df[df.columns[2:]].astype("boolean")
     if include_pY1H_data:
         pY1H = load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment()
-        df = pd.merge(df, pY1H, on=["tf", "unique_acc"], how="outer")
-    df = df.sort_values(["tf", "unique_acc"])
-    if df["unique_acc"].isnull().any():
+        df = pd.merge(df, pY1H, on=["gene_symbol", "clone_acc"], how="outer")
+    df = df.sort_values(["gene_symbol", "clone_acc"])
+    if df["clone_acc"].isnull().any():
         raise UserWarning("unexpected missing values")
     # HACK GATA2|3/4|12A02 & GATA2|4/4|11A12 have duplicate rows with no hits
     df = df.drop_duplicates()
-    if df["unique_acc"].duplicated().any():
+    if df["clone_acc"].duplicated().any():
         raise UserWarning("unexpected duplicates")
     return df
 
@@ -503,6 +504,7 @@ def load_Y1H_DNA_bait_sequences():
 
     df["seq"] = df["Region amplified"].apply(get_dna_sequence_from_coords)
     baits = {**baits, **df.set_index("Mutation ID")["seq"].to_dict()}
+    baits = {k.upper(): v for k, v in baits.items()}
     with open(cache_path, "w") as f:
         SeqIO.write(
             (SeqRecord(id=k, description="", seq=Seq(v)) for k, v in baits.items()),
@@ -539,28 +541,30 @@ def load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment():
     if (df.groupby("bait gene")["bait #"].nunique() != 1).any():
         raise UserWarning("unexpected multiple baits per gene")
     df["isoform"] = df["isoform"].map(lambda x: {"MAX": "MAX-1"}.get(x, x))
-    df["tf"] = df["isoform"].apply(lambda x: x.split("-")[0])
-    df["unique_acc"] = df["isoform"].map(clones)
+    df["gene_symbol"] = df["isoform"].apply(lambda x: x.split("-")[0])
+    df["clone_acc"] = df["isoform"].map(clones)
 
     # kaia had to change this line - py version issue?
-    # df = df.pivot(index=["tf", "unique_acc"], columns="bait gene", values="interaction")
-    df = df.set_index(["tf", "unique_acc"]).pivot(columns="bait gene")["interaction"]
+    # df = df.pivot(index=["gene_symbol", "clone_acc"], columns="bait gene", values="interaction")
+    df = df.set_index(["gene_symbol", "clone_acc"]).pivot(columns="bait gene")[
+        "interaction"
+    ]
 
     df = df.astype("boolean")
     df = df.reset_index()
-    df = df.loc[df["unique_acc"].notnull(), :]
+    df = df.loc[df["clone_acc"].notnull(), :]
     return df
 
 
 def load_m1h_activation_data(add_missing_data=False):
     """ """
     df = pd.read_csv(DATA_DIR / "internal/a_m1h_final_table.tsv", sep="\t")
-    df = df.rename(columns={"pos_acc": "clone_acc"})
+    df = df.rename(columns={"gene": "gene_symbol", "pos_acc": "clone_acc"})
     for column in df.columns:
         if column.startswith("M1H_rep"):
             df[column] = np.log2(df[column])
     if add_missing_data:
         isoforms = load_valid_isoform_clones()
-        df = pd.merge(df, isoforms, on=["gene", "clone_acc"], how="outer")
-    df = df.sort_values(["gene", "clone_acc"])
+        df = pd.merge(df, isoforms, on=["gene_symbol", "clone_acc"], how="outer")
+    df = df.sort_values(["gene_symbol", "clone_acc"])
     return df

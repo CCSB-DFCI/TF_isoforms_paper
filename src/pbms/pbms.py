@@ -121,7 +121,9 @@ kfit_vs.affinityEstimate_ref.max()
 
 
 creb1_y1h = (
-    y1h.loc[y1h["tf"] == "CREB1", y1h.columns[1:]].copy().set_index("unique_acc")
+    y1h.loc[y1h["gene_symbol"] == "CREB1", y1h.columns[1:]]
+    .copy()
+    .set_index("clone_acc")
 )
 creb1_y1h = creb1_y1h.loc[:, creb1_y1h.any(axis=0)]
 creb1_y1h
@@ -345,9 +347,9 @@ def y1h_pdi_per_tf_gene_plot(
     bait_annot=None,
 ):
     tf = (
-        data.loc[data["tf"] == gene_name, data.columns[1:]]
+        data.loc[data["gene_symbol"] == gene_name, data.columns[1:]]
         .copy()
-        .set_index("unique_acc")
+        .set_index("clone_acc")
     )
     tf.index = tf.index.map(isoform_display_name)
     tf = tf.loc[:, tf.any(axis=0)]
@@ -558,7 +560,9 @@ kfit_vs.sample(5)
 # In[35]:
 
 
-tbx5_y1h = y1h.loc[y1h["tf"] == "TBX5", y1h.columns[1:]].copy().set_index("unique_acc")
+tbx5_y1h = (
+    y1h.loc[y1h["gene_symbol"] == "TBX5", y1h.columns[1:]].copy().set_index("clone_acc")
+)
 tbx5_y1h = tbx5_y1h.loc[:, tbx5_y1h.any(axis=0)]
 tbx5_y1h
 

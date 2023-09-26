@@ -316,7 +316,9 @@ kfit_vs["%s_rgb" % colname] = kfit_vs.apply(get_rgb, colname=colname, m=m, axis=
 # In[21]:
 
 
-tbx5_y1h = y1h.loc[y1h["tf"] == "TBX5", y1h.columns[1:]].copy().set_index("unique_acc")
+tbx5_y1h = (
+    y1h.loc[y1h["gene_symbol"] == "TBX5", y1h.columns[1:]].copy().set_index("clone_acc")
+)
 tbx5_y1h = tbx5_y1h.loc[:, tbx5_y1h.any(axis=0)]
 
 

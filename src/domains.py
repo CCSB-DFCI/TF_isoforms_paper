@@ -361,7 +361,7 @@ Counter([d.name for d in single_exon_doms])
 get_ipython().run_cell_magic(
     "time",
     "",
-    "df_null = pd.concat([g.null_fraction_per_aa_feature(g.isoforms[0].name) for g in tfs.values()])\ndf = pd.merge(df, df_null, how='left', on=['gene', 'ref_iso', 'alt_iso', 'length'])",
+    "df_null = pd.concat([g.null_fraction_per_aa_feature(g.isoforms[0].name) for g in tfs.values()])\ndf = pd.merge(df, df_null, how='left', on=['gene_symbol', 'ref_iso', 'alt_iso', 'length'])",
 )
 
 

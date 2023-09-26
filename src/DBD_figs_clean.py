@@ -178,7 +178,7 @@ dist["is_DBD"] = dist["accession"].isin(load_dbd_accessions())
 
 y1h = load_y1h_pdi_data()
 y1h = y1h.drop_duplicates()  # TODO: why is this here?
-n_pdi = y1h.drop(columns="tf").set_index("unique_acc").sum(axis=1)
+n_pdi = y1h.drop(columns="gene_symbol").set_index("clone_acc").sum(axis=1)
 
 
 # In[5]:
@@ -245,7 +245,7 @@ df.loc[
 isoforms = load_valid_isoform_clones()
 y1h = load_y1h_pdi_data()
 y1h = y1h.drop_duplicates()  # TODO: why is this here?
-n_pdi = y1h.drop(columns="tf").set_index("unique_acc").sum(axis=1)
+n_pdi = y1h.drop(columns="gene_symbol").set_index("clone_acc").sum(axis=1)
 n_pdi.index = n_pdi.index.map(
     lambda x: x.split("|")[0] + "-" + x.split("|")[1].split("/")[0]
 )

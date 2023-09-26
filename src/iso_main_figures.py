@@ -67,7 +67,7 @@ y1h = load_y1h_pdi_data(add_missing_data=True)
 m1h = load_m1h_activation_data(add_missing_data=True)
 isoforms = load_valid_isoform_clones()
 y2h = y2h.loc[y2h["ad_clone_acc"].isin(isoforms["clone_acc"]).values, :]
-y1h = y1h.loc[y1h["unique_acc"].isin(isoforms["clone_acc"]).values, :]
+y1h = y1h.loc[y1h["clone_acc"].isin(isoforms["clone_acc"]).values, :]
 m1h = m1h.loc[m1h["clone_acc"].isin(isoforms["clone_acc"].values), :]
 
 tfs = load_annotated_TFiso1_collection()

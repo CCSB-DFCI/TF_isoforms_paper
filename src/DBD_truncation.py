@@ -183,7 +183,7 @@ dist["is_DBD"] = dist["accession"].isin(load_dbd_accessions())
 
 y1h = load_y1h_pdi_data()
 y1h = y1h.drop_duplicates()  # TODO: why is this here?
-n_pdi = y1h.drop(columns="tf").set_index("unique_acc").sum(axis=1)
+n_pdi = y1h.drop(columns="gene_symbol").set_index("clone_acc").sum(axis=1)
 
 
 # In[5]:
@@ -250,7 +250,7 @@ df.loc[
 isoforms = load_valid_isoform_clones()
 y1h = load_y1h_pdi_data()
 y1h = y1h.drop_duplicates()  # TODO: why is this here?
-n_pdi = y1h.drop(columns="tf").set_index("unique_acc").sum(axis=1)
+n_pdi = y1h.drop(columns="gene_symbol").set_index("clone_acc").sum(axis=1)
 n_pdi.index = n_pdi.index.map(
     lambda x: x.split("|")[0] + "-" + x.split("|")[1].split("/")[0]
 )
@@ -1131,7 +1131,7 @@ m1h.head()
 
 # TODO: move to per TF gene notebook
 for gene_name, tf in tfs.items():
-    if gene_name in y1h["tf"].values:
+    if gene_name in y1h["gene_symbol"].values:
         y1h_pdi_per_tf_gene_plot(gene_name, y1h)
         plt.savefig(
             "../figures/per_gene/y1h_profile/{}_y1h_profile.pdf".format(gene_name),
@@ -1223,7 +1223,12 @@ def baits_set(row):
     return set(row.columns[2:].values[row.iloc[0, 2:].fillna(False).values])
 
 
-df = y1h.groupby(["tf", "unique_acc"]).apply(baits_set).rename("baits").reset_index()
+df = (
+    y1h.groupby(["gene_symbol", "clone_acc"])
+    .apply(baits_set)
+    .rename("baits")
+    .reset_index()
+)
 
 
 def is_differential(gene):
@@ -1231,7 +1236,7 @@ def is_differential(gene):
     return len(set(non_zero)) >= 2
 
 
-df = df.loc[df["tf"].map(df.groupby("tf").apply(is_differential))]
+df = df.loc[df["gene_symbol"].map(df.groupby("gene_symbol").apply(is_differential))]
 df["baits"] = df["baits"].apply(lambda x: " ".join(x))
 df.to_csv("../output/Y1H_differential-subset.tsv", index=False, sep="\t")
 
@@ -1239,7 +1244,7 @@ df.to_csv("../output/Y1H_differential-subset.tsv", index=False, sep="\t")
 # In[77]:
 
 
-df["tf"].unique()
+df["gene_symbol"].unique()
 
 
 # In[78]:

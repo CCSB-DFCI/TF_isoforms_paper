@@ -60,9 +60,9 @@ iso["valid_ppi_test"] = iso["clone_acc"].map(
 iso["at_least_one_ppi"] = iso["clone_acc"].map(
     ppi.groupby("ad_clone_acc").apply(lambda rows: (rows["Y2H_result"] == True).any())
 )
-pdi = pdi.drop_duplicates("unique_acc")
+pdi = pdi.drop_duplicates("clone_acc")
 iso["at_least_one_pdi"] = iso["clone_acc"].map(
-    pdi.drop(columns=["tf"]).set_index("unique_acc").sum(axis=1) > 0
+    pdi.drop(columns=["gene_symbol"]).set_index("clone_acc").sum(axis=1) > 0
 )
 iso["at_least_two_fold_activation"] = iso["clone_acc"].map(
     m1h.drop(columns=["gene"]).set_index("clone_acc").mean(axis=1).abs() > 1

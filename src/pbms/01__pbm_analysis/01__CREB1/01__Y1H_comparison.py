@@ -303,7 +303,9 @@ kfit_vs["%s_rgb" % colname] = kfit_vs.apply(get_rgb, colname=colname, m=m, axis=
 
 
 creb1_y1h = (
-    y1h.loc[y1h["tf"] == "CREB1", y1h.columns[1:]].copy().set_index("unique_acc")
+    y1h.loc[y1h["gene_symbol"] == "CREB1", y1h.columns[1:]]
+    .copy()
+    .set_index("clone_acc")
 )
 creb1_y1h = creb1_y1h.loc[:, creb1_y1h.any(axis=0)]
 

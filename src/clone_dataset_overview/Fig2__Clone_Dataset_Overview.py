@@ -750,7 +750,7 @@ clone_vc["source"] = "TFIso1.0"
 
 
 y1h = load_y1h_pdi_data()
-y1h["family"] = y1h["tf"].map(fam)
+y1h["family"] = y1h["gene_symbol"].map(fam)
 y1h["family_renamed"] = y1h.apply(rename_family, axis=1)
 y1h.sample(5)
 
@@ -771,7 +771,9 @@ len(y1h.tf.unique())
 
 
 baits = [
-    x for x in y1h.columns if x not in ["tf", "unique_acc", "family", "family_renamed"]
+    x
+    for x in y1h.columns
+    if x not in ["gene_symbol", "clone_acc", "family", "family_renamed"]
 ]
 y1h["any_true"] = y1h[baits].sum(axis=1)
 y1h
@@ -780,7 +782,7 @@ y1h
 # In[187]:
 
 
-y1h_vc = y1h.groupby("family_renamed")["unique_acc"].agg("count").reset_index()
+y1h_vc = y1h.groupby("family_renamed")["clone_acc"].agg("count").reset_index()
 y1h_vc.columns = ["family_renamed", "isoform"]
 y1h_vc["source"] = "Y1H (all)"
 
@@ -790,7 +792,7 @@ y1h_vc["source"] = "Y1H (all)"
 
 y1h_any_vc = (
     y1h[y1h["any_true"] > 0]
-    .groupby("family_renamed")["unique_acc"]
+    .groupby("family_renamed")["clone_acc"]
     .agg("count")
     .reset_index()
 )
@@ -1053,9 +1055,9 @@ iso_sub["at_least_one_ppi"] = iso["clone_acc"].map(
 )
 
 
-y1h = y1h.drop_duplicates("unique_acc")
+y1h = y1h.drop_duplicates("clone_acc")
 iso_sub["at_least_one_pdi"] = iso_sub["clone_acc"].map(
-    y1h.drop(columns=["tf"]).set_index("unique_acc").sum(axis=1) > 0
+    y1h.drop(columns=["gene_symbol"]).set_index("clone_acc").sum(axis=1) > 0
 )
 
 iso_sub["at_least_two_fold_activation"] = iso_sub["clone_acc"].map(
@@ -1313,9 +1315,9 @@ ppi = ppi.rename(columns={"ad_clone_acc": "isoform", "db_gene_symbol": "partner"
 ppi["partner"] = ppi["partner"] + "-" + ppi["ad_gene_symbol"]
 pdi = pd.read_csv("../../data/internal/a2_juan_pdi_w_unique_isoacc.tsv", sep="\t")
 clones = load_valid_isoform_clones()
-pdi = pdi.loc[pdi["unique_acc"].isin(clones["clone_acc"]), :]
-pdi["partner"] = pdi["bait"] + "-" + pdi["tf"]
-pdi["isoform"] = pdi["unique_acc"]
+pdi = pdi.loc[pdi["clone_acc"].isin(clones["clone_acc"]), :]
+pdi["partner"] = pdi["bait"] + "-" + pdi["gene_symbol"]
+pdi["isoform"] = pdi["clone_acc"]
 edges = pd.concat(
     [ppi.loc[:, ["isoform", "partner"]], pdi.loc[:, ["isoform", "partner"]]]
 )
