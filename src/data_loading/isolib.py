@@ -107,16 +107,16 @@ class Gene(GenomicFeature):
 
     Attributes:
         name (str): gene symbol
-        orfs (list(isolib.Isoform)): protein coding isoforms of gene
+        isoforms (list(isolib.Isoform)): protein coding isoforms of gene
 
     """
 
     # NOTE: if you change arguments here, also need to change in add_isoforms method
-    def __init__(self, name, orfs, ensembl_gene_id=None, uniprot_ac=None):
-        chroms = [orf.chrom for orf in orfs]
-        strands = [orf.strand for orf in orfs]
-        msg = "{} - {}".format(name, ", ".join([orf.name for orf in orfs]))
-        if len(orfs) == 0:
+    def __init__(self, name, isoforms, ensembl_gene_id=None, uniprot_ac=None):
+        chroms = [iso.chrom for iso in isoforms]
+        strands = [iso.strand for iso in isoforms]
+        msg = "{} - {}".format(name, ", ".join([iso.name for iso in isoforms]))
+        if len(isoforms) == 0:
             raise ValueError("Need at least one isoform to define a gene\n" + msg)
         if len(set(chroms)) > 1:
             raise ValueError("All isoforms must be on same chromosome\n" + msg)
@@ -128,7 +128,7 @@ class Gene(GenomicFeature):
         self.uniprot_ac = uniprot_ac
 
         # de-duplicate exons
-        exon_bounds = {(exon.start, exon.end) for iso in orfs for exon in iso.exons}
+        exon_bounds = {(exon.start, exon.end) for iso in isoforms for exon in iso.exons}
         exon_bounds = list(sorted(exon_bounds, key=lambda x: x[0]))
         merged_exon_bounds = []
         for i in range(len(exon_bounds) - 1):
@@ -145,7 +145,7 @@ class Gene(GenomicFeature):
         for start, end in merged_exon_bounds:
             self.exons.append(Exon(name, name, chrom, strand, start, end))
         # set exon number by gene of each isoform
-        for iso in orfs:
+        for iso in isoforms:
             for isoform_exon in iso.exons:
                 for i, gene_exon in enumerate(self.exons):
                     if (
@@ -155,29 +155,29 @@ class Gene(GenomicFeature):
                         isoform_exon.exon_number_on_gene = i + 1
                         break
 
-        self.number_of_isoforms = len(orfs)
+        self.number_of_isoforms = len(isoforms)
         self.name = name
 
-        self.orfs = list(sorted(orfs, key=lambda x: int(x.name.split("-")[-1])))
+        self.isoforms = list(sorted(isoforms, key=lambda x: int(x.name.split("-")[-1])))
 
-        self._orf_dict = {orf.name: orf for orf in self.orfs}
+        self._iso_dict = {iso.name: iso for iso in self.isoforms}
         self._pairwise_changes = {}
         self.pathogenic_coding_SNPs = []
         GenomicFeature.__init__(
             self,
             chrom,
             strand,
-            min([orf.start for orf in orfs]),
-            max([orf.end for orf in orfs]),
+            min([iso.start for iso in isoforms]),
+            max([iso.end for iso in isoforms]),
         )
 
-    def add_isoforms(self, isoforms):
+    def add_isoforms(self, new_isoforms):
         # NOTE: this is a little dangerous. If new arguments are added to
         # __init__ then they need to be added here. I couldn't think of a
         # better way to do it...
         self.__init__(
             self.name,
-            self.orfs + isoforms,
+            self.isoforms + new_isoforms,
             ensembl_gene_id=self.ensembl_gene_id,
             uniprot_ac=self.uniprot_ac,
         )
@@ -199,15 +199,15 @@ class Gene(GenomicFeature):
 
     @property
     def cloned_isoforms(self):
-        return [iso for iso in self.orfs if hasattr(iso, "clone_acc")]
+        return [iso for iso in self.isoforms if hasattr(iso, "clone_acc")]
 
     @property
     def GENCODE_isoforms(self):
-        return [iso for iso in self.orfs if iso.ensembl_transcript_ids is not None]
+        return [iso for iso in self.isoforms if iso.ensembl_transcript_ids is not None]
 
     @property
     def MANE_select_isoform(self):
-        for iso in self.orfs:
+        for iso in self.isoforms:
             if not hasattr(iso, "is_MANE_select_transcript"):
                 return None
             if iso.is_MANE_select_transcript:
@@ -218,14 +218,14 @@ class Gene(GenomicFeature):
 
     @property
     def has_MANE_select_isoform(self):
-        if not hasattr(self.orfs[0], "is_MANE_select_transcript"):
+        if not hasattr(self.isoforms[0], "is_MANE_select_transcript"):
             return False
-        return any(iso.is_MANE_select_transcript for iso in self.orfs)
+        return any(iso.is_MANE_select_transcript for iso in self.isoforms)
 
     @property
     def APPRIS_isoforms(self):
         appris_isos = {}
-        for iso in self.orfs:
+        for iso in self.isoforms:
             if hasattr(iso, "APPRIS_annotation"):
                 if iso.APPRIS_annotation is not None:
                     appris_isos[iso.APPRIS_annotation] = iso
@@ -249,7 +249,7 @@ class Gene(GenomicFeature):
 
     @property
     def alternative_isoforms(self):
-        return [iso for iso in self.orfs if iso != self.reference_isoform]
+        return [iso for iso in self.isoforms if iso != self.reference_isoform]
 
     @property
     def cloned_APPRIS_isoforms(self):
@@ -289,8 +289,8 @@ class Gene(GenomicFeature):
             # NOTE: the exons just gives you the CDS positions
             return iso.exons[0].start if self.strand == "+" else iso.exons[0].end
 
-        a = _start_pos(self._orf_dict[isoform_a])
-        b = _start_pos(self._orf_dict[isoform_b])
+        a = _start_pos(self._iso_dict[isoform_a])
+        b = _start_pos(self._iso_dict[isoform_b])
         return a != b
 
     def alternative_stop(self, isoform_a, isoform_b):
@@ -298,13 +298,13 @@ class Gene(GenomicFeature):
             # NOTE: the exons just gives you the CDS positions
             return iso.exons[-1].end if self.strand == "+" else iso.exons[-1].start
 
-        a = _stop_pos(self._orf_dict[isoform_a])
-        b = _stop_pos(self._orf_dict[isoform_b])
+        a = _stop_pos(self._iso_dict[isoform_a])
+        b = _stop_pos(self._iso_dict[isoform_b])
         return a != b
 
     def alternative_internal_exon(self, isoform_a, isoform_b):
-        a = [e.exon_number_on_gene for e in self._orf_dict[isoform_a].exons]
-        b = [e.exon_number_on_gene for e in self._orf_dict[isoform_b].exons]
+        a = [e.exon_number_on_gene for e in self._iso_dict[isoform_a].exons]
+        b = [e.exon_number_on_gene for e in self._iso_dict[isoform_b].exons]
         start = max(min(a), min(b))
         stop = min(max(a), max(b))
         internal_a = {e for e in a if e > start and e < stop}
@@ -312,8 +312,8 @@ class Gene(GenomicFeature):
         return internal_a != internal_b
 
     def alternative_3prime_acceptor(self, isoform_a, isoform_b):
-        for exon_a in self._orf_dict[isoform_a].exons:
-            for exon_b in self._orf_dict[isoform_b].exons:
+        for exon_a in self._iso_dict[isoform_a].exons:
+            for exon_b in self._iso_dict[isoform_b].exons:
                 if exon_a.exon_number_on_gene == exon_b.exon_number_on_gene:
                     if self.strand == "+":
                         if exon_a.start != exon_b.start:
@@ -324,8 +324,8 @@ class Gene(GenomicFeature):
         return False
 
     def alternative_5prime_donor(self, isoform_a, isoform_b):
-        for exon_a in self._orf_dict[isoform_a].exons:
-            for exon_b in self._orf_dict[isoform_b].exons:
+        for exon_a in self._iso_dict[isoform_a].exons:
+            for exon_b in self._iso_dict[isoform_b].exons:
                 if exon_a.exon_number_on_gene == exon_b.exon_number_on_gene:
                     if self.strand == "+":
                         if exon_a.end != exon_b.end:
@@ -336,8 +336,8 @@ class Gene(GenomicFeature):
         return False
 
     def exon_skipping(self, isoform_a, isoform_b):
-        a = [e.exon_number_on_gene for e in self._orf_dict[isoform_a].exons]
-        b = [e.exon_number_on_gene for e in self._orf_dict[isoform_b].exons]
+        a = [e.exon_number_on_gene for e in self._iso_dict[isoform_a].exons]
+        b = [e.exon_number_on_gene for e in self._iso_dict[isoform_b].exons]
         start = max(min(a), min(b))
         stop = min(max(a), max(b))
         internal_a = {e for e in a if e > start and e < stop}
@@ -346,8 +346,8 @@ class Gene(GenomicFeature):
 
     def mutually_exclusive_exons(self, isoform_a, isoform_b):
         """NOTE: this is the not-strict MXE definition where only a pair of transcripts are considered"""
-        a = [e.exon_number_on_gene for e in self._orf_dict[isoform_a].exons]
-        b = [e.exon_number_on_gene for e in self._orf_dict[isoform_b].exons]
+        a = [e.exon_number_on_gene for e in self._iso_dict[isoform_a].exons]
+        b = [e.exon_number_on_gene for e in self._iso_dict[isoform_b].exons]
         start = max(min(a), min(b))
         stop = min(max(a), max(b))
         internal_a = {e for e in a if e > start and e < stop}
@@ -358,8 +358,8 @@ class Gene(GenomicFeature):
         )
 
     def intron_retention(self, isoform_a, isoform_b):
-        exons_a = self._orf_dict[isoform_a].exons
-        exons_b = self._orf_dict[isoform_b].exons
+        exons_a = self._iso_dict[isoform_a].exons
+        exons_b = self._iso_dict[isoform_b].exons
         if self.strand == "-":
             exons_a = list(reversed(exons_a))
             exons_b = list(reversed(exons_b))
@@ -375,7 +375,7 @@ class Gene(GenomicFeature):
 
     def splicing_categories(self, isoform_a, isoform_b):
         return {
-            "gene": self.name,
+            "gene_symbol": self.name,
             "reference isoform": isoform_a,
             "alternative isoform": isoform_b,
             "alternative N-terminal": self.alternative_start(isoform_a, isoform_b),
@@ -398,23 +398,23 @@ class Gene(GenomicFeature):
 
     def genomic_alignment_of_aa_seqs(self, subset=None):
         """genomic co-ordinates of translated regions"""
-        all_orf_names = [orf.name for orf in self.orfs]
+        all_iso_names = [iso.name for iso in self.isoforms]
         if subset is None:
-            subset = all_orf_names
-        orfs = [orf for orf in self.orfs if orf.name in subset]
-        if len(orfs) != len(subset):
+            subset = all_iso_names
+        isoforms = [iso for iso in self.isoforms if iso.name in subset]
+        if len(isoforms) != len(subset):
             msg = "Missing isoforms: "
-            msg += "/".join([s for s in subset if s not in all_orf_names])
+            msg += "/".join([s for s in subset if s not in all_iso_names])
             raise ValueError(msg)
         gene_coords = sorted(
-            list(set([res.coords[1] for orf in orfs for res in orf.residues]))
+            list(set([res.coords[1] for iso in isoforms for res in iso.residues]))
         )
         tracks = {}
-        for orf in sorted(orfs, key=lambda x: x.name):
-            if orf.name not in subset:
+        for iso in sorted(isoforms, key=lambda x: x.name):
+            if iso.name not in subset:
                 continue
-            orf_aa = {res.coords[1]: res.aa for res in orf.residues}
-            tracks[orf.name] = "".join([orf_aa.get(i, "-") for i in gene_coords])
+            iso_aa = {res.coords[1]: res.aa for res in iso.residues}
+            tracks[iso.name] = "".join([iso_aa.get(i, "-") for i in gene_coords])
         if self.strand == "-":
             tracks = {k: v[::-1] for k, v in tracks.items()}
         return tracks
@@ -430,8 +430,8 @@ class Gene(GenomicFeature):
         if key in self._pairwise_changes:  # check cache
             return self._pairwise_changes[key]
         alignment = ""
-        ref_iter = iter(self._orf_dict[ref_iso_name].residues)
-        alt_iter = iter(self._orf_dict[alt_iso_name].residues)
+        ref_iter = iter(self._iso_dict[ref_iso_name].residues)
+        alt_iter = iter(self._iso_dict[alt_iso_name].residues)
         ref_res = next(ref_iter)
         alt_res = next(alt_iter)
         while True:
@@ -548,11 +548,11 @@ class Gene(GenomicFeature):
         return alignment
 
     def aa_seq_disruption(self, ref_iso_name, alt_iso_name, domain_start, domain_end):
-        """Get pairwise alignment of orf protein sequences. Return fraction of
+        """Get pairwise alignment of isoform protein sequences. Return fraction of
         domain and insertion
         """
         algn = self.pairwise_changes_relative_to_reference(ref_iso_name, alt_iso_name)
-        if len(algn.replace("I", "")) != len(self._orf_dict[ref_iso_name].aa_seq):
+        if len(algn.replace("I", "")) != len(self._iso_dict[ref_iso_name].aa_seq):
             msg = "Something is wrong\n"
             msg += ref_iso_name + ", " + alt_iso_name
             raise UserWarning(msg)
@@ -586,10 +586,10 @@ class Gene(GenomicFeature):
             pandas.DataFrame: [description]
         """
         results = []
-        ref_iso = self._orf_dict[ref_iso_name]
-        row = {"gene": self.name, "ref_iso": ref_iso_name}
+        ref_iso = self._iso_dict[ref_iso_name]
+        row = {"gene_symbol": self.name, "ref_iso": ref_iso_name}
         for aa_feature in ref_iso.aa_seq_features:
-            for alt_iso_name, alt_iso in self._orf_dict.items():
+            for alt_iso_name, alt_iso in self._iso_dict.items():
                 if alt_iso_name == ref_iso_name:
                     continue
                 r = self.aa_seq_disruption(
@@ -622,11 +622,11 @@ class Gene(GenomicFeature):
 
         """
         results = []
-        ref_iso = self._orf_dict[ref_iso_name]
-        row = {"gene": self.name, "ref_iso": ref_iso_name}
+        ref_iso = self._iso_dict[ref_iso_name]
+        row = {"gene_symbol": self.name, "ref_iso": ref_iso_name}
         aa_feature_lengths = {x.end - x.start for x in ref_iso.aa_seq_features}
         for length in aa_feature_lengths:
-            for alt_iso_name, alt_iso in self._orf_dict.items():
+            for alt_iso_name, alt_iso in self._iso_dict.items():
                 if alt_iso_name == ref_iso_name:
                     continue
                 row.update(
@@ -669,7 +669,7 @@ class Gene(GenomicFeature):
 
     def _null_feature_disruption(self, ref_iso_name, alt_iso_name, feature_length):
         algn = self.pairwise_changes_relative_to_reference(ref_iso_name, alt_iso_name)
-        len_ref_iso_aa_seq = len(self._orf_dict[ref_iso_name].aa_seq)
+        len_ref_iso_aa_seq = len(self._iso_dict[ref_iso_name].aa_seq)
         if len(algn.replace("I", "")) != len_ref_iso_aa_seq:
             msg = "Something is wrong\n"
             msg += ref_iso_name + ", " + alt_iso_name
@@ -703,7 +703,7 @@ class Gene(GenomicFeature):
             n (int): number of randomizations
             subset (set(str), optional): [description]. Defaults to None.
         """
-        if len(self._orf_dict) == 1:
+        if len(self._iso_dict) == 1:
             return pd.DataFrame([])
 
         # inspired by: https://stackoverflow.com/questions/18641272
@@ -723,8 +723,8 @@ class Gene(GenomicFeature):
             return result
 
         results = []
-        ref_iso = self._orf_dict[ref_iso_name]
-        row = {"gene": self.name, "ref_iso": ref_iso_name}
+        ref_iso = self._iso_dict[ref_iso_name]
+        row = {"gene_symbol": self.name, "ref_iso": ref_iso_name}
         for i in range(n):
             row["random_sample"] = i
             rnd_pos = _non_overlapping_random_feature_positons(
@@ -736,7 +736,7 @@ class Gene(GenomicFeature):
                 ],
             )
             for accession, (rnd_start, rnd_end) in rnd_pos:
-                for alt_iso_name, alt_iso in self._orf_dict.items():
+                for alt_iso_name, alt_iso in self._iso_dict.items():
                     if alt_iso_name == ref_iso_name:
                         continue
                     row.update({"alt_iso": alt_iso_name})
@@ -804,32 +804,32 @@ class Gene(GenomicFeature):
             return collections.Counter(s[::-1]).most_common(1)[0][0]
 
         exon_colors = {}
-        for orf in self.orfs:
+        for iso in self.isoforms:
             algn = self.pairwise_changes_relative_to_reference(
-                self.orfs[0].name, orf.name
+                self.isoforms[0].name, iso.name
             )
             algn = algn.replace("D", "")
             split_algn = [
                 algn[
-                    sum(len(e) for e in orf.exons[:i])
-                    // 3 : sum(len(e) for e in orf.exons[: i + 1])
+                    sum(len(e) for e in iso.exons[:i])
+                    // 3 : sum(len(e) for e in iso.exons[: i + 1])
                     // 3
                 ]
-                for i in range(len(orf.exons))
+                for i in range(len(iso.exons))
             ]
             change_cats = [_pick_representative_cat(s) for s in split_algn]
-            for exon, cat in zip(orf.exons, change_cats):
+            for exon, cat in zip(iso.exons, change_cats):
                 merge_exon_idx = exon.exon_number_on_gene - 1
                 if cat == "f":
-                    exon_colors[(orf.name, exon.start, exon.end)] = colors_frame_3[
+                    exon_colors[(iso.name, exon.start, exon.end)] = colors_frame_3[
                         merge_exon_idx
                     ]
                 elif cat == "F":
-                    exon_colors[(orf.name, exon.start, exon.end)] = colors_frame_2[
+                    exon_colors[(iso.name, exon.start, exon.end)] = colors_frame_2[
                         merge_exon_idx
                     ]
                 else:
-                    exon_colors[(orf.name, exon.start, exon.end)] = colors_frame_1[
+                    exon_colors[(iso.name, exon.start, exon.end)] = colors_frame_1[
                         merge_exon_idx
                     ]
         return exon_colors
@@ -852,8 +852,8 @@ class Gene(GenomicFeature):
 
         merged_exon_bounds = [(exon.start, exon.end) for exon in self.exons]
         diff_exon_ends = {}
-        for orf in self.orfs:
-            for exon in orf.exons:
+        for iso in self.isoforms:
+            for exon in iso.exons:
                 merged_start, merged_end = merged_exon_bounds[
                     exon.exon_number_on_gene - 1
                 ]
@@ -886,8 +886,8 @@ class Gene(GenomicFeature):
         exon_colors = self._get_exon_colors()
         xmin = _map_position(merged_exon_bounds[0][0])
         xmax = _map_position(merged_exon_bounds[-1][1] - 1)
-        for i, orf in enumerate(self.orfs):
-            for exon in orf.exons:
+        for i, iso in enumerate(self.isoforms):
+            for exon in iso.exons:
                 x_start = _map_position(exon.start)
                 x_stop = _map_position(exon.end - 1)
                 box = patches.Rectangle(
@@ -896,7 +896,7 @@ class Gene(GenomicFeature):
                     height,
                     lw=1,
                     ec="k",
-                    fc=exon_colors[(orf.name, exon.start, exon.end)],
+                    fc=exon_colors[(iso.name, exon.start, exon.end)],
                     joinstyle="round",
                 )
                 ax.add_patch(box)
@@ -927,17 +927,17 @@ class Gene(GenomicFeature):
 
             if not show_domains:
                 continue
-            for dom in orf.aa_seq_features:
+            for dom in iso.aa_seq_features:
                 if dom.name.endswith("_DBD_flank"):
                     continue
-                dom_x_start = _map_position(orf.residues[dom.start].coords[0])
-                dom_x_stop = _map_position(orf.residues[dom.end - 1].coords[2])
+                dom_x_start = _map_position(iso.residues[dom.start].coords[0])
+                dom_x_stop = _map_position(iso.residues[dom.end - 1].coords[2])
                 dom_x_center = (dom_x_stop - dom_x_start) / 2 + dom_x_start
                 dom_x_len = abs(dom_x_stop - dom_x_start)
                 if i != 0:  # TODO: make this an option argument?
                     break
                 ax_x_range = abs(xmax - xmin)
-                ax_y_range = len(self.orfs) + 1
+                ax_y_range = len(self.isoforms) + 1
                 # the 0.3 below is just tuned by hand
                 y_height = (ax_x_range * 0.3) / ax_y_range
                 ax.annotate(
@@ -963,32 +963,32 @@ class Gene(GenomicFeature):
                     ha="center",
                     fontsize=domain_font_size,
                 )
-        ax.set_yticks([y + height / 2 for y in range(len(self.orfs))])
-        ax.set_yticklabels([orf.name for orf in self.orfs])
+        ax.set_yticks([y + height / 2 for y in range(len(self.isoforms))])
+        ax.set_yticklabels([iso.name for iso in self.isoforms])
         ax.yaxis.set_tick_params(length=0)
         if show_matched_transcripts:
             ax.set_yticklabels(
                 [
-                    orf.clone_name if hasattr(orf, "clone_name") else ""
-                    for orf in self.orfs
+                    iso.clone_name if hasattr(iso, "clone_name") else ""
+                    for iso in self.isoforms
                 ]
             )
-            for orf, y_pos in zip(self.orfs, ax.get_yticks()):
-                if hasattr(orf, "clone_acc") and orf.is_novel_isoform():
+            for iso, y_pos in zip(self.isoforms, ax.get_yticks()):
+                if hasattr(iso, "clone_acc") and iso.is_novel_isoform():
                     text = "     " + "Novel isoform"
                 else:
-                    text = "     " + "/".join(orf.ensembl_transcript_names)
+                    text = "     " + "/".join(iso.ensembl_transcript_names)
                     if show_mane_and_appris_annotations:
                         if (
-                            hasattr(orf, "is_MANE_select_transcript")
-                            and orf.is_MANE_select_transcript
+                            hasattr(iso, "is_MANE_select_transcript")
+                            and iso.is_MANE_select_transcript
                         ):
                             text += " – MANE select"
                         if (
-                            hasattr(orf, "APPRIS_annotation")
-                            and orf.APPRIS_annotation is not None
+                            hasattr(iso, "APPRIS_annotation")
+                            and iso.APPRIS_annotation is not None
                         ):
-                            text += " – APPRIS " + orf.APPRIS_annotation
+                            text += " – APPRIS " + iso.APPRIS_annotation
                 ax.text(
                     x=xmin if self.strand == "-" else xmax,
                     y=y_pos,
@@ -1000,9 +1000,9 @@ class Gene(GenomicFeature):
         x_pad = intron_nt_space * 3
         # intron dotted lines
         plt.hlines(
-            y=[i + height / 2 for i in range(len(self.orfs))],
-            xmin=[_map_position(orf.start) for orf in self.orfs],
-            xmax=[_map_position(orf.end - 1) for orf in self.orfs],
+            y=[i + height / 2 for i in range(len(self.isoforms))],
+            xmin=[_map_position(iso.start) for iso in self.isoforms],
+            xmax=[_map_position(iso.end - 1) for iso in self.isoforms],
             color="black",
             ls="dotted",
             lw=1.5,
@@ -1079,7 +1079,7 @@ class Gene(GenomicFeature):
             ax.set_xlim(xmax + x_pad, xmin - x_pad)
         else:
             ax.set_xlim(xmin - intron_nt_space * 3, xmax + intron_nt_space * 3)
-        ax.set_ylim(len(self.orfs), height - 1)
+        ax.set_ylim(len(self.isoforms), height - 1)
         for spine in ax.spines.values():
             spine.set_visible(False)
 
@@ -1097,9 +1097,9 @@ class Gene(GenomicFeature):
         if isoform_order is not None:
             isoforms = [self[iso_id] for iso_id in isoform_order]
         elif only_cloned_isoforms:
-            isoforms = [iso for iso in self.orfs if hasattr(iso, "clone_acc")]
+            isoforms = [iso for iso in self.isoforms if hasattr(iso, "clone_acc")]
         else:
-            isoforms = self.orfs
+            isoforms = self.isoforms
 
         def _remove_overlapping_domains(domains):
             """Keep longest domains"""
@@ -1335,35 +1335,35 @@ class Gene(GenomicFeature):
             ax.set_ylim(0, 1)
             ax.set_xlim(0.5 + min(offsets), x_max + 0.5)
 
-    def orf_pairs(self):
-        return list(itertools.combinations(self.orfs, 2))
+    def iso_pairs(self):
+        return list(itertools.combinations(self.isoforms, 2))
 
-    def __getitem__(self, orf_id):
-        if orf_id in self._orf_dict:
-            return self._orf_dict[orf_id]
-        for orf in self.orfs:
-            if hasattr(orf, "clone_acc"):
-                if orf_id == orf.clone_acc:
-                    return orf
-            if orf.ensembl_transcript_names is not None:
-                if orf_id in orf.ensembl_transcript_names:
-                    return orf
-                if orf_id in orf.ensembl_transcript_ids:
-                    return orf
-                if orf_id in orf.ensembl_protein_ids:
-                    return orf
-        raise KeyError(orf_id)
+    def __getitem__(self, iso_id):
+        if iso_id in self._iso_dict:
+            return self._iso_dict[iso_id]
+        for iso in self.isoforms:
+            if hasattr(iso, "clone_acc"):
+                if iso_id == iso.clone_acc:
+                    return iso
+            if iso.ensembl_transcript_names is not None:
+                if iso_id in iso.ensembl_transcript_names:
+                    return iso
+                if iso_id in iso.ensembl_transcript_ids:
+                    return iso
+                if iso_id in iso.ensembl_protein_ids:
+                    return iso
+        raise KeyError(iso_id)
 
-    def __contains__(self, orf_id):
+    def __contains__(self, iso_id):
         try:
-            self[orf_id]
+            self[iso_id]
             return True
         except KeyError:
             return False
 
     def __repr__(self):
         s = "Gene: {}\n".format(self.name)
-        s += "Isoforms: " + str([orf.name for orf in self.orfs])
+        s += "Isoforms: " + str([iso.name for iso in self.isoforms])
         return s
 
 

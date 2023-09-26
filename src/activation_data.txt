@@ -41,7 +41,7 @@ def disorder_changes_category(f):
 
 df['f_disorder_difference_cat'] = df['f_disorder_difference'].apply(disorder_changes_category)
 m1h['gte_2_fold'] = (m1h['mean'].abs() >= 1)
-df['m1h_gte_2_fold_at_least_one_iso_per_gene'] = df['gene_symbol'].map(m1h.groupby('gene')
+df['m1h_gte_2_fold_at_least_one_iso_per_gene'] = df['gene_symbol'].map(m1h.groupby('gene_symbol')
                                                                     ['gte_2_fold']
                                                                     .any())
 df['abs_activation_fold_change_log2'] = df['activation_fold_change_log2'].abs()
@@ -90,7 +90,7 @@ print('Effector domain types:')
 dom['type'].value_counts()
 
 print('Number of different types of effector domains per gene')
-dom.groupby('gene')['type'].nunique().value_counts()
+dom.groupby('gene_symbol')['type'].nunique().value_counts()
 
 (df.loc[df['activation_fold_change_log2'].notnull(),
         ['fraction_of_AD_domains_removed', 'fraction_of_RD_domains_removed', 'fraction_of_Bif_domains_removed']]

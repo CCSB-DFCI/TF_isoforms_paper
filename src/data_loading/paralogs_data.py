@@ -46,17 +46,17 @@ def isoforms_of_paralogs_pairs(paralog_pairs, isoforms):
         [type]: [description]
     """
     pairs = pd.merge(
-        paralog_pairs.loc[:, ["tf_gene_a", "tf_gene_b", "is_paralog_pair"]],
+        paralog_pairs.loc[:, ["gene_symbol_a", "gene_symbol_b", "is_paralog_pair"]],
         isoforms.loc[:, ["gene", "clone_acc", "aa_seq"]],
         how="inner",
-        left_on="tf_gene_a",
+        left_on="gene_symbol_a",
         right_on="gene",
     ).rename(columns={"aa_seq": "aa_seq_a", "clone_acc": "clone_acc_a"})
     pairs = pd.merge(
         pairs,
         isoforms.loc[:, ["gene", "clone_acc", "aa_seq"]],
         how="inner",
-        left_on="tf_gene_b",
+        left_on="gene_symbol_b",
         right_on="gene",
     ).rename(columns={"aa_seq": "aa_seq_b", "clone_acc": "clone_acc_b"})
     pairs = pairs.drop(columns=["gene_x", "gene_y"])
@@ -163,13 +163,14 @@ def pairs_of_paralogs_and_isoforms_comparison_table(
         for iso_a, iso_b in combinations(tf_iso, 2):
             iso_pairs.append((tf_gene, tf_gene, iso_a, iso_b))
     iso_pairs = pd.DataFrame(
-        data=iso_pairs, columns=["tf_gene_a", "tf_gene_b", "clone_acc_a", "clone_acc_b"]
+        data=iso_pairs,
+        columns=["gene_symbol_a", "gene_symbol_b", "clone_acc_a", "clone_acc_b"],
     )
     iso_pairs["category"] = "isoforms"
     if restrict_isoforms_to_those_with_paralogs:
         iso_pairs = iso_pairs.loc[
-            iso_pairs["tf_gene_a"].isin(pairs["tf_gene_a"])
-            | iso_pairs["tf_gene_a"].isin(pairs["tf_gene_b"]),
+            iso_pairs["gene_symbol_a"].isin(pairs["gene_symbol_a"])
+            | iso_pairs["gene_symbol_a"].isin(pairs["gene_symbol_b"]),
             :,
         ]
     pairs = pd.concat([pairs, iso_pairs])
@@ -205,8 +206,8 @@ def ppi_metric(row, data, function, suffixes=("_a", "_b")):
 
 def pdi_metric(row, data, function):
     df = data.loc[
-        (data["unique_acc"] == row["clone_acc_a"])
-        | (data["unique_acc"] == row["clone_acc_b"]),
+        (data["clone_acc"] == row["clone_acc_a"])
+        | (data["clone_acc"] == row["clone_acc_b"]),
         data.columns[2:],
     ].copy()
     if df.shape[0] < 2:

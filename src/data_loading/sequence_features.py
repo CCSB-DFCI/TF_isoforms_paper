@@ -8,7 +8,6 @@ import tqdm
 from Bio.PDB.DSSP import make_dssp_dict
 from Bio.Data.IUPACData import protein_letters_3to1
 
-
 from .utils import DATA_DIR, CACHE_DIR
 
 
@@ -41,6 +40,36 @@ def load_seq_comparison_data():
     if (df["aa_seq_pct_id"] < 0).any() or (df["aa_seq_pct_id"] > 100).any():
         raise UserWarning("Percent values outside 0-100")
     return df["aa_seq_pct_id"]
+
+
+"""
+TODO: find where load_isoforms_of_paralogs_pairs went and add this to the above
+function
+
+from Bio import Align
+
+from data_loading import load_valid_isoform_clones, load_paralog_pairs, load_isoforms_of_paralogs_pairs
+
+def calculate_aa_sequence_id():
+    isoforms = load_valid_isoform_clones()
+    pairs = load_paralog_pairs()
+    pairs = load_isoforms_of_paralogs_pairs(pairs, isoforms)
+
+    aligner = Align.PairwiseAligner()
+    aligner.mode = 'global'
+
+    def pairwise_seq_id(row):
+        alignment = aligner.align(row['aa_seq_a'], row['aa_seq_b'])[0].__str__().split()[1]
+        return alignment.count('|') / len(alignment) * 100
+
+    pairs['pct_aa_seq_id'] = pairs.apply(pairwise_seq_id, axis=1)
+
+    (pairs.loc[:, ['clone_acc_a', 'clone_acc_b', 'pct_aa_seq_id']]
+        .to_csv('../data/processed/paralog_non_paralog_seq_id.tsv',
+                sep='\t',
+                index=False))
+
+"""
 
 
 def read_hmmer3_domtab(filepath):
@@ -122,7 +151,7 @@ def _load_pfam_domains(fpath, cutoff_seq=0.01, cutoff_dom=0.01):
     return pfam
 
 
-def load_pfam_domains_6k():
+def load_pfam_domains_TFiso1():
     filtered_pfam_path = CACHE_DIR / "pfam_6K.tsv"
     if filtered_pfam_path.exists():
         return pd.read_csv(filtered_pfam_path, sep="\t")

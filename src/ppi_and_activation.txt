@@ -411,7 +411,7 @@ scatter_with_correlation(
 
 
 
-(pairs.loc[(pairs['ppi_n_diff'] > 0) & pairs['tf_gene_symbol'].isin(m1h.loc[(m1h['M1H_rep1'] < -1), 'gene'].unique()), 
+(pairs.loc[(pairs['ppi_n_diff'] > 0) & pairs['tf_gene_symbol'].isin(m1h.loc[(m1h['M1H_rep1'] < -1), 'gene_symbol'].unique()), 
 ['tf_gene_symbol', 'clone_acc_a', 'clone_acc_b', 'activation_abs_fold_change', 'ppi_n_tested', 'ppi_n_diff', 'ppi_n_diff_cofactors']]
 .sort_values('activation_abs_fold_change', ascending=False).head(25)
 )

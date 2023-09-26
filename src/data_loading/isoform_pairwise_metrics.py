@@ -7,7 +7,7 @@ import pandas as pd
 from data_loading import (
     load_seq_comparison_data,
     load_dbd_accessions,
-    load_annotated_6k_collection,
+    load_annotated_TFiso1_collection,
     load_y2h_isoform_data,
     load_y1h_pdi_data,
     load_m1h_activation_data,
@@ -108,15 +108,15 @@ def _pairs_of_ref_vs_alt_isoforms_comparison_table(tfs):
 
 
 def _write_TF_iso_ref_vs_alt_table(outpath):
-    tfs = load_annotated_6k_collection()
+    tfs = load_annotated_TFiso1_collection()
     df = _pairs_of_ref_vs_alt_isoforms_comparison_table(tfs)
     m1h = load_m1h_activation_data()
     m1h["mean"] = m1h[["M1H_rep1", "M1H_rep2", "M1H_rep3"]].mean(axis=1)
     m1h["abs_mean"] = m1h["mean"].abs()
     y1h = load_y1h_pdi_data()
-    if y1h["unique_acc"].duplicated().any():
+    if y1h["clone_acc"].duplicated().any():
         raise UserWarning("unexpected duplicates")
-    y1h = y1h.set_index("unique_acc")
+    y1h = y1h.set_index("clone_acc")
 
     def load_dbd_affected():
         df = pd.concat(
@@ -220,7 +220,7 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
         ppi=y2h.loc[
             y2h["db_gene_symbol"].isin(
                 ppi_partner_cats.loc[
-                    ppi_partner_cats["category"] == "cofactor", "partner"
+                    ppi_partner_cats["category"] == "cofactor", "gene_symbol_partner"
                 ].unique()
             )
             & ~y2h["is_tf_tf_ppi"],
@@ -242,13 +242,13 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
                             "cell-cell signaling",
                         ]
                     ),
-                    "partner",
+                    "gene_symbol_partner",
                 ].unique()
             )
             & ~y2h["is_tf_tf_ppi"]
             & ~y2h["db_gene_symbol"].isin(
                 ppi_partner_cats.loc[
-                    ppi_partner_cats["category"] == "cofactor", "partner"
+                    ppi_partner_cats["category"] == "cofactor", "gene_symbol_partner"
                 ].unique()
             ),
             :,
@@ -362,7 +362,7 @@ def _add_PDI_columns(df, y1h):
         b = set(df.columns[df.iloc[1].fillna(False)])
         return function(a, b)
 
-    n_pdi = y1h.drop(columns=["tf"]).sum(axis=1)
+    n_pdi = y1h.drop(columns=["gene_symbol"]).sum(axis=1)
     df["n_positive_PDI_ref"] = df["clone_acc_ref"].map(n_pdi)
     df["n_positive_PDI_alt"] = df["clone_acc_alt"].map(n_pdi)
     df["n_PDI_successfully_tested_in_ref_and_alt"] = df.apply(

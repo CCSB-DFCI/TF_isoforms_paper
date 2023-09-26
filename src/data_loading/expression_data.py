@@ -3,7 +3,10 @@ import pandas as pd
 
 from .utils import cache_with_pickle, DATA_DIR
 from .clones_and_assays_data import load_valid_isoform_clones
-from .load_annotated_TFs import load_annotated_gencode_tfs, load_annotated_6k_collection
+from .load_annotated_TFs import (
+    load_annotated_gencode_tfs,
+    load_annotated_TFiso1_collection,
+)
 
 
 @cache_with_pickle
@@ -41,7 +44,7 @@ def load_gtex_gencode():
     df.index = df.index.map(lambda x: _convert_to_merged_protein_isoform_ids(x, tfs))
     df = df.loc[df.index != "fail", :]
     df = df.groupby("UID").sum()
-    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.orfs]):
+    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.isoforms]):
         raise UserWarning("Something went wrong")
     genes = genes.loc[genes.isin({tf.ensembl_gene_id for tf in tfs.values()})]
     genes.index = genes.index.map(
@@ -95,15 +98,15 @@ def load_gtex_remapped():
         lambda x: "ZNF223" if x == "AC092072.1" else x
     )  # HACK for renamed gene
     clones = load_valid_isoform_clones()
-    df = df.loc[genes.isin(clones["gene"].unique()), :]
-    if genes[df.index].nunique() != clones["gene"].nunique():
+    df = df.loc[genes.isin(clones["gene_symbol"].unique()), :]
+    if genes[df.index].nunique() != clones["gene_symbol"].nunique():
         raise UserWarning("Unexpected missing genes")
     df = df.loc[genes != "PCGF6", :]
-    tfs = load_annotated_6k_collection()
+    tfs = load_annotated_TFiso1_collection()
     df.index = df.index.map(lambda x: _convert_to_joint_clone_and_ensembl_id(x, tfs))
     df = df.loc[df.index != "fail", :]
     df = df.groupby("UID").sum()
-    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.orfs]):
+    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.isoforms]):
         raise UserWarning("Something went wrong")
 
     def extract_gene_name_from_joint_id(s):
@@ -159,7 +162,7 @@ def load_developmental_tissue_expression_gencode():
     df.index = df.index.map(lambda x: _convert_to_merged_protein_isoform_ids(x, tfs))
     df = df.loc[df.index != "fail", :]
     df = df.groupby("UID").sum()
-    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.orfs]):
+    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.isoforms]):
         raise UserWarning("Something went wrong")
     genes = genes.loc[genes.isin({tf.ensembl_gene_id for tf in tfs.values()})]
     genes.index = genes.index.map(
@@ -209,15 +212,15 @@ def load_developmental_tissue_expression_remapped():
         lambda x: "ZNF223" if x == "AC092072.1" else x
     )  # HACK for renamed gene
     clones = load_valid_isoform_clones()
-    df = df.loc[genes.isin(clones["gene"].unique()), :]
-    if genes[df.index].nunique() != clones["gene"].nunique():
+    df = df.loc[genes.isin(clones["gene_symbol"].unique()), :]
+    if genes[df.index].nunique() != clones["gene_symbol"].nunique():
         raise UserWarning("Unexpected missing genes")
     df = df.loc[genes != "PCGF6", :]
-    tfs = load_annotated_6k_collection()
+    tfs = load_annotated_TFiso1_collection()
     df.index = df.index.map(lambda x: _convert_to_joint_clone_and_ensembl_id(x, tfs))
     df = df.loc[df.index != "fail", :]
     df = df.groupby("UID").sum()
-    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.orfs]):
+    if df.shape[0] != len([orf for tf in tfs.values() for orf in tf.isoforms]):
         raise UserWarning("Something went wrong")
 
     def extract_gene_name_from_joint_id(s):
