@@ -443,7 +443,7 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
 
     df[df.columns[2:]] = df[df.columns[2:]].astype("boolean")
     zeros = pd.read_csv(DATA_DIR / "internal/a2_juan_isoforms_wo_pdi.tsv", sep="\t")
-    zeros = zeros.rename(columns={"tf": "gene_symbol", "clone_acc": "clone_acc"})
+    zeros = zeros.rename(columns={"tf": "gene_symbol", "unique_acc": "clone_acc"})
     zeros = zeros.loc[~zeros["clone_acc"].isin(df["clone_acc"].values), :]
     zeros = pd.concat(
         [zeros, pd.DataFrame(data=False, index=zeros.index, columns=df.columns[2:])],

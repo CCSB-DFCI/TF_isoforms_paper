@@ -375,7 +375,7 @@ class Gene(GenomicFeature):
 
     def splicing_categories(self, isoform_a, isoform_b):
         return {
-            "gene": self.name,
+            "gene_symbol": self.name,
             "reference isoform": isoform_a,
             "alternative isoform": isoform_b,
             "alternative N-terminal": self.alternative_start(isoform_a, isoform_b),
@@ -587,7 +587,7 @@ class Gene(GenomicFeature):
         """
         results = []
         ref_iso = self._iso_dict[ref_iso_name]
-        row = {"gene": self.name, "ref_iso": ref_iso_name}
+        row = {"gene_symbol": self.name, "ref_iso": ref_iso_name}
         for aa_feature in ref_iso.aa_seq_features:
             for alt_iso_name, alt_iso in self._iso_dict.items():
                 if alt_iso_name == ref_iso_name:
@@ -623,7 +623,7 @@ class Gene(GenomicFeature):
         """
         results = []
         ref_iso = self._iso_dict[ref_iso_name]
-        row = {"gene": self.name, "ref_iso": ref_iso_name}
+        row = {"gene_symbol": self.name, "ref_iso": ref_iso_name}
         aa_feature_lengths = {x.end - x.start for x in ref_iso.aa_seq_features}
         for length in aa_feature_lengths:
             for alt_iso_name, alt_iso in self._iso_dict.items():
@@ -724,7 +724,7 @@ class Gene(GenomicFeature):
 
         results = []
         ref_iso = self._iso_dict[ref_iso_name]
-        row = {"gene": self.name, "ref_iso": ref_iso_name}
+        row = {"gene_symbol": self.name, "ref_iso": ref_iso_name}
         for i in range(n):
             row["random_sample"] = i
             rnd_pos = _non_overlapping_random_feature_positons(

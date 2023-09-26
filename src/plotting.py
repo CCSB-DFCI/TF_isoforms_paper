@@ -374,9 +374,13 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None, xlim=None):
         ax = plt.gca()
     rep_columns = [c for c in data.columns if c.startswith("M1H_rep")]
     is_all_na = (
-        data[rep_columns].isnull().groupby(data["gene"]).all().all(axis=1)[tf_gene_name]
+        data[rep_columns]
+        .isnull()
+        .groupby(data["gene_symbol"])
+        .all()
+        .all(axis=1)[tf_gene_name]
     )
-    if tf_gene_name not in data["gene"].values or is_all_na:
+    if tf_gene_name not in data["gene_symbol"].values or is_all_na:
         ax.set_axis_off()
         ax.text(
             0.5,
@@ -393,14 +397,16 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None, xlim=None):
         return
     clones = [
         isoform_display_name(acc)
-        for acc in data.loc[data["gene"] == tf_gene_name, "clone_acc"].values
+        for acc in data.loc[data["gene_symbol"] == tf_gene_name, "clone_acc"].values
         for __ in range(len(rep_columns))
     ]
-    values = data.loc[data["gene"] == tf_gene_name, rep_columns].values.flatten()
+    values = data.loc[data["gene_symbol"] == tf_gene_name, rep_columns].values.flatten()
     n_reps = len(rep_columns)
     ax.barh(
         y=clones[::n_reps],
-        width=data.loc[data["gene"] == tf_gene_name, rep_columns].mean(axis=1).values,
+        width=data.loc[data["gene_symbol"] == tf_gene_name, rep_columns]
+        .mean(axis=1)
+        .values,
         edgecolor="black",
         color="slategrey",
         alpha=0.5,
