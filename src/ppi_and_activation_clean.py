@@ -443,28 +443,38 @@ bar_activation_vs_ppi(
     color=sns.color_palette("Set2")[5])
 
 
-# In[89]:
+# In[110]:
 
 
 # TEST what is the outlier on the left
 (pairs.loc[((pairs['m1h_min'] < -1) | 
            (pairs['m1h_max'] > 1))
-           & (pairs['ppi_delta_n_signaling_HEK'].notnull()), 
+           & (pairs['ppi_delta_n_coactivators_HEK'].notnull()), 
               :]
            .sort_values('activation_fold_change',
-                        ascending=True))[["tf_gene_symbol", "clone_acc_a", "clone_acc_b",
+                        ascending=False))[["tf_gene_symbol", "clone_acc_a", "clone_acc_b",
                                            "ppi_delta_n_coactivators_HEK", "activation_fold_change"]].head(30)
 
 
-# In[90]:
+# In[98]:
 
 
-pairs[pairs["tf_gene_symbol"] == "PBX1"][["tf_gene_symbol", "clone_acc_a", "clone_acc_b",
-                                           "ppi_delta_n_signaling_HEK", "activation_fold_change"]]
+pairs[pairs["tf_gene_symbol"] == "NFYA"][["tf_gene_symbol", "clone_acc_a", "clone_acc_b",
+                                           "ppi_delta_n_coactivators_HEK", "activation_fold_change"]]
 
 
-# In[92]:
+# In[104]:
 
 
-cats[cats["partner"] == "PIN1"]
+cats[cats["partner"] == "PRR20D"]
+
+
+# In[106]:
+
+
+pairs.loc[((pairs['m1h_min'] < -1) | 
+           (pairs['m1h_max'] > 1))
+           & (pairs['ppi_delta_n_corepressors_HEK'].notnull()), 
+              :].sort_values('activation_fold_change',
+                        ascending=False).head(20)
 
