@@ -1,11 +1,11 @@
-
 # coding: utf-8
 
 # In[1]:
 
 
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 
 
 # In[2]:
@@ -32,17 +32,19 @@ import plotting
 from plotting import PAPER_PRESET, PAPER_FONTSIZE, nice_boxplot, mimic_r_boxplot
 
 
-get_ipython().run_line_magic('matplotlib', 'inline')
-get_ipython().run_line_magic('config', "InlineBackend.figure_format = 'svg'")
-mpl.rcParams['figure.autolayout'] = False
+get_ipython().run_line_magic("matplotlib", "inline")
+get_ipython().run_line_magic("config", "InlineBackend.figure_format = 'svg'")
+mpl.rcParams["figure.autolayout"] = False
 
 
 # In[3]:
 
 
-from data_loading import (load_annotated_6k_collection,
-                          load_valid_isoform_clones,
-                          load_developmental_tissue_expression_gencode)
+from data_loading import (
+    load_annotated_TFiso1_collection,
+    load_valid_isoform_clones,
+    load_developmental_tissue_expression_gencode,
+)
 
 
 # In[4]:
@@ -67,9 +69,10 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 import matplotlib.pyplot as plt
 from typing import Type
 
-style_talk = 'seaborn-talk'    #refer to plt.style.available
+style_talk = "seaborn-talk"  # refer to plt.style.available
 
-class Linear_Reg_Diagnostic():
+
+class Linear_Reg_Diagnostic:
     """
     Diagnostic plots to identify potential problems in a linear regression fit.
     Mainly,
@@ -86,8 +89,10 @@ class Linear_Reg_Diagnostic():
         Please test the code one your end before using.
     """
 
-    def __init__(self,
-                 results: Type[statsmodels.regression.linear_model.RegressionResultsWrapper]) -> None:
+    def __init__(
+        self,
+        results: Type[statsmodels.regression.linear_model.RegressionResultsWrapper],
+    ) -> None:
         """
         For a linear regression model, generates following diagnostic plots:
 
@@ -129,8 +134,15 @@ class Linear_Reg_Diagnostic():
         >>> cls.vif_table()
         """
 
-        if isinstance(results, statsmodels.regression.linear_model.RegressionResultsWrapper) is False:
-            raise TypeError("result must be instance of statsmodels.regression.linear_model.RegressionResultsWrapper object")
+        if (
+            isinstance(
+                results, statsmodels.regression.linear_model.RegressionResultsWrapper
+            )
+            is False
+        ):
+            raise TypeError(
+                "result must be instance of statsmodels.regression.linear_model.RegressionResultsWrapper object"
+            )
 
         self.results = maybe_unwrap_results(results)
 
@@ -146,19 +158,18 @@ class Linear_Reg_Diagnostic():
         self.cooks_distance = influence.cooks_distance[0]
         self.nparams = len(self.results.params)
 
-    def __call__(self, plot_context='seaborn-paper'):
+    def __call__(self, plot_context="seaborn-paper"):
         # print(plt.style.available)
         with plt.style.context(plot_context):
-            fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10,10))
-            self.residual_plot(ax=ax[0,0])
-            self.qq_plot(ax=ax[0,1])
-            self.scale_location_plot(ax=ax[1,0])
-            self.leverage_plot(ax=ax[1,1])
+            fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10, 10))
+            self.residual_plot(ax=ax[0, 0])
+            self.qq_plot(ax=ax[0, 1])
+            self.scale_location_plot(ax=ax[1, 0])
+            self.leverage_plot(ax=ax[1, 1])
             plt.show()
 
         self.vif_table()
         return fig, ax
-
 
     def residual_plot(self, ax=None):
         """
@@ -174,23 +185,21 @@ class Linear_Reg_Diagnostic():
             x=self.y_predict,
             y=self.residual,
             lowess=True,
-            scatter_kws={'alpha': 0.5},
-            line_kws={'color': 'red', 'lw': 1, 'alpha': 0.8},
-            ax=ax)
+            scatter_kws={"alpha": 0.5},
+            line_kws={"color": "red", "lw": 1, "alpha": 0.8},
+            ax=ax,
+        )
 
         # annotations
         residual_abs = np.abs(self.residual)
         abs_resid = np.flip(np.sort(residual_abs))
         abs_resid_top_3 = abs_resid[:3]
         for i, _ in enumerate(abs_resid_top_3):
-            ax.annotate(
-                i,
-                xy=(self.y_predict[i], self.residual[i]),
-                color='C3')
+            ax.annotate(i, xy=(self.y_predict[i], self.residual[i]), color="C3")
 
-        ax.set_title('Residuals vs Fitted', fontweight="bold")
-        ax.set_xlabel('Fitted values')
-        ax.set_ylabel('Residuals')
+        ax.set_title("Residuals vs Fitted", fontweight="bold")
+        ax.set_xlabel("Fitted values")
+        ax.set_ylabel("Residuals")
         return ax
 
     def qq_plot(self, ax=None):
@@ -204,7 +213,7 @@ class Linear_Reg_Diagnostic():
             fig, ax = plt.subplots()
 
         QQ = ProbPlot(self.residual_norm)
-        QQ.qqplot(line='45', alpha=0.5, lw=1, ax=ax)
+        QQ.qqplot(line="45", alpha=0.5, lw=1, ax=ax)
 
         # annotations
         abs_norm_resid = np.flip(np.argsort(np.abs(self.residual_norm)), 0)
@@ -213,11 +222,13 @@ class Linear_Reg_Diagnostic():
             ax.annotate(
                 i,
                 xy=(np.flip(QQ.theoretical_quantiles, 0)[r], self.residual_norm[i]),
-                ha='right', color='C3')
+                ha="right",
+                color="C3",
+            )
 
-        ax.set_title('Normal Q-Q', fontweight="bold")
-        ax.set_xlabel('Theoretical Quantiles')
-        ax.set_ylabel('Standardized Residuals')
+        ax.set_title("Normal Q-Q", fontweight="bold")
+        ax.set_xlabel("Theoretical Quantiles")
+        ax.set_ylabel("Standardized Residuals")
         return ax
 
     def scale_location_plot(self, ax=None):
@@ -232,26 +243,27 @@ class Linear_Reg_Diagnostic():
 
         residual_norm_abs_sqrt = np.sqrt(np.abs(self.residual_norm))
 
-        ax.scatter(self.y_predict, residual_norm_abs_sqrt, alpha=0.5);
+        ax.scatter(self.y_predict, residual_norm_abs_sqrt, alpha=0.5)
         sns.regplot(
             x=self.y_predict,
             y=residual_norm_abs_sqrt,
-            scatter=False, ci=False,
+            scatter=False,
+            ci=False,
             lowess=True,
-            line_kws={'color': 'red', 'lw': 1, 'alpha': 0.8},
-            ax=ax)
+            line_kws={"color": "red", "lw": 1, "alpha": 0.8},
+            ax=ax,
+        )
 
         # annotations
         abs_sq_norm_resid = np.flip(np.argsort(residual_norm_abs_sqrt), 0)
         abs_sq_norm_resid_top_3 = abs_sq_norm_resid[:3]
         for i in abs_sq_norm_resid_top_3:
             ax.annotate(
-                i,
-                xy=(self.y_predict[i], residual_norm_abs_sqrt[i]),
-                color='C3')
-        ax.set_title('Scale-Location', fontweight="bold")
-        ax.set_xlabel('Fitted values')
-        ax.set_ylabel(r'$\sqrt{|\mathrm{Standardized\ Residuals}|}$');
+                i, xy=(self.y_predict[i], residual_norm_abs_sqrt[i]), color="C3"
+            )
+        ax.set_title("Scale-Location", fontweight="bold")
+        ax.set_xlabel("Fitted values")
+        ax.set_ylabel(r"$\sqrt{|\mathrm{Standardized\ Residuals}|}$")
         return ax
 
     def leverage_plot(self, ax=None):
@@ -265,10 +277,7 @@ class Linear_Reg_Diagnostic():
         if ax is None:
             fig, ax = plt.subplots()
 
-        ax.scatter(
-            self.leverage,
-            self.residual_norm,
-            alpha=0.5);
+        ax.scatter(self.leverage, self.residual_norm, alpha=0.5)
 
         sns.regplot(
             x=self.leverage,
@@ -276,27 +285,25 @@ class Linear_Reg_Diagnostic():
             scatter=False,
             ci=False,
             lowess=True,
-            line_kws={'color': 'red', 'lw': 1, 'alpha': 0.8},
-            ax=ax)
+            line_kws={"color": "red", "lw": 1, "alpha": 0.8},
+            ax=ax,
+        )
 
         # annotations
         leverage_top_3 = np.flip(np.argsort(self.cooks_distance), 0)[:3]
         for i in leverage_top_3:
-            ax.annotate(
-                i,
-                xy=(self.leverage[i], self.residual_norm[i]),
-                color = 'C3')
+            ax.annotate(i, xy=(self.leverage[i], self.residual_norm[i]), color="C3")
 
-        xtemp, ytemp = self.__cooks_dist_line(0.5) # 0.5 line
-        ax.plot(xtemp, ytemp, label="Cook's distance", lw=1, ls='--', color='red')
-        xtemp, ytemp = self.__cooks_dist_line(1) # 1 line
-        ax.plot(xtemp, ytemp, lw=1, ls='--', color='red')
+        xtemp, ytemp = self.__cooks_dist_line(0.5)  # 0.5 line
+        ax.plot(xtemp, ytemp, label="Cook's distance", lw=1, ls="--", color="red")
+        xtemp, ytemp = self.__cooks_dist_line(1)  # 1 line
+        ax.plot(xtemp, ytemp, lw=1, ls="--", color="red")
 
-        ax.set_xlim(0, max(self.leverage)+0.01)
-        ax.set_title('Residuals vs Leverage', fontweight="bold")
-        ax.set_xlabel('Leverage')
-        ax.set_ylabel('Standardized Residuals')
-        ax.legend(loc='upper right')
+        ax.set_xlim(0, max(self.leverage) + 0.01)
+        ax.set_title("Residuals vs Leverage", fontweight="bold")
+        ax.set_xlabel("Leverage")
+        ax.set_ylabel("Standardized Residuals")
+        ax.legend(loc="upper right")
         return ax
 
     def vif_table(self):
@@ -309,12 +316,11 @@ class Linear_Reg_Diagnostic():
         """
         vif_df = pd.DataFrame()
         vif_df["Features"] = self.xvar_names
-        vif_df["VIF Factor"] = [variance_inflation_factor(self.xvar, i) for i in range(self.xvar.shape[1])]
+        vif_df["VIF Factor"] = [
+            variance_inflation_factor(self.xvar, i) for i in range(self.xvar.shape[1])
+        ]
 
-        print(vif_df
-                .sort_values("VIF Factor")
-                .round(2))
-
+        print(vif_df.sort_values("VIF Factor").round(2))
 
     def __cooks_dist_line(self, factor):
         """
@@ -330,11 +336,13 @@ class Linear_Reg_Diagnostic():
 # In[6]:
 
 
-pal = {"ref": sns.color_palette("Set2")[0],
-       "rewire": sns.color_palette("Set2")[2],
-       "DN": sns.color_palette("Set2")[1],
-       "NA": "lightgray",
-       "likely": "darkgray"}
+pal = {
+    "ref": sns.color_palette("Set2")[0],
+    "rewire": sns.color_palette("Set2")[2],
+    "DN": sns.color_palette("Set2")[1],
+    "NA": "lightgray",
+    "likely": "darkgray",
+}
 
 
 # ## variables
@@ -399,7 +407,9 @@ print(len(joung_down_map_TF))
 joung_down_map_louvain = pd.read_table(joung_down_map_louvain_f, index_col=0)
 print(len(joung_down_map_louvain))
 
-joung_down_map = joung_down_map_batch.join(joung_down_map_TF).join(joung_down_map_louvain)
+joung_down_map = joung_down_map_batch.join(joung_down_map_TF).join(
+    joung_down_map_louvain
+)
 print(len(joung_down_map))
 
 
@@ -408,7 +418,7 @@ print(len(joung_down_map))
 # In[15]:
 
 
-tfs = load_annotated_6k_collection()
+tfs = load_annotated_TFiso1_collection()
 
 
 # In[16]:
@@ -419,6 +429,7 @@ def pd_translate(row):
     aa = s.translate()
     return str(aa)
 
+
 joung_orf["seq_aa"] = joung_orf.apply(pd_translate, axis=1)
 
 
@@ -428,9 +439,9 @@ joung_orf["seq_aa"] = joung_orf.apply(pd_translate, axis=1)
 tf_id_map = {}
 for tf in tfs:
     isos = tfs[tf]
-    for i, iso in enumerate(isos.orfs):
+    for i, iso in enumerate(isos.isoforms):
         sub_dict = {}
-        try: 
+        try:
             iso_clone_acc = iso.clone_acc
         except AttributeError:
             continue
@@ -441,30 +452,31 @@ for tf in tfs:
             iso_seq_aa = iso.aa_seq
         iso_ensts = iso.ensembl_transcript_ids
 
-        
         # first try to match based on aa seq
         joung_sub = joung_orf[joung_orf["seq_aa"] == iso_seq_aa]
-        
+
         if len(joung_sub) > 0:
             sub_dict["match_type"] = "seq_aa"
             sub_dict["joung_id"] = joung_sub["Name"].iloc[0]
-        
+
         # if not found, then try ensts
         if len(joung_sub) == 0:
             if iso_ensts is None:
                 continue
-            
+
             for iso_enst in iso_ensts:
-                joung_sub = joung_orf[joung_orf["RefSeq and Gencode ID"].str.contains(iso_enst)]
+                joung_sub = joung_orf[
+                    joung_orf["RefSeq and Gencode ID"].str.contains(iso_enst)
+                ]
                 if len(joung_sub) > 0:
                     continue
-            
+
             if len(joung_sub) > 0:
                 sub_dict["match_type"] = "enst"
                 sub_dict["joung_id"] = joung_sub["Name"].iloc[0]
             else:
                 continue
-        
+
         sub_dict["enst"] = iso_ensts
         sub_dict["seq_aa"] = iso_seq_aa
         tf_id_map[iso_clone_acc] = sub_dict
@@ -481,8 +493,13 @@ tf_id_map_df.sample(5)
 # In[19]:
 
 
-joung_orf = joung_orf.merge(tf_id_map_df, left_on="Name", right_on="joung_id", how="left", suffixes=("_joung",
-                                                                                                     "_tf1p0"))
+joung_orf = joung_orf.merge(
+    tf_id_map_df,
+    left_on="Name",
+    right_on="joung_id",
+    how="left",
+    suffixes=("_joung", "_tf1p0"),
+)
 joung_orf.sample(5)
 
 
@@ -497,9 +514,24 @@ joung_data = joung_orf.merge(joung_data, on="Name", how="left")
 # In[21]:
 
 
-dn_ref = dn[["gene_symbol", "family", "clone_acc_ref", "is_ref_novel_isoform", "is_MANE_select_isoform_cloned",
-             "dn_short"]].drop_duplicates()
-dn_ref.columns = ["gene_name", "family", "tf1p0_id", "is_novel", "is_MANE_select", "dn_cat"]
+dn_ref = dn[
+    [
+        "gene_symbol",
+        "family",
+        "clone_acc_ref",
+        "is_ref_novel_isoform",
+        "is_MANE_select_isoform_cloned",
+        "dn_short",
+    ]
+].drop_duplicates()
+dn_ref.columns = [
+    "gene_name",
+    "family",
+    "tf1p0_id",
+    "is_novel",
+    "is_MANE_select",
+    "dn_cat",
+]
 dn_ref["dn_cat"] = "ref"
 dn_ref["iso_status"] = "ref"
 
@@ -507,10 +539,25 @@ dn_ref["iso_status"] = "ref"
 # In[22]:
 
 
-dn_alt = dn[["gene_symbol", "family", "clone_acc_alt", "is_alt_novel_isoform", "is_MANE_select_isoform_cloned",
-             "dn_short"]].drop_duplicates()
-dn_alt.columns = ["gene_name", "family", "tf1p0_id", "is_novel", "is_MANE_select", "dn_cat"]
-dn_alt["is_MANE_select"] = False # assuming none of the alts are the MANE select
+dn_alt = dn[
+    [
+        "gene_symbol",
+        "family",
+        "clone_acc_alt",
+        "is_alt_novel_isoform",
+        "is_MANE_select_isoform_cloned",
+        "dn_short",
+    ]
+].drop_duplicates()
+dn_alt.columns = [
+    "gene_name",
+    "family",
+    "tf1p0_id",
+    "is_novel",
+    "is_MANE_select",
+    "dn_cat",
+]
+dn_alt["is_MANE_select"] = False  # assuming none of the alts are the MANE select
 dn_alt["iso_status"] = "alt"
 
 
@@ -544,17 +591,21 @@ dn_cats[~pd.isnull(dn_cats["Name"])].iso_status.value_counts()
 # In[27]:
 
 
-refs_inc = len(dn_cats[(~pd.isnull(dn_cats["Name"])) & (dn_cats["iso_status"] == "ref")])
+refs_inc = len(
+    dn_cats[(~pd.isnull(dn_cats["Name"])) & (dn_cats["iso_status"] == "ref")]
+)
 refs_tf1p0 = len(dn_cats[dn_cats["iso_status"] == "ref"])
-print("%% of our ref seqs included in joung: %s" % (refs_inc/refs_tf1p0*100))
+print("%% of our ref seqs included in joung: %s" % (refs_inc / refs_tf1p0 * 100))
 
 
 # In[28]:
 
 
-alts_inc = len(dn_cats[(~pd.isnull(dn_cats["Name"])) & (dn_cats["iso_status"] == "alt")])
+alts_inc = len(
+    dn_cats[(~pd.isnull(dn_cats["Name"])) & (dn_cats["iso_status"] == "alt")]
+)
 alts_tf1p0 = len(dn_cats[dn_cats["iso_status"] == "alt"])
-print("%% of our alt seqs included in joung: %s" % (alts_inc/alts_tf1p0*100))
+print("%% of our alt seqs included in joung: %s" % (alts_inc / alts_tf1p0 * 100))
 
 
 # In[29]:
@@ -601,8 +652,11 @@ dn_cats["orf_len"] = dn_cats["seq_aa_joung"].str.len()
 # In[35]:
 
 
-joung_down_tf1p0_map = joung_down_map.merge(dn_cats[["TF ORF", "tf1p0_id", "iso_status", "dn_cat", "orf_len"]],
-                                           left_on="TF", right_on="TF ORF")
+joung_down_tf1p0_map = joung_down_map.merge(
+    dn_cats[["TF ORF", "tf1p0_id", "iso_status", "dn_cat", "orf_len"]],
+    left_on="TF",
+    right_on="TF ORF",
+)
 print(len(joung_down_tf1p0_map))
 print(len(joung_down_tf1p0_map["TF ORF"].unique()))
 
@@ -616,9 +670,21 @@ joung_down_tf1p0_map.fillna("NA", inplace=True)
 # In[37]:
 
 
-joung_tf1p0_cnts = joung_down_tf1p0_map.groupby(["TF", "tf1p0_id", "iso_status", 
-                                                 "dn_cat", "orf_len"])["TF ORF"].agg("count").reset_index()
-joung_tf1p0_cnts.columns = ["TF", "tf1p0_id", "iso_status", "dn_cat", "orf_len", "tot_cell_cnt"]
+joung_tf1p0_cnts = (
+    joung_down_tf1p0_map.groupby(["TF", "tf1p0_id", "iso_status", "dn_cat", "orf_len"])[
+        "TF ORF"
+    ]
+    .agg("count")
+    .reset_index()
+)
+joung_tf1p0_cnts.columns = [
+    "TF",
+    "tf1p0_id",
+    "iso_status",
+    "dn_cat",
+    "orf_len",
+    "tot_cell_cnt",
+]
 joung_tf1p0_cnts.head()
 
 
@@ -627,10 +693,30 @@ joung_tf1p0_cnts.head()
 # In[38]:
 
 
-lm = dn_cats[["gene_name", "family", "tf1p0_id", "is_novel", "dn_cat", "iso_status",
-              "Diffusion P-value", "Diffusion difference", "orf_len"]]
-lm.columns = ["gene_name", "family", "tf1p0_id", "is_novel", "dn_cat", "iso_status", 
-              "diff_pval", "diff_diff", "orf_len"]
+lm = dn_cats[
+    [
+        "gene_name",
+        "family",
+        "tf1p0_id",
+        "is_novel",
+        "dn_cat",
+        "iso_status",
+        "Diffusion P-value",
+        "Diffusion difference",
+        "orf_len",
+    ]
+]
+lm.columns = [
+    "gene_name",
+    "family",
+    "tf1p0_id",
+    "is_novel",
+    "dn_cat",
+    "iso_status",
+    "diff_pval",
+    "diff_diff",
+    "orf_len",
+]
 lm["dn_cat"].replace("ref", "*ref", inplace=True)
 lm["iso_status"].replace("ref", "*ref", inplace=True)
 lm["dn_cat"].fillna("NA", inplace=True)
@@ -659,7 +745,7 @@ lm["log_count"] = np.log10(lm["tot_cell_cnt"])
 # In[41]:
 
 
-mod = smf.ols(formula='neglog_diff_pval ~ log_count + dn_cat', data=lm)
+mod = smf.ols(formula="neglog_diff_pval ~ log_count + dn_cat", data=lm)
 
 
 # In[42]:
@@ -706,28 +792,58 @@ dn_cats_nonan.fillna("NA", inplace=True)
 # In[48]:
 
 
-nice_boxplot(dn_cats_nonan, "neglog_diff_pval", "dn_cat", pal, 
-             ["ref", "rewire", "DN", "NA"], [6.9, 7.6, 8.3, 5.2], -0.02, 
-             "", ["reference", "rewirer", "negative regulator", "NA"], 
-             "-log10(Diffusion p-value)", False, (-0.75, 9.2), 
-             "effect of TF isoforms on differentiation\n(Joung et al.)", "../figures/Joung_DiffP_Boxplot.pdf")
+nice_boxplot(
+    dn_cats_nonan,
+    "neglog_diff_pval",
+    "dn_cat",
+    pal,
+    ["ref", "rewire", "DN", "NA"],
+    [6.9, 7.6, 8.3, 5.2],
+    -0.02,
+    "",
+    ["reference", "rewirer", "negative regulator", "NA"],
+    "-log10(Diffusion p-value)",
+    False,
+    (-0.75, 9.2),
+    "effect of TF isoforms on differentiation\n(Joung et al.)",
+    "../figures/Joung_DiffP_Boxplot.pdf",
+)
 
 
 # In[49]:
 
 
-nice_boxplot(dn_cats_nonan, "RNA Velocity difference", "dn_cat", pal, 
-             ["ref", "rewire", "DN", "NA"], [0, 0, 0, 0], -0.1, 
-             "", ["reference", "rewirer", "negative regulator", "NA"], 
-             "RNA Velocity difference", False, (-0.05, 0.02), 
-             "effect of TF isoforms on differentiation\n(Joung et al.)", "../figures/Joung_DiffDiff_Boxplot.pdf")
+nice_boxplot(
+    dn_cats_nonan,
+    "RNA Velocity difference",
+    "dn_cat",
+    pal,
+    ["ref", "rewire", "DN", "NA"],
+    [0, 0, 0, 0],
+    -0.1,
+    "",
+    ["reference", "rewirer", "negative regulator", "NA"],
+    "RNA Velocity difference",
+    False,
+    (-0.05, 0.02),
+    "effect of TF isoforms on differentiation\n(Joung et al.)",
+    "../figures/Joung_DiffDiff_Boxplot.pdf",
+)
 
 
 # In[50]:
 
 
-sns.lmplot(data=dn_cats_nonan, x="neglog_diff_pval", y="Diffusion difference", 
-           hue="dn_cat", palette=pal, col="dn_cat", height=2, scatter_kws={"s": 7})
+sns.lmplot(
+    data=dn_cats_nonan,
+    x="neglog_diff_pval",
+    y="Diffusion difference",
+    hue="dn_cat",
+    palette=pal,
+    col="dn_cat",
+    height=2,
+    scatter_kws={"s": 7},
+)
 
 
 # ## 9. plot p-values across cell count quartiles
@@ -735,14 +851,19 @@ sns.lmplot(data=dn_cats_nonan, x="neglog_diff_pval", y="Diffusion difference",
 # In[51]:
 
 
-joung_tf1p0_cnts["cell_cnt_qcut"] = pd.qcut(joung_tf1p0_cnts["tot_cell_cnt"], q=4, labels=[1, 2, 3, 4])
+joung_tf1p0_cnts["cell_cnt_qcut"] = pd.qcut(
+    joung_tf1p0_cnts["tot_cell_cnt"], q=4, labels=[1, 2, 3, 4]
+)
 
 
 # In[52]:
 
 
-dn_cats_nonan = dn_cats_nonan.merge(joung_tf1p0_cnts[["TF", "tot_cell_cnt", "cell_cnt_qcut"]], 
-                                    left_on="TF ORF", right_on="TF")
+dn_cats_nonan = dn_cats_nonan.merge(
+    joung_tf1p0_cnts[["TF", "tot_cell_cnt", "cell_cnt_qcut"]],
+    left_on="TF ORF",
+    right_on="TF",
+)
 
 
 # In[53]:
@@ -750,12 +871,30 @@ dn_cats_nonan = dn_cats_nonan.merge(joung_tf1p0_cnts[["TF", "tot_cell_cnt", "cel
 
 fig = plt.figure(figsize=(5, 3))
 
-ax = sns.boxplot(data=dn_cats_nonan, x="cell_cnt_qcut", y="neglog_diff_pval", hue="dn_cat", palette=pal, 
-                 hue_order=["ref", "rewire", "DN", "NA"], fliersize=0)
+ax = sns.boxplot(
+    data=dn_cats_nonan,
+    x="cell_cnt_qcut",
+    y="neglog_diff_pval",
+    hue="dn_cat",
+    palette=pal,
+    hue_order=["ref", "rewire", "DN", "NA"],
+    fliersize=0,
+)
 
-sns.swarmplot(data=dn_cats_nonan, x="cell_cnt_qcut", y="neglog_diff_pval", hue="dn_cat", palette=pal,
-              hue_order=["ref", "rewire", "DN", "NA"], ax=ax, split=True,
-              size=4, edgecolor="black", linewidth=0.5, alpha=0.5)
+sns.swarmplot(
+    data=dn_cats_nonan,
+    x="cell_cnt_qcut",
+    y="neglog_diff_pval",
+    hue="dn_cat",
+    palette=pal,
+    hue_order=["ref", "rewire", "DN", "NA"],
+    ax=ax,
+    split=True,
+    size=4,
+    edgecolor="black",
+    linewidth=0.5,
+    alpha=0.5,
+)
 
 mimic_r_boxplot(ax)
 
@@ -764,7 +903,9 @@ ax.set_ylabel("Joung et al. over-expression -log10(Diffusion p-value)")
 
 plt.legend(loc=2, bbox_to_anchor=(1.01, 1), facecolor="white")
 
-fig.savefig("../figures/Joung_DiffP_Boxplot_QCut.pdf", dpi="figure", bbox_inches="tight")
+fig.savefig(
+    "../figures/Joung_DiffP_Boxplot_QCut.pdf", dpi="figure", bbox_inches="tight"
+)
 
 
 # In[54]:
@@ -772,12 +913,30 @@ fig.savefig("../figures/Joung_DiffP_Boxplot_QCut.pdf", dpi="figure", bbox_inches
 
 fig = plt.figure(figsize=(5, 3))
 
-ax = sns.boxplot(data=dn_cats_nonan, x="cell_cnt_qcut", y="Diffusion difference", hue="dn_cat", palette=pal, 
-                 hue_order=["ref", "rewire", "DN", "NA"], fliersize=0)
+ax = sns.boxplot(
+    data=dn_cats_nonan,
+    x="cell_cnt_qcut",
+    y="Diffusion difference",
+    hue="dn_cat",
+    palette=pal,
+    hue_order=["ref", "rewire", "DN", "NA"],
+    fliersize=0,
+)
 
-sns.swarmplot(data=dn_cats_nonan, x="cell_cnt_qcut", y="Diffusion difference", hue="dn_cat", palette=pal,
-              hue_order=["ref", "rewire", "DN", "NA"], ax=ax, split=True,
-              size=4, edgecolor="black", linewidth=0.5, alpha=0.5)
+sns.swarmplot(
+    data=dn_cats_nonan,
+    x="cell_cnt_qcut",
+    y="Diffusion difference",
+    hue="dn_cat",
+    palette=pal,
+    hue_order=["ref", "rewire", "DN", "NA"],
+    ax=ax,
+    split=True,
+    size=4,
+    edgecolor="black",
+    linewidth=0.5,
+    alpha=0.5,
+)
 
 mimic_r_boxplot(ax)
 
@@ -786,7 +945,9 @@ ax.set_ylabel("Joung et al. over-expression Diffusion difference")
 
 plt.legend(loc=2, bbox_to_anchor=(1.01, 1), facecolor="white")
 
-fig.savefig("../figures/Joung_DiffDiff_Boxplot_QCut.pdf", dpi="figure", bbox_inches="tight")
+fig.savefig(
+    "../figures/Joung_DiffDiff_Boxplot_QCut.pdf", dpi="figure", bbox_inches="tight"
+)
 
 
 # ## 10. scatter for ref v alt
@@ -796,10 +957,20 @@ fig.savefig("../figures/Joung_DiffDiff_Boxplot_QCut.pdf", dpi="figure", bbox_inc
 
 dn_cats_nonan_ref = dn_cats_nonan[dn_cats_nonan["iso_status"] == "ref"]
 dn_cats_nonan_alt = dn_cats_nonan[dn_cats_nonan["iso_status"] == "alt"]
-dn_cats_nonan_diff = dn_cats_nonan_ref.merge(dn_cats_nonan_alt, on=["gene_name", "family", "RefSeq Gene Name"],
-                                             how="left", suffixes=("_ref", "_alt"))
-dn_cats_nonan_diff["diff_pval_diff"] = dn_cats_nonan_diff["Diffusion P-value_ref"] - dn_cats_nonan_diff["Diffusion P-value_alt"]
-dn_cats_nonan_diff["diff_diff_diff"] = dn_cats_nonan_diff["Diffusion difference_ref"] - dn_cats_nonan_diff["Diffusion difference_alt"]
+dn_cats_nonan_diff = dn_cats_nonan_ref.merge(
+    dn_cats_nonan_alt,
+    on=["gene_name", "family", "RefSeq Gene Name"],
+    how="left",
+    suffixes=("_ref", "_alt"),
+)
+dn_cats_nonan_diff["diff_pval_diff"] = (
+    dn_cats_nonan_diff["Diffusion P-value_ref"]
+    - dn_cats_nonan_diff["Diffusion P-value_alt"]
+)
+dn_cats_nonan_diff["diff_diff_diff"] = (
+    dn_cats_nonan_diff["Diffusion difference_ref"]
+    - dn_cats_nonan_diff["Diffusion difference_alt"]
+)
 
 dn_cats_nonan_diff["abs_ddd"] = np.abs(dn_cats_nonan_diff["diff_diff_diff"])
 
@@ -809,9 +980,17 @@ dn_cats_nonan_diff["abs_ddd"] = np.abs(dn_cats_nonan_diff["diff_diff_diff"])
 
 fig = plt.figure(figsize=(2.4, 2.2))
 
-ax = sns.scatterplot(data=dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"] != "likely"], 
-                     x="neglog_diff_pval_ref", y="neglog_diff_pval_alt",
-                     hue="dn_cat_alt", palette=pal, linewidth=0.5, edgecolor="black", alpha=0.8, zorder=10)
+ax = sns.scatterplot(
+    data=dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"] != "likely"],
+    x="neglog_diff_pval_ref",
+    y="neglog_diff_pval_alt",
+    hue="dn_cat_alt",
+    palette=pal,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.8,
+    zorder=10,
+)
 ax.set_xlabel("reference isoform -log10(p-value)")
 ax.set_ylabel("alternative isoform -log10(p-value)")
 ax.set_title("effect of TF isoforms on differentiation\n(Joung et al.)")
@@ -829,9 +1008,17 @@ fig.savefig("../figures/Joung_Scatter.inc_NA.pdf", dpi="figure", bbox_inches="ti
 
 fig = plt.figure(figsize=(2, 2.2))
 
-ax = sns.scatterplot(data=dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])], 
-                     x="neglog_diff_pval_ref", y="neglog_diff_pval_alt",
-                     hue="dn_cat_alt", palette=pal, linewidth=0.5, edgecolor="black", alpha=0.8, zorder=10)
+ax = sns.scatterplot(
+    data=dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])],
+    x="neglog_diff_pval_ref",
+    y="neglog_diff_pval_alt",
+    hue="dn_cat_alt",
+    palette=pal,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.8,
+    zorder=10,
+)
 ax.set_xlabel("reference isoform -log10(p-value)")
 ax.set_ylabel("alternative isoform -log10(p-value)")
 ax.set_title("effect of TF isoforms on differentiation\n(Joung et al.)")
@@ -850,19 +1037,51 @@ fig.savefig("../figures/Joung_Scatter.pdf", dpi="figure", bbox_inches="tight")
 
 fig = plt.figure(figsize=(2, 2.2))
 
-ax = sns.scatterplot(data=dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])], 
-                     x="Diffusion difference_ref", y="Diffusion difference_alt",
-                     hue="dn_cat_alt", palette=pal, linewidth=0.5, edgecolor="black", alpha=0.8, zorder=10)
+ax = sns.scatterplot(
+    data=dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])],
+    x="Diffusion difference_ref",
+    y="Diffusion difference_alt",
+    hue="dn_cat_alt",
+    palette=pal,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.8,
+    zorder=10,
+)
 ax.set_xlabel("reference isoform effect size")
 ax.set_ylabel("alternative isoform effect size")
 ax.set_title("effect of TF isoforms on differentiation\n(Joung et al.)")
 
 ax.set_xlim((-0.04, 0.01))
 ax.set_ylim((-0.03, 0.01))
-ax.plot([-0.0025, -0.0025], [-0.0025, 0.0075], linestyle="dashed", color="black", linewidth=0.5)
-ax.plot([-0.0025, 0.0075], [-0.0025, -0.0025], linestyle="dashed", color="black", linewidth=0.5)
-ax.plot([-0.0025, 0.0075], [0.0075, 0.0075], linestyle="dashed", color="black", linewidth=0.5)
-ax.plot([0.0075, 0.0075], [-0.0025, 0.0075], linestyle="dashed", color="black", linewidth=0.5)
+ax.plot(
+    [-0.0025, -0.0025],
+    [-0.0025, 0.0075],
+    linestyle="dashed",
+    color="black",
+    linewidth=0.5,
+)
+ax.plot(
+    [-0.0025, 0.0075],
+    [-0.0025, -0.0025],
+    linestyle="dashed",
+    color="black",
+    linewidth=0.5,
+)
+ax.plot(
+    [-0.0025, 0.0075],
+    [0.0075, 0.0075],
+    linestyle="dashed",
+    color="black",
+    linewidth=0.5,
+)
+ax.plot(
+    [0.0075, 0.0075],
+    [-0.0025, 0.0075],
+    linestyle="dashed",
+    color="black",
+    linewidth=0.5,
+)
 # ax.axvline(x=0, linestyle="dashed", color="black", linewidth=0.5)
 
 ax.get_legend().remove()
@@ -875,20 +1094,37 @@ fig.savefig("../figures/Joung_Scatter_EffSize.pdf", dpi="figure", bbox_inches="t
 
 fig = plt.figure(figsize=(2, 2.2))
 
-ax = sns.scatterplot(data=dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])], 
-                     x="Diffusion difference_ref", y="Diffusion difference_alt",
-                     hue="dn_cat_alt", palette=pal, linewidth=0.5, edgecolor="black", alpha=0.8, zorder=10)
+ax = sns.scatterplot(
+    data=dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])],
+    x="Diffusion difference_ref",
+    y="Diffusion difference_alt",
+    hue="dn_cat_alt",
+    palette=pal,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.8,
+    zorder=10,
+)
 ax.set_xlabel("reference isoform effect size")
 ax.set_ylabel("alternative isoform effect size")
 ax.set_title("effect of TF isoforms on differentiation\n(Joung et al.)")
 
 ax.set_xlim((-0.0025, 0.0075))
 ax.set_ylim((-0.0025, 0.0075))
-ax.plot([-0.0025, 0.0075], [-0.0025, 0.0075], linestyle="dashed", color="black", linewidth=1, zorder=1)
+ax.plot(
+    [-0.0025, 0.0075],
+    [-0.0025, 0.0075],
+    linestyle="dashed",
+    color="black",
+    linewidth=1,
+    zorder=1,
+)
 
 ax.get_legend().remove()
 
-fig.savefig("../figures/Joung_Scatter_EffSize_Zoom.pdf", dpi="figure", bbox_inches="tight")
+fig.savefig(
+    "../figures/Joung_Scatter_EffSize_Zoom.pdf", dpi="figure", bbox_inches="tight"
+)
 
 
 # In[60]:
@@ -896,10 +1132,20 @@ fig.savefig("../figures/Joung_Scatter_EffSize_Zoom.pdf", dpi="figure", bbox_inch
 
 fig = plt.figure(figsize=(2, 2.2))
 
-ax = sns.scatterplot(data=dn_cats_nonan_diff[(dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])) &
-                                             (dn_cats_nonan_diff["Diffusion P-value_alt"] < 0.1)], 
-                     x="Diffusion difference_ref", y="Diffusion difference_alt",
-                     hue="dn_cat_alt", palette=pal, linewidth=0.5, edgecolor="black", alpha=0.8, zorder=10)
+ax = sns.scatterplot(
+    data=dn_cats_nonan_diff[
+        (dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"]))
+        & (dn_cats_nonan_diff["Diffusion P-value_alt"] < 0.1)
+    ],
+    x="Diffusion difference_ref",
+    y="Diffusion difference_alt",
+    hue="dn_cat_alt",
+    palette=pal,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.8,
+    zorder=10,
+)
 ax.set_xlabel("reference isoform effect size")
 ax.set_ylabel("alternative isoform effect size")
 ax.set_title("effect of TF isoforms on differentiation\n(Joung et al.)")
@@ -911,18 +1157,28 @@ ax.axvline(x=0, linestyle="dashed", color="black", linewidth=0.5)
 
 ax.get_legend().remove()
 
-#fig.savefig("../figures/Joung_Scatter.pdf", dpi="figure", bbox_inches="tight")
+# fig.savefig("../figures/Joung_Scatter.pdf", dpi="figure", bbox_inches="tight")
 
 
 # In[61]:
 
 
 tmp = dn_cats_nonan_diff[dn_cats_nonan_diff["dn_cat_alt"].isin(["rewire", "DN"])]
-tmp.sort_values(by="Diffusion difference_alt", ascending=True)[["tf1p0_id_ref", "tf1p0_id_alt", "dn_cat_alt",
-                                                             "Name_ref", "Name_alt", "Diffusion difference_ref",
-                                                                  "Diffusion difference_alt",
-                                                             "neglog_diff_pval_ref", "neglog_diff_pval_alt",
-                                                             "tot_cell_cnt_ref", "tot_cell_cnt_alt"]].head(20)
+tmp.sort_values(by="Diffusion difference_alt", ascending=True)[
+    [
+        "tf1p0_id_ref",
+        "tf1p0_id_alt",
+        "dn_cat_alt",
+        "Name_ref",
+        "Name_alt",
+        "Diffusion difference_ref",
+        "Diffusion difference_alt",
+        "neglog_diff_pval_ref",
+        "neglog_diff_pval_alt",
+        "tot_cell_cnt_ref",
+        "tot_cell_cnt_alt",
+    ]
+].head(20)
 
 
 # In[62]:
@@ -930,10 +1186,18 @@ tmp.sort_values(by="Diffusion difference_alt", ascending=True)[["tf1p0_id_ref", 
 
 fig = plt.figure(figsize=(2, 2.2))
 
-ax = sns.scatterplot(data=dn_cats_nonan[dn_cats_nonan["dn_cat"].isin(["ref", "rewire", "DN"])], 
-                     x="Diffusion difference", y="neglog_diff_pval", 
-                     hue="dn_cat", palette=pal, linewidth=0.25, edgecolor="black", alpha=0.8, zorder=10,
-                     **{"s": 8})
+ax = sns.scatterplot(
+    data=dn_cats_nonan[dn_cats_nonan["dn_cat"].isin(["ref", "rewire", "DN"])],
+    x="Diffusion difference",
+    y="neglog_diff_pval",
+    hue="dn_cat",
+    palette=pal,
+    linewidth=0.25,
+    edgecolor="black",
+    alpha=0.8,
+    zorder=10,
+    **{"s": 8}
+)
 
 ax.set_xlabel("over-expression effect size")
 ax.set_ylabel("-log10(over-expression p-value)")
@@ -952,11 +1216,11 @@ fig.savefig("../figures/Joung_Volcano.pdf", dpi="figure", bbox_inches="tight")
 # In[63]:
 
 
-tmp = dn_cats_nonan[dn_cats_nonan["dn_cat"]=="DN"]
-#tmp = tmp[tmp["neglog_diff_pval"] > 3]
-tmp.sort_values(by="neglog_diff_pval", 
-                ascending=False)[["tf1p0_id", "dn_cat", "Diffusion difference",
-                                 "neglog_diff_pval", "tot_cell_cnt"]].head()
+tmp = dn_cats_nonan[dn_cats_nonan["dn_cat"] == "DN"]
+# tmp = tmp[tmp["neglog_diff_pval"] > 3]
+tmp.sort_values(by="neglog_diff_pval", ascending=False)[
+    ["tf1p0_id", "dn_cat", "Diffusion difference", "neglog_diff_pval", "tot_cell_cnt"]
+].head()
 
 
 # ## 11. enrichment heatmaps
@@ -975,7 +1239,11 @@ print(len(joung_cells))
 # In[65]:
 
 
-joung_cells_grp = joung_cells.groupby(["Name", "TF", "predicted.id"])["batch"].agg("count").reset_index()
+joung_cells_grp = (
+    joung_cells.groupby(["Name", "TF", "predicted.id"])["batch"]
+    .agg("count")
+    .reset_index()
+)
 
 
 # In[66]:
@@ -990,18 +1258,24 @@ cell_cnt.columns = ["Name", "TF", "tot_cell_cnt", "diff_cell_cnt"]
 orf_enr = cell_cnt.merge(joung_cells_grp, on=["Name", "TF"], how="left")
 orf_enr["batch"].fillna(0, inplace=True)
 
-orf_enr.columns = ["Name", "TF", "tot_cell_cnt", "diff_cell_cnt", "predicted.id", "id_cell_cnt"]
-orf_enr["perc_cells_of_diff_tf"] = orf_enr["id_cell_cnt"]/orf_enr["diff_cell_cnt"]
-orf_enr["perc_cells_of_tot_tf"] = orf_enr["id_cell_cnt"]/orf_enr["tot_cell_cnt"]
+orf_enr.columns = [
+    "Name",
+    "TF",
+    "tot_cell_cnt",
+    "diff_cell_cnt",
+    "predicted.id",
+    "id_cell_cnt",
+]
+orf_enr["perc_cells_of_diff_tf"] = orf_enr["id_cell_cnt"] / orf_enr["diff_cell_cnt"]
+orf_enr["perc_cells_of_tot_tf"] = orf_enr["id_cell_cnt"] / orf_enr["tot_cell_cnt"]
 
 
 # In[67]:
 
 
-orf_enr_dn = orf_enr.merge(dn_cats_nonan[["gene_name", "Name", "tf1p0_id",
-                                          "dn_cat"]], on="Name").drop_duplicates(subset=["tf1p0_id",
-                                                                                         "predicted.id",
-                                                                                         "dn_cat"])
+orf_enr_dn = orf_enr.merge(
+    dn_cats_nonan[["gene_name", "Name", "tf1p0_id", "dn_cat"]], on="Name"
+).drop_duplicates(subset=["tf1p0_id", "predicted.id", "dn_cat"])
 
 
 # In[68]:
@@ -1010,7 +1284,9 @@ orf_enr_dn = orf_enr.merge(dn_cats_nonan[["gene_name", "Name", "tf1p0_id",
 has_alt = list(orf_enr_dn[orf_enr_dn["dn_cat"] != "ref"]["gene_name"].unique())
 orf_enr_dn_filt = orf_enr_dn[orf_enr_dn["gene_name"].isin(has_alt)]
 
-has_ref = list(orf_enr_dn_filt[orf_enr_dn_filt["dn_cat"] == "ref"]["gene_name"].unique())
+has_ref = list(
+    orf_enr_dn_filt[orf_enr_dn_filt["dn_cat"] == "ref"]["gene_name"].unique()
+)
 orf_enr_dn_filt = orf_enr_dn_filt[orf_enr_dn_filt["gene_name"].isin(has_ref)]
 len(orf_enr_dn_filt)
 
@@ -1018,7 +1294,9 @@ len(orf_enr_dn_filt)
 # In[69]:
 
 
-orf_enr_dn_filt["dn_cat_s"] = pd.Categorical(orf_enr_dn_filt["dn_cat"], ["ref", "rewire", "DN", "NA", "likely"])
+orf_enr_dn_filt["dn_cat_s"] = pd.Categorical(
+    orf_enr_dn_filt["dn_cat"], ["ref", "rewire", "DN", "NA", "likely"]
+)
 orf_enr_dn_filt = orf_enr_dn_filt.sort_values(by=["gene_name", "dn_cat_s"])
 orf_enr_dn_filt[orf_enr_dn_filt["gene_name"] == "PBX1"]
 
@@ -1033,42 +1311,69 @@ len(cell_cnt)
 # In[71]:
 
 
-cell_cnt["diff_cell_perc"] = (cell_cnt["diff_cell_cnt"]/cell_cnt["tot_cell_cnt"])*100
-cell_cnt["undiff_cell_perc"] = (cell_cnt["undiff_cell_cnt"]/cell_cnt["tot_cell_cnt"])*100
+cell_cnt["diff_cell_perc"] = (
+    cell_cnt["diff_cell_cnt"] / cell_cnt["tot_cell_cnt"]
+) * 100
+cell_cnt["undiff_cell_perc"] = (
+    cell_cnt["undiff_cell_cnt"] / cell_cnt["tot_cell_cnt"]
+) * 100
 cell_cnt[cell_cnt["TF"].str.contains("GRHL3")]
 
 
 # In[72]:
 
 
-tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("KLF7")].pivot(index="tf1p0_id", 
-                                                                              columns="predicted.id", 
-                                                                              values="perc_cells_of_tot_tf")
+tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("KLF7")].pivot(
+    index="tf1p0_id", columns="predicted.id", values="perc_cells_of_tot_tf"
+)
 tmp.fillna(0, inplace=True)
 
 idx = pd.DataFrame(tmp.index)
-idx = idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id").drop_duplicates().set_index("tf1p0_id")
+idx = (
+    idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id")
+    .drop_duplicates()
+    .set_index("tf1p0_id")
+)
 idx["Isoform type"] = idx.dn_cat.map(pal)
 
-g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform type"],
-               figsize=(4, 2.5), yticklabels=True, cbar_pos=(0, 1, 0.05, 0.2))
+g = sns.clustermap(
+    tmp,
+    cmap="Greys",
+    row_cluster=False,
+    row_colors=idx["Isoform type"],
+    figsize=(4, 2.5),
+    yticklabels=True,
+    cbar_pos=(0, 1, 0.05, 0.2),
+)
 g.savefig("../figures/Joung_KLF7_hm.pdf", bbox_inches="tight", dpi="figure")
 
 
 # In[73]:
 
 
-tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("PKNOX1")].pivot(index="tf1p0_id", 
-                                                                              columns="predicted.id", 
-                                                                              values="perc_cells_of_tot_tf")
+tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("PKNOX1")].pivot(
+    index="tf1p0_id", columns="predicted.id", values="perc_cells_of_tot_tf"
+)
 tmp.fillna(0, inplace=True)
 
 idx = pd.DataFrame(tmp.index)
-idx = idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id").drop_duplicates().set_index("tf1p0_id")
+idx = (
+    idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id")
+    .drop_duplicates()
+    .set_index("tf1p0_id")
+)
 idx["Isoform type"] = idx.dn_cat.map(pal)
 
-g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform type"],
-               figsize=(2, 0.75), yticklabels=True, cbar_pos=(0, 1, 0.05, 0.2), annot=True)
+g = sns.clustermap(
+    tmp,
+    cmap="Greys",
+    row_cluster=False,
+    row_colors=idx["Isoform type"],
+    figsize=(2, 0.75),
+    yticklabels=True,
+    cbar_pos=(0, 1, 0.05, 0.2),
+    annot=True,
+)
 g.savefig("../figures/Joung_PKNOX1_hm.pdf", bbox_inches="tight", dpi="figure")
 
 
@@ -1081,36 +1386,60 @@ cell_cnt[cell_cnt["TF"].str.contains("PKNOX1")]
 # In[75]:
 
 
-tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("PBX1")].pivot(index="tf1p0_id", 
-                                                                              columns="predicted.id", 
-                                                                              values="perc_cells_of_tot_tf")
+tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("PBX1")].pivot(
+    index="tf1p0_id", columns="predicted.id", values="perc_cells_of_tot_tf"
+)
 tmp.fillna(0, inplace=True)
 
 idx = pd.DataFrame(tmp.index)
-idx = idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id").drop_duplicates().set_index("tf1p0_id")
+idx = (
+    idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id")
+    .drop_duplicates()
+    .set_index("tf1p0_id")
+)
 idx["Isoform type"] = idx.dn_cat.map(pal)
 
-g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform type"],
-               figsize=(4, 2.5), yticklabels=True, cbar_pos=(0, 1, 0.05, 0.2))
+g = sns.clustermap(
+    tmp,
+    cmap="Greys",
+    row_cluster=False,
+    row_colors=idx["Isoform type"],
+    figsize=(4, 2.5),
+    yticklabels=True,
+    cbar_pos=(0, 1, 0.05, 0.2),
+)
 # g.savefig("../figures/Joung_HOXA1_hm.pdf", bbox_inches="tight", dpi="figure")
 
 
 # In[76]:
 
 
-tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("GRHL3")].pivot(index="tf1p0_id", 
-                                                                               columns="predicted.id", 
-                                                                               values="perc_cells_of_tot_tf")
+tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("GRHL3")].pivot(
+    index="tf1p0_id", columns="predicted.id", values="perc_cells_of_tot_tf"
+)
 tmp.drop(np.nan, axis=1, inplace=True)
-tmp = tmp.loc[["GRHL3|3/7|08G09", "GRHL3|4/7|08F09", "GRHL3|1/7|08E10", "GRHL3|2/7|08A10"]]
+tmp = tmp.loc[
+    ["GRHL3|3/7|08G09", "GRHL3|4/7|08F09", "GRHL3|1/7|08E10", "GRHL3|2/7|08A10"]
+]
 tmp.fillna(0, inplace=True)
 
 idx = pd.DataFrame(tmp.index)
-idx = idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id").drop_duplicates().set_index("tf1p0_id")
+idx = (
+    idx.merge(orf_enr_dn_filt[["tf1p0_id", "dn_cat"]], on="tf1p0_id")
+    .drop_duplicates()
+    .set_index("tf1p0_id")
+)
 idx["Isoform type"] = idx.dn_cat.map(pal)
 
-g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform type"],
-                   figsize=(4, 1), yticklabels=True, cbar_pos=(0, 1, 0.05, 0.2))
+g = sns.clustermap(
+    tmp,
+    cmap="Greys",
+    row_cluster=False,
+    row_colors=idx["Isoform type"],
+    figsize=(4, 1),
+    yticklabels=True,
+    cbar_pos=(0, 1, 0.05, 0.2),
+)
 
 g.savefig("../figures/Joung_GRHL3_hm.pdf", bbox_inches="tight", dpi="figure")
 
@@ -1168,5 +1497,4 @@ len(tfs["TBX5"]["TBX5|2/3|08C02"].aa_seq)
 # In[128]:
 
 
-tfs["TBX5"].orfs
-
+tfs["TBX5"].isoforms
