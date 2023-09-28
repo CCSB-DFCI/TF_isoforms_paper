@@ -197,7 +197,7 @@ def load_annotated_gencode_tfs(
     _add_MANE_and_APPRIS_annoations(
         genes=genes, path_MANE_select=path_MANE_select, path_APPRIS=path_APPRIS
     )
-    _add_effector_domains(genes)
+    _add_effector_domains(genes, genes_to_rename)
 
     return genes
 
@@ -416,7 +416,7 @@ def _add_MANE_and_APPRIS_annoations(genes, path_MANE_select, path_APPRIS):
                 iso.APPRIS_annotation = _consolidate_appris_annotations(annotations)
 
 
-def _add_effector_domains(genes):
+def _add_effector_domains(genes, genes_to_rename=None):
     path_Soto_et_al = (
         DATA_DIR / "external/Soto-et-al_MolCell_2022_Supplementary-tables.xlsx"
     )
@@ -426,6 +426,10 @@ def _add_effector_domains(genes):
     )
 
     reg_dom = pd.read_excel(path_Soto_et_al, sheet_name="Table S2")
+    if genes_to_rename is not None:
+        reg_dom["TF name"] = (
+            reg_dom["ENSEMBL gene ID"].map(genes_to_rename).fillna(reg_dom["TF name"])
+        )
     domain_type_full = {
         "AD": "Activation domain",
         "RD": "Repression domain",
