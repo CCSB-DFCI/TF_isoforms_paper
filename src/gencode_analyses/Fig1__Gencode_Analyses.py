@@ -1,3 +1,4 @@
+
 # coding: utf-8
 
 # ## Figure 1: Gencode Analyses: TF isoform annotations, expression patterns, domains
@@ -20,17 +21,15 @@ import sys
 # import utils
 sys.path.append("../")
 
-from data_loading import (
-    load_isoform_and_paralog_y2h_data,
-    load_annotated_gencode_tfs,
-    load_y1h_pdi_data,
-    load_m1h_activation_data,
-    load_valid_isoform_clones,
-    load_seq_comparison_data,
-    load_gtex_gencode,
-    load_developmental_tissue_expression_gencode,
-    load_tf_families,
-)
+from data_loading import (load_isoform_and_paralog_y2h_data,
+                          load_annotated_gencode_tfs,
+                          load_y1h_pdi_data,
+                          load_m1h_activation_data,
+                          load_valid_isoform_clones,
+                          load_seq_comparison_data,
+                          load_gtex_gencode,
+                          load_developmental_tissue_expression_gencode,
+                          load_tf_families)
 
 
 # In[2]:
@@ -42,25 +41,13 @@ np.random.seed(2023)
 # In[3]:
 
 
-PAPER_PRESET = {
-    "style": "ticks",
-    "font": "Helvetica",
-    "context": "paper",
-    "rc": {
-        "font.size": 7,
-        "axes.titlesize": 7,
-        "axes.labelsize": 7,
-        "axes.linewidth": 0.5,
-        "legend.fontsize": 6,
-        "xtick.labelsize": 6,
-        "ytick.labelsize": 6,
-        "xtick.major.size": 3.0,
-        "ytick.major.size": 3.0,
-        "axes.edgecolor": "black",
-        "xtick.major.pad": 3.0,
-        "ytick.major.pad": 3.0,
-    },
-}
+PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+                "rc": {"font.size":7,"axes.titlesize":7,
+                       "axes.labelsize":7, 'axes.linewidth':0.5,
+                       "legend.fontsize":6, "xtick.labelsize":6,
+                       "ytick.labelsize":6, "xtick.major.size": 3.0,
+                       "ytick.major.size": 3.0, "axes.edgecolor": "black",
+                       "xtick.major.pad": 3.0, "ytick.major.pad": 3.0}}
 PAPER_FONTSIZE = 7
 
 
@@ -80,116 +67,97 @@ tfs = load_annotated_gencode_tfs()
 
 df_gtex, metadata_gtex, genes_gtex = load_gtex_gencode()
 
-exclusion_list_gtex = {
-    "Cells - Leukemia cell line (CML)",
-    "Cells - EBV-transformed lymphocytes",
-    "Cells - Cultured fibroblasts",
-}
+exclusion_list_gtex = {'Cells - Leukemia cell line (CML)',
+                       'Cells - EBV-transformed lymphocytes',
+                       'Cells - Cultured fibroblasts'}
 
-df_gtex = df_gtex.loc[
-    :, ~df_gtex.columns.map(metadata_gtex["body_site"]).isin(exclusion_list_gtex)
-]
-metadata_gtex = metadata_gtex.loc[
-    ~metadata_gtex["body_site"].isin(exclusion_list_gtex), :
-]
+df_gtex = df_gtex.loc[:, ~df_gtex.columns.map(metadata_gtex['body_site']).isin(exclusion_list_gtex)]
+metadata_gtex = metadata_gtex.loc[~metadata_gtex['body_site'].isin(exclusion_list_gtex), :]
 
-means_gtex = df_gtex.groupby(
-    df_gtex.columns.map(metadata_gtex["body_site"]), axis=1
-).mean()
+means_gtex = df_gtex.groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1).mean()
 
 df_dev, metadata_dev, genes_dev = load_developmental_tissue_expression_gencode()
 
-rename_dev_stage = {
-    "8 week post conception,embryo": "08",
-    "11 week post conception,late embryo": "11",
-    "embryo,7 week post conception": "07",
-    "infant": "infant",
-    "10 week post conception,late embryo": "10",
-    "young adult": "young adult",
-    "13 week post conception,late embryo": "13",
-    "16 week post conception,late embryo": "16",
-    "4 week post conception,embryo": "04",
-    "neonate": "neonate",
-    "19 week post conception,late embryo": "19",
-    "9 week post conception,late embryo": "09",
-    "adolescent": "adolescent",
-    "5 week post conception,embryo": "05",
-    "embryo,6 week post conception": "06",
-    "12 week post conception,late embryo": "12",
-    "18 week post conception,late embryo": "18",
-    "toddler": "toddler",
-    "elderly": "elderly",
-    "middle adult": "adult",
-    "school age child": "child",
-}
+rename_dev_stage = {'8 week post conception,embryo': '08',
+'11 week post conception,late embryo': '11',
+'embryo,7 week post conception': '07',
+'infant': 'infant',
+'10 week post conception,late embryo': '10',
+'young adult': 'young adult',
+'13 week post conception,late embryo': '13',
+'16 week post conception,late embryo': '16',
+'4 week post conception,embryo': '04',
+'neonate': 'neonate',
+'19 week post conception,late embryo': '19',
+'9 week post conception,late embryo': '09',
+'adolescent': 'adolescent',
+'5 week post conception,embryo': '05',
+'embryo,6 week post conception': '06',
+'12 week post conception,late embryo': '12',
+'18 week post conception,late embryo': '18',
+'toddler': 'toddler',
+'elderly': 'elderly',
+'middle adult': 'adult',
+'school age child': 'child'}
 
-metadata_dev["dev_stage"] = metadata_dev["Developmental_Stage"].map(rename_dev_stage)
-means_dev = df_dev.groupby(
-    df_dev.columns.map(metadata_dev["organism_part"] + " " + metadata_dev["dev_stage"]),
-    axis=1,
-).mean()
-all_isos = {
-    "|".join(sorted(orf.ensembl_transcript_names))
-    for tf in tfs.values()
-    for orf in tf.isoforms
-}
-alt_isos = {
-    "|".join(sorted(orf.ensembl_transcript_names))
-    for tf in tfs.values()
-    for orf in tf.isoforms
-    if tf.has_MANE_select_isoform and not orf.is_MANE_select_transcript
-}
-ref_isos = {
-    "|".join(sorted(orf.ensembl_transcript_names))
-    for tf in tfs.values()
-    for orf in tf.isoforms
-    if tf.has_MANE_select_isoform and orf.is_MANE_select_transcript
-}
+metadata_dev['dev_stage'] = metadata_dev['Developmental_Stage'].map(rename_dev_stage)
+means_dev = (df_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']), axis=1)
+           .mean())
+all_isos = {'|'.join(sorted(orf.ensembl_transcript_names))
+            for tf in tfs.values() for orf in tf.isoforms}
+alt_isos = {'|'.join(sorted(orf.ensembl_transcript_names))
+            for tf in tfs.values()
+            for orf in tf.isoforms
+            if tf.has_MANE_select_isoform and not orf.is_MANE_select_transcript}
+ref_isos = {'|'.join(sorted(orf.ensembl_transcript_names))
+            for tf in tfs.values()
+            for orf in tf.isoforms
+            if tf.has_MANE_select_isoform and orf.is_MANE_select_transcript}
 
 
-# In[6]:
+# In[ ]:
 
 
 len(tfs)
 
 
-# In[7]:
+# In[ ]:
 
 
 metadata_dev.shape
 
 
-# In[8]:
+# In[ ]:
 
 
 metadata_gtex.shape
 
 
-# In[9]:
+# In[ ]:
 
 
 len(all_isos)
 
 
-# In[10]:
+# In[ ]:
 
 
 len(ref_isos)
 
 
-# In[11]:
+# In[ ]:
 
 
 len(alt_isos)
 
 
-# In[12]:
+# In[ ]:
 
 
 (means_gtex > 1).any(axis=1).value_counts()
 
 
-# In[13]:
+# In[ ]:
 
 
 (means_gtex.loc[means_gtex.index.isin(alt_isos), :].sum(axis=1) >= 1).sum()
@@ -197,307 +165,239 @@ len(alt_isos)
 
 # ## 2. isoforms per family
 
-# In[14]:
+# In[ ]:
 
 
-# number of isoforms vs gene expression, publications, and exons
-tpm_per_gene = (
-    (2**df_gtex - 1)
-    .groupby(genes_gtex)
-    .sum()
-    .groupby(df_gtex.columns.map(metadata_gtex["body_site"]), axis=1)
-    .mean()
-)
-gn = (
-    tpm_per_gene.max(axis=1)
-    .rename("TPM - gene-level, max across GTEx tissues")
-    .to_frame()
-)
-gn["n_isoforms"] = gn.index.map(genes_gtex.value_counts())
+# number of isoforms vs gene expression, publications, and exons 
+tpm_per_gene = ((2 ** df_gtex - 1)
+                .groupby(genes_gtex)
+                .sum()
+                .groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1)
+                .mean())
+gn = tpm_per_gene.max(axis=1).rename('TPM - gene-level, max across GTEx tissues').to_frame()
+gn['n_isoforms'] = gn.index.map(genes_gtex.value_counts())
 
 
-# In[15]:
+# In[ ]:
 
 
 fam = load_tf_families()
-gn["family"] = gn.index.map(fam)
-gn["is_nuclear_receptor"] = gn["family"] == "Nuclear receptor"
+gn['family'] = gn.index.map(fam)
+gn['is_nuclear_receptor'] = (gn['family'] == 'Nuclear receptor')
 gn.head()
 
 
-# In[16]:
+# In[ ]:
 
 
 len(gn)
 
 
-# In[17]:
+# In[ ]:
 
 
 len(gn[gn["n_isoforms"] > 1])
 
 
-# In[18]:
+# In[ ]:
 
 
 gn.n_isoforms.mean()
 
 
-# In[19]:
+# In[ ]:
 
 
 gn[gn["family"] == "Homeodomain"].n_isoforms.mean()
 
 
-# In[20]:
+# In[ ]:
 
 
 gn[gn["family"] == "Nuclear receptor"].n_isoforms.mean()
 
 
-# In[21]:
+# In[ ]:
 
 
 gn.sort_values(by="n_isoforms", ascending=False).head()
 
 
-# In[22]:
+# In[ ]:
 
 
-fam_members = pd.DataFrame(gn["family"].value_counts()).reset_index()
+fam_members = pd.DataFrame(gn['family'].value_counts()).reset_index()
 fam_members_ov20 = fam_members[fam_members["family"] >= 20]
 fam_members_ov20
 
 
-# In[23]:
+# In[ ]:
 
 
 def collapse_families(row, families_to_keep):
-    if row["family"] in families_to_keep:
-        return row["family"]
+    if row['family'] in families_to_keep:
+        return row['family']
     else:
-        return "Other"
-
-
-gn["family_updated"] = gn.apply(
-    collapse_families,
-    axis=1,
-    families_to_keep=list(fam_members[fam_members["family"] >= 20]["index"]),
-)
+        return 'Other'
+    
+gn['family_updated'] = gn.apply(collapse_families, axis=1, 
+                                families_to_keep=list(fam_members[fam_members['family'] >=20]['index']))
 gn.family_updated.value_counts()
 
 
-# In[24]:
+# In[ ]:
 
 
 def annotate(data, **kws):
     n = len(data)
     mean = data.n_isoforms.mean()
     ax = plt.gca()
-    ax.text(
-        0.98,
-        0.98,
-        "n=%s genes\nmean=%s isoforms/gene" % (n, np.round(mean, 2)),
-        transform=ax.transAxes,
-        ha="right",
-        va="top",
-    )
+    ax.text(0.98, 0.98, "n=%s genes\nmean=%s isoforms/gene" % (n, np.round(mean, 2)), transform=ax.transAxes,
+            ha="right", va="top")
     ax.axvline(x=mean, linestyle="dashed", color="black", linewidth=0.75)
 
-
-g = sns.FacetGrid(
-    gn,
-    row="family_updated",
-    sharex=True,
-    sharey=False,
-    height=1,
-    aspect=2,
-    row_order=[
-        "C2H2 ZF",
-        "Homeodomain",
-        "bHLH",
-        "bZIP",
-        "Forkhead",
-        "Nuclear receptor",
-        "HMG/Sox",
-        "Ets",
-        "Unknown",
-        "Other",
-    ],
-)
+g = sns.FacetGrid(gn, row="family_updated", sharex=True, sharey=False, height=1, aspect=2,
+                  row_order=["C2H2 ZF", "Homeodomain", "bHLH", "bZIP", "Forkhead", "Nuclear receptor",
+                             "HMG/Sox", "Ets", "Unknown", "Other"])
 g.map_dataframe(sns.histplot, "n_isoforms", binwidth=1)
 g.map_dataframe(annotate)
 g.set_axis_labels("# unique isoforms", "# genes")
 g.set_titles(row_template="{row_name}")
-g.savefig(
-    "../../figures/fig1/GENCODE_iso_counts_per_family.pdf",
-    bbox_inches="tight",
-    dpi="figure",
-)
+g.savefig("../../figures/fig1/GENCODE_iso_counts_per_family.pdf", bbox_inches="tight", dpi="figure")
 
 
 # ## 3. downsample GTEx
-#
+# 
 # GTEx has more samples per condition than Dev, but Dev has more conditions
 
-# In[25]:
+# In[ ]:
 
 
 # conditions (body sites): gtex
-len(metadata_gtex["body_site"].value_counts())
+len(metadata_gtex['body_site'].value_counts())
 
 
-# In[26]:
+# In[ ]:
 
 
 # samples per body site: gtex
-metadata_gtex["body_site"].value_counts()
+metadata_gtex['body_site'].value_counts()
 
 
-# In[27]:
+# In[ ]:
 
 
 # conditions (body sites): dev
-metadata_dev["body_site"] = (
-    metadata_dev["organism_part"] + " " + metadata_dev["dev_stage"]
-)
-len(metadata_dev["body_site"].value_counts())
+metadata_dev['body_site'] = metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']
+len(metadata_dev['body_site'].value_counts())
 
 
-# In[28]:
+# In[ ]:
 
 
 # samples per body site: dev
-metadata_dev["body_site"].value_counts()
+metadata_dev['body_site'].value_counts()
 
 
 # ### loop through GTEx tissues and pick the # of samples by randomly matching to a dev dataset
 # this is inherently unstable when sampling w/o replacement as will end up with times where there are more samps in the dev that you're randomly matching to than the gtex (rare but happens)
 
-# In[29]:
+# In[ ]:
 
 
 # loop through gtex tissues
 # pick number of samples according to dev dataset
 # loop again
 # make fake metadata file
-n_samples_dev = (
-    df_dev.columns.map(metadata_dev["organism_part"] + " " + metadata_dev["dev_stage"])
-    .value_counts()
-    .values
-)
+n_samples_dev = df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).value_counts().values
 np.random.shuffle(n_samples_dev)
-gtex_tissues = metadata_gtex["body_site"].value_counts().index.values
+gtex_tissues = metadata_gtex['body_site'].value_counts().index.values
 
 metadata_gtex_dummy = {}
-for i, (n_samples, tissue) in enumerate(
-    zip(n_samples_dev, itertools.cycle(gtex_tissues))
-):
-    metadata_gtex_dummy[tissue + "_" + str(i)] = (
-        metadata_gtex.loc[
-            (metadata_gtex["body_site"] == tissue)
-            & ~metadata_gtex.index.isin(
-                {s for samples in metadata_gtex_dummy.values() for s in samples}
-            ),
-            :,
-        ]
-        .sample(n_samples)
-        .index.values
-    )
+for i, (n_samples, tissue) in enumerate(zip(n_samples_dev, itertools.cycle(gtex_tissues))):
+    metadata_gtex_dummy[tissue + '_' + str(i)] = (metadata_gtex.loc[(metadata_gtex['body_site'] == tissue)
+                                                                    & ~metadata_gtex.index.isin({s for samples in metadata_gtex_dummy.values() for s in samples}),
+                                                                    :]
+                                                        .sample(n_samples).index.values)
 
-# TODO: check it is sampling with replacement and ends up same size as dev
+# TODO: check it is sampling with replacement and ends up same size as dev   
 # NOTE: this block of code is unstable depending on seed
 
-metadata_gtex_dummy = pd.Series(
-    {v: k for k, vs in metadata_gtex_dummy.items() for v in vs}, name="body_site"
-).to_frame()
+metadata_gtex_dummy = (pd.Series({v: k for k, vs in metadata_gtex_dummy.items() for v in vs}, name='body_site')
+                         .to_frame())
 
 if metadata_dev.shape[0] != metadata_gtex_dummy.shape[0]:
-    raise UserWarning("Problem with downsampling code")
-if sorted(n_samples_dev) != sorted(
-    metadata_gtex_dummy.groupby("body_site").size().values
-):
-    raise UserWarning("Problem with downsampling code")
+    raise UserWarning('Problem with downsampling code')
+if sorted(n_samples_dev) != sorted(metadata_gtex_dummy.groupby('body_site').size().values):
+    raise UserWarning('Problem with downsampling code')
 if metadata_gtex_dummy.index.duplicated().any():
-    raise UserWarning("Unexpected duplicates")
+    raise UserWarning('Unexpected duplicates')
 
 
-# In[30]:
+# In[ ]:
 
 
 metadata_gtex_dummy.shape
 
 
-# In[31]:
+# In[ ]:
 
 
 len(metadata_gtex_dummy.body_site.unique())
 
 
-# In[32]:
+# In[ ]:
 
 
 len(metadata_gtex_dummy.body_site.str.split("_", expand=True)[0].unique())
 
 
-# In[33]:
+# In[ ]:
 
 
 metadata_dev.shape
 
 
-# In[34]:
+# In[ ]:
 
 
-len(
-    df_dev.columns.map(
-        metadata_dev["organism_part"] + " " + metadata_dev["dev_stage"]
-    ).unique()
-)
+len(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).unique())
 
 
-# In[35]:
+# In[ ]:
 
 
-df_dev.columns.map(
-    metadata_dev["organism_part"] + " " + metadata_dev["dev_stage"]
-).unique()
+df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).unique()
 
 
-# In[36]:
+# In[ ]:
 
 
-tmp = (
-    metadata_dev.groupby(["organism_part", "dev_stage"])["BioSample"]
-    .agg("count")
-    .reset_index()
-)
+tmp = metadata_dev.groupby(["organism_part", "dev_stage"])["BioSample"].agg("count").reset_index()
 tmp.sort_values(by="BioSample")
 
 
 # #### this dataframe is now the same shape as the dev data in both # of samples and # of "sites"
 # gets to the same # of "sites" by re-sampling among GTEx tissues
 
-# In[37]:
+# In[ ]:
 
 
 # write this file so we can load it in the DN section later
 metadata_gtex_dummy.to_csv("../../data/processed/metadata_gtex_dummy.csv")
 
 
-# In[38]:
+# In[ ]:
 
 
-means_gtex_downsample = df_gtex.groupby(
-    df_gtex.columns.map(metadata_gtex_dummy["body_site"]), axis=1
-).mean()
+means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean()
 
 
 # ## 4. histograms: isoforms per gene + thresholded on expression
 
 # ### GTEx: all
 
-# In[39]:
+# In[ ]:
 
 
 # plot number of isoforms above 1 TPM
@@ -507,67 +407,50 @@ fig, axs = plt.subplots(2, 1, sharex=False, figsize=(3.5, 2.2))
 n_iso = (means_gtex > 1).any(axis=1).groupby(genes_gtex).size()
 x_max = n_iso.max()
 xs = range(0, x_max + 1)
-axs[0].bar(
-    x=xs,
-    height=[n_iso.value_counts().to_dict().get(x, 0) for x in xs],
-    color="slategrey",
-)
+axs[0].bar(x=xs, height=[n_iso.value_counts().to_dict().get(x, 0) for x in xs], color="slategrey")
 
 # label n
 for h, x in zip([n_iso.value_counts().to_dict().get(x, 0) for x in xs], xs):
     if h == 0:
         continue
-    axs[0].text(
-        x,
-        h,
-        " %s" % h,
-        rotation=90,
-        fontsize=fontsize - 2,
-        ha="center",
-        va="bottom",
-        color="slategrey",
-    )
+    axs[0].text(x, h, " %s" % h, rotation=90, fontsize=fontsize-2, ha="center", va="bottom",
+                color="slategrey")
 
 n_iso = (means_gtex > 1).any(axis=1).groupby(genes_gtex).sum()
 axs[1].bar(x=xs, height=[n_iso.value_counts().to_dict().get(x, 0) for x in xs])
 
 axs[0].set_xticks(xs)
 axs[0].set_xlabel("Unique annotated protein isoforms per gene")
-axs[0].tick_params(axis="x", labelsize=fontsize - 2)
+axs[0].tick_params(axis='x', labelsize=fontsize-2)
 axs[1].set_xticks(xs)
-axs[1].tick_params(axis="x", labelsize=fontsize - 2)
-axs[1].set_xlabel("Unique protein isoforms per gene")
-# axs[0].text(x=7, y=400, s='All isoforms')
-axs[1].text(x=7, y=400, s="≥ 1 TPM in ≥ 1 tissue")
-
+axs[1].tick_params(axis='x', labelsize=fontsize-2)
+axs[1].set_xlabel('Unique protein isoforms per gene')
+#axs[0].text(x=7, y=400, s='All isoforms')
+axs[1].text(x=7, y=400, s='≥ 1 TPM in ≥ 1 tissue')
 
 def num2pct(y):
     return (y / n_iso.shape[0]) * 100
 
-
 def pct2num(y):
     return (y / 100) * n_iso.shape[0]
-
 
 for ax in axs:
     ax.set_ylim(0, 800)
     ax.set_yticks(range(0, 800, 100), minor=True)
-    ax.set_ylabel("TF genes")
-    for pos in ["top", "right", "bottom"]:
+    ax.set_ylabel('TF genes')
+    for pos in ['top', 'right', 'bottom']:
         ax.spines[pos].set_visible(False)
     ax.xaxis.set_tick_params(length=0)
-    pctax = ax.secondary_yaxis("right", functions=(num2pct, pct2num))
-    pctax.set_ylabel("% of TF genes")
+    pctax = ax.secondary_yaxis('right', functions=(num2pct, pct2num))
+    pctax.set_ylabel('% of TF genes')
     pctax.set_yticks(range(0, 46, 5), minor=True)
-fig.savefig(
-    "../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx.pdf",
-    bbox_inches="tight",
-)
+fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx.pdf',
+            bbox_inches='tight')
 
 
 # ### GTEx: downsample
 
-# In[40]:
+# In[ ]:
 
 
 # plot number of isoforms above 1 TPM
@@ -583,29 +466,27 @@ n_iso = (means_gtex_downsample > 1).any(axis=1).groupby(genes_gtex).sum()
 axs[1].bar(x=xs, height=[n_iso.value_counts().to_dict().get(x, 0) for x in xs])
 
 axs[1].set_xticks(xs)
-axs[1].set_xlabel("Unique protein isoforms per gene")
-axs[0].text(x=7, y=400, s="All isoforms")
-axs[1].text(x=7, y=400, s="≥ 1 TPM in at least one GTEx down-sampled tissue")
+axs[1].set_xlabel('Unique protein isoforms per gene')
+axs[0].text(x=7, y=400, s='All isoforms')
+axs[1].text(x=7, y=400, s='≥ 1 TPM in at least one GTEx down-sampled tissue')
 
 for ax in axs:
     ax.set_ylim(0, 800)
     ax.set_yticks(range(0, 800, 100), minor=True)
-    ax.set_ylabel("TF genes_gtex")
-    for pos in ["top", "right", "bottom"]:
+    ax.set_ylabel('TF genes_gtex')
+    for pos in ['top', 'right', 'bottom']:
         ax.spines[pos].set_visible(False)
     ax.xaxis.set_tick_params(length=0)
-    pctax = ax.secondary_yaxis("right", functions=(num2pct, pct2num))
-    pctax.set_ylabel("% of TF genes_gtex")
+    pctax = ax.secondary_yaxis('right', functions=(num2pct, pct2num))
+    pctax.set_ylabel('% of TF genes_gtex')
     pctax.set_yticks(range(0, 46, 5), minor=True)
-fig.savefig(
-    "../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_downsamp.pdf",
-    bbox_inches="tight",
-)
+fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_downsamp.pdf',
+            bbox_inches='tight')
 
 
 # ### Dev
 
-# In[41]:
+# In[ ]:
 
 
 # plot number of isoforms above 1 TPM
@@ -621,29 +502,27 @@ n_iso = (means_dev > 1).any(axis=1).groupby(genes_dev).sum()
 axs[1].bar(x=xs, height=[n_iso.value_counts().to_dict().get(x, 0) for x in xs])
 
 axs[1].set_xticks(xs)
-axs[1].set_xlabel("Unique protein isoforms per gene")
-axs[0].text(x=7, y=400, s="All isoforms")
-axs[1].text(x=7, y=400, s="≥ 1 TPM in at least one dev tissue")
+axs[1].set_xlabel('Unique protein isoforms per gene')
+axs[0].text(x=7, y=400, s='All isoforms')
+axs[1].text(x=7, y=400, s='≥ 1 TPM in at least one dev tissue')
 
 for ax in axs:
     ax.set_ylim(0, 800)
     ax.set_yticks(range(0, 800, 100), minor=True)
-    ax.set_ylabel("TF genes_dev")
-    for pos in ["top", "right", "bottom"]:
+    ax.set_ylabel('TF genes_dev')
+    for pos in ['top', 'right', 'bottom']:
         ax.spines[pos].set_visible(False)
     ax.xaxis.set_tick_params(length=0)
-    pctax = ax.secondary_yaxis("right", functions=(num2pct, pct2num))
-    pctax.set_ylabel("% of TF genes_dev")
+    pctax = ax.secondary_yaxis('right', functions=(num2pct, pct2num))
+    pctax.set_ylabel('% of TF genes_dev')
     pctax.set_yticks(range(0, 46, 5), minor=True)
-fig.savefig(
-    "../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_dev.pdf",
-    bbox_inches="tight",
-)
+fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_dev.pdf',
+            bbox_inches='tight')
 
 
 # ## 5. ref v alt 2D heatmaps: max expression
 
-# In[42]:
+# In[ ]:
 
 
 ref_alt_map = pd.DataFrame([ref_isos]).T
@@ -661,7 +540,7 @@ print(len(ref_alt_map_nonan))
 ref_alt_map_nonan.head()
 
 
-# In[43]:
+# In[ ]:
 
 
 ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
@@ -669,7 +548,7 @@ ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
 
 # ### GTEx: all
 
-# In[44]:
+# In[ ]:
 
 
 means_gtex["max_gtex"] = means_gtex.max(axis=1)
@@ -684,40 +563,24 @@ means_gtex_ri = means_gtex.reset_index()
 means_gtex_ri["UID_rep"] = means_gtex_ri["UID"].str.replace("_", "|")
 
 
-# In[45]:
+# In[ ]:
 
 
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    means_gtex_ri[["UID_rep", "max_gtex", "min_gtex"]],
-    left_on="ref",
-    right_on="UID_rep",
-    how="inner",
-)
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    means_gtex_ri[["UID_rep", "max_gtex", "min_gtex"]],
-    left_on="alt",
-    right_on="UID_rep",
-    suffixes=("_ref", "_alt"),
-    how="inner",
-)
+ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex", "min_gtex"]], left_on="ref", 
+                                            right_on="UID_rep", how="inner")
+ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex", "min_gtex"]], left_on="alt", 
+                                            right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[46]:
+# In[ ]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
 
-ax = sns.histplot(
-    data=ref_alt_map_nonan,
-    x="max_gtex_ref",
-    y="max_gtex_alt",
-    bins=30,
-    cbar=True,
-    cbar_kws={"label": "# isoform pairs", "ticks": [0, 5, 10, 15, 20, 25, 30]},
-    cmap="rocket_r",
-    vmin=0,
-    vmax=30,
-)
+ax = sns.histplot(data=ref_alt_map_nonan, x="max_gtex_ref", y="max_gtex_alt",
+                  bins=30, cbar=True, cbar_kws={"label": "# isoform pairs",
+                                                "ticks": [0, 5, 10, 15, 20, 25, 30]}, cmap="rocket_r",
+                  vmin=0, vmax=30)
 
 ax.set_xlim((-0.3, 11.5))
 ax.set_ylim((-0.3, 11.5))
@@ -731,40 +594,31 @@ ax.set_xticks([np.log2(x + 1) for x in ticks])
 ax.set_xticklabels(ticklabels)
 ax.set_yticks([np.log2(y + 1) for y in ticks])
 ax.set_yticklabels(ticklabels)
-ax.tick_params(axis="x", labelsize=fontsize - 2)
-ax.tick_params(axis="y", labelsize=fontsize - 2)
+ax.tick_params(axis='x', labelsize=fontsize-2)
+ax.tick_params(axis='y', labelsize=fontsize-2)
 
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "5", "10", "15", "20", "25", "30+"])
 
 # find num where ref > alt
-ra = len(
-    ref_alt_map_nonan[
-        ref_alt_map_nonan["max_gtex_ref"] > ref_alt_map_nonan["max_gtex_alt"]
-    ]
-)
+ra = len(ref_alt_map_nonan[ref_alt_map_nonan["max_gtex_ref"] > ref_alt_map_nonan["max_gtex_alt"]])
 print(ra)
-# ax.text(8.5, 7, "%s\n(%s%%)" % (ra, round(ra/len(ref_alt_map_nonan), 2)*100), ha="left", va="bottom")
+#ax.text(8.5, 7, "%s\n(%s%%)" % (ra, round(ra/len(ref_alt_map_nonan), 2)*100), ha="left", va="bottom")
 
 # find num where alt > ref
-ar = len(
-    ref_alt_map_nonan[
-        ref_alt_map_nonan["max_gtex_ref"] < ref_alt_map_nonan["max_gtex_alt"]
-    ]
-)
+ar = len(ref_alt_map_nonan[ref_alt_map_nonan["max_gtex_ref"] < ref_alt_map_nonan["max_gtex_alt"]])
 print(ar)
-# ax.text(9, 10.5, "%s\n(%s%%)" % (ar, round(ar/len(ref_alt_map_nonan), 2)*100), ha="right", va="top")
+#ax.text(9, 10.5, "%s\n(%s%%)" % (ar, round(ar/len(ref_alt_map_nonan), 2)*100), ha="right", va="top")
 
-ax.plot([-0.3, 11.5], [-0.3, 11.5], color="black", linestyle="dashed")
+ax.plot([-0.3,11.5], [-0.3, 11.5], color="black", linestyle="dashed")
 
-fig.savefig(
-    "../../figures/fig1/expression-scatter-ref_v_alt-gtex.pdf", bbox_inches="tight"
-)
+fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-gtex.pdf',
+            bbox_inches='tight')
 
 
 # ### GTEx: downsampled
 
-# In[47]:
+# In[ ]:
 
 
 means_gtex_downsample["max_gtex_downsample"] = means_gtex_downsample.max(axis=1)
@@ -776,45 +630,29 @@ means_gtex_downsample[means_gtex_downsample["max_gtex_downsample"] > 11] = 11
 print(means_gtex_downsample["max_gtex_downsample"].max())
 print(means_gtex_downsample["max_gtex_downsample"].min())
 means_gtex_downsample_ri = means_gtex_downsample.reset_index()
-means_gtex_downsample_ri["UID_rep"] = means_gtex_downsample_ri["UID"].str.replace(
-    "_", "|"
-)
+means_gtex_downsample_ri["UID_rep"] = means_gtex_downsample_ri["UID"].str.replace("_", "|")
 
 
-# In[48]:
+# In[ ]:
 
 
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    means_gtex_downsample_ri[["UID_rep", "max_gtex_downsample", "min_gtex_downsample"]],
-    left_on="ref",
-    right_on="UID_rep",
-    how="inner",
-)
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    means_gtex_downsample_ri[["UID_rep", "max_gtex_downsample", "min_gtex_downsample"]],
-    left_on="alt",
-    right_on="UID_rep",
-    suffixes=("_ref", "_alt"),
-    how="inner",
-)
+ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep", "max_gtex_downsample",
+                                                                      "min_gtex_downsample"]], 
+                                            left_on="ref", right_on="UID_rep", how="inner")
+ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep", "max_gtex_downsample",
+                                                                      "min_gtex_downsample"]], 
+                                            left_on="alt", right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[49]:
+# In[ ]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
 
-ax = sns.histplot(
-    data=ref_alt_map_nonan,
-    x="max_gtex_downsample_ref",
-    y="max_gtex_downsample_alt",
-    bins=30,
-    cbar=True,
-    cbar_kws={"label": "# isoform pairs", "ticks": [0, 5, 10, 15, 20, 25, 30]},
-    cmap="rocket_r",
-    vmin=0,
-    vmax=30,
-)
+ax = sns.histplot(data=ref_alt_map_nonan, x="max_gtex_downsample_ref", y="max_gtex_downsample_alt",
+                  bins=30, cbar=True, cbar_kws={"label": "# isoform pairs",
+                                                "ticks": [0, 5, 10, 15, 20, 25, 30]}, cmap="rocket_r",
+                  vmin=0, vmax=30)
 
 ax.set_xlim((-0.3, 11.5))
 ax.set_ylim((-0.3, 11.5))
@@ -828,43 +666,31 @@ ax.set_xticks([np.log2(x + 1) for x in ticks])
 ax.set_xticklabels(ticklabels)
 ax.set_yticks([np.log2(y + 1) for y in ticks])
 ax.set_yticklabels(ticklabels)
-ax.tick_params(axis="x", labelsize=fontsize - 2)
-ax.tick_params(axis="y", labelsize=fontsize - 2)
+ax.tick_params(axis='x', labelsize=fontsize-2)
+ax.tick_params(axis='y', labelsize=fontsize-2)
 
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "5", "10", "15", "20", "25", "30+"])
 
 # find num where ref > alt
-ra = len(
-    ref_alt_map_nonan[
-        ref_alt_map_nonan["max_gtex_downsample_ref"]
-        > ref_alt_map_nonan["max_gtex_downsample_alt"]
-    ]
-)
+ra = len(ref_alt_map_nonan[ref_alt_map_nonan["max_gtex_downsample_ref"] > ref_alt_map_nonan["max_gtex_downsample_alt"]])
 print(ra)
-# ax.text(8.5, 7, "%s\n(%s%%)" % (ra, round(ra/len(ref_alt_map_nonan), 2)*100), ha="left", va="bottom")
+#ax.text(8.5, 7, "%s\n(%s%%)" % (ra, round(ra/len(ref_alt_map_nonan), 2)*100), ha="left", va="bottom")
 
 # find num where alt > ref
-ar = len(
-    ref_alt_map_nonan[
-        ref_alt_map_nonan["max_gtex_downsample_ref"]
-        < ref_alt_map_nonan["max_gtex_downsample_alt"]
-    ]
-)
+ar = len(ref_alt_map_nonan[ref_alt_map_nonan["max_gtex_downsample_ref"] < ref_alt_map_nonan["max_gtex_downsample_alt"]])
 print(ar)
-# ax.text(9, 10.5, "%s\n(%s%%)" % (ar, round(ar/len(ref_alt_map_nonan), 2)*100), ha="right", va="top")
+#ax.text(9, 10.5, "%s\n(%s%%)" % (ar, round(ar/len(ref_alt_map_nonan), 2)*100), ha="right", va="top")
 
-ax.plot([-0.3, 11.5], [-0.3, 11.5], color="black", linestyle="dashed")
+ax.plot([-0.3,11.5], [-0.3, 11.5], color="black", linestyle="dashed")
 
-fig.savefig(
-    "../../figures/fig1/expression-scatter-ref_v_alt-gtex-downsample.pdf",
-    bbox_inches="tight",
-)
+fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-gtex-downsample.pdf',
+            bbox_inches='tight')
 
 
 # ### Dev
 
-# In[50]:
+# In[ ]:
 
 
 means_dev["max_dev"] = means_dev.max(axis=1)
@@ -879,40 +705,24 @@ means_dev_ri = means_dev.reset_index()
 means_dev_ri["UID_rep"] = means_dev_ri["UID"].str.replace("_", "|")
 
 
-# In[51]:
+# In[ ]:
 
 
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    means_dev_ri[["UID_rep", "max_dev", "min_dev"]],
-    left_on="ref",
-    right_on="UID_rep",
-    how="inner",
-)
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    means_dev_ri[["UID_rep", "max_dev", "min_dev"]],
-    left_on="alt",
-    right_on="UID_rep",
-    suffixes=("_ref", "_alt"),
-    how="inner",
-)
+ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", "min_dev"]], left_on="ref", 
+                                            right_on="UID_rep", how="inner")
+ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", "min_dev"]], left_on="alt", 
+                                            right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[52]:
+# In[ ]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
 
-ax = sns.histplot(
-    data=ref_alt_map_nonan,
-    x="max_dev_ref",
-    y="max_dev_alt",
-    bins=30,
-    cbar=True,
-    cbar_kws={"label": "# isoform pairs", "ticks": [0, 5, 10, 15, 20, 25, 30]},
-    cmap="rocket_r",
-    vmin=0,
-    vmax=30,
-)
+ax = sns.histplot(data=ref_alt_map_nonan, x="max_dev_ref", y="max_dev_alt",
+                  bins=30, cbar=True, cbar_kws={"label": "# isoform pairs",
+                                                "ticks": [0, 5, 10, 15, 20, 25, 30]}, cmap="rocket_r",
+                  vmin=0, vmax=30)
 
 ax.set_xlim((-0.3, 11.5))
 ax.set_ylim((-0.3, 11.5))
@@ -926,44 +736,35 @@ ax.set_xticks([np.log2(x + 1) for x in ticks])
 ax.set_xticklabels(ticklabels)
 ax.set_yticks([np.log2(y + 1) for y in ticks])
 ax.set_yticklabels(ticklabels)
-ax.tick_params(axis="x", labelsize=fontsize - 2)
-ax.tick_params(axis="y", labelsize=fontsize - 2)
+ax.tick_params(axis='x', labelsize=fontsize-2)
+ax.tick_params(axis='y', labelsize=fontsize-2)
 
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "5", "10", "15", "20", "25", "30+"])
 
 # find num where ref > alt
-ra = len(
-    ref_alt_map_nonan[
-        ref_alt_map_nonan["max_dev_ref"] > ref_alt_map_nonan["max_dev_alt"]
-    ]
-)
+ra = len(ref_alt_map_nonan[ref_alt_map_nonan["max_dev_ref"] > ref_alt_map_nonan["max_dev_alt"]])
 print(ra)
-# ax.text(8.5, 7, "%s\n(%s%%)" % (ra, round(ra/len(ref_alt_map_nonan), 2)*100), ha="left", va="bottom")
+#ax.text(8.5, 7, "%s\n(%s%%)" % (ra, round(ra/len(ref_alt_map_nonan), 2)*100), ha="left", va="bottom")
 
 # find num where alt > ref
-ar = len(
-    ref_alt_map_nonan[
-        ref_alt_map_nonan["max_dev_ref"] < ref_alt_map_nonan["max_dev_alt"]
-    ]
-)
+ar = len(ref_alt_map_nonan[ref_alt_map_nonan["max_dev_ref"] < ref_alt_map_nonan["max_dev_alt"]])
 print(ar)
-# ax.text(9, 10.5, "%s\n(%s%%)" % (ar, round(ar/len(ref_alt_map_nonan), 2)*100), ha="right", va="top")
+#ax.text(9, 10.5, "%s\n(%s%%)" % (ar, round(ar/len(ref_alt_map_nonan), 2)*100), ha="right", va="top")
 
-ax.plot([-0.3, 11.5], [-0.3, 11.5], color="black", linestyle="dashed")
+ax.plot([-0.3,11.5], [-0.3, 11.5], color="black", linestyle="dashed")
 
-fig.savefig(
-    "../../figures/fig1/expression-scatter-ref_v_alt-dev.pdf", bbox_inches="tight"
-)
+fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-dev.pdf',
+            bbox_inches='tight')
 
 
 # ## 6. per isoform: max v min ratio
-#
+# 
 # removing NaNs - not counting anything where *gene* expression < 1
 
 # ### GTEx: all
 
-# In[53]:
+# In[ ]:
 
 
 # percentage of alternative isoform
@@ -971,78 +772,51 @@ fig.savefig(
 
 # fraction where gene tpm > 1
 
-per_gene_gtex = (2**df_gtex - 1).groupby(genes_gtex).transform("sum")
-f_gtex = (
-    ((2**df_gtex - 1) / per_gene_gtex)
-    .groupby(df_gtex.columns.map(metadata_gtex["body_site"]), axis=1)
-    .mean()
-)
-f_gtex = f_gtex * (
-    per_gene_gtex.groupby(
-        df_gtex.columns.map(metadata_gtex["body_site"]), axis=1
-    ).mean()
-    >= 1
-).applymap(
-    lambda x: {False: np.nan, True: 1}[x]
-)  # only count fractions if gene TPM is >= 1
+per_gene_gtex = ((2 ** df_gtex - 1)
+                .groupby(genes_gtex)
+                .transform('sum'))
+f_gtex = (((2 ** df_gtex - 1) / per_gene_gtex)
+        .groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1)
+        .mean())
+f_gtex = f_gtex * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1).mean() >= 1).applymap(lambda x: {False: np.nan, True: 1}[x])  # only count fractions if gene TPM is >= 1
 
 f_gtex = f_gtex * 100
 
 
-# In[54]:
+# In[ ]:
 
 
 print(len(f_gtex))
 f_gtex["max_ratio_gtex"] = f_gtex.max(axis=1)
 f_gtex["min_ratio_gtex"] = f_gtex.min(axis=1)
-f_gtex_nonan = f_gtex[
-    (~pd.isnull(f_gtex["max_ratio_gtex"])) & (~pd.isnull(f_gtex["min_ratio_gtex"]))
-]
+f_gtex_nonan = f_gtex[(~pd.isnull(f_gtex["max_ratio_gtex"])) & (~pd.isnull(f_gtex["min_ratio_gtex"]))]
 print(len(f_gtex_nonan))
 
 f_gtex_ri = f_gtex_nonan.reset_index()
 f_gtex_ri["UID_rep"] = f_gtex_ri["UID"].str.replace("_", "|")
 
 
-# In[55]:
+# In[ ]:
 
 
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    f_gtex_ri[["UID_rep", "max_ratio_gtex", "min_ratio_gtex"]],
-    left_on="ref",
-    right_on="UID_rep",
-    how="left",
-)
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    f_gtex_ri[["UID_rep", "max_ratio_gtex", "min_ratio_gtex"]],
-    left_on="alt",
-    right_on="UID_rep",
-    suffixes=("_ref", "_alt"),
-    how="left",
-)
+ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gtex", "min_ratio_gtex"]], left_on="ref", 
+                                            right_on="UID_rep", how="left")
+ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gtex", "min_ratio_gtex"]], left_on="alt", 
+                                            right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[56]:
+# In[ ]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
 
-df = ref_alt_map_nonan[
-    ["ref", "min_ratio_gtex_ref", "max_ratio_gtex_ref"]
-].drop_duplicates()
+df = ref_alt_map_nonan[["ref", "min_ratio_gtex_ref", "max_ratio_gtex_ref"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_gtex_ref"])) & (~pd.isnull(df["max_ratio_gtex_ref"]))]
 
-ax = sns.histplot(
-    data=df,
-    x="min_ratio_gtex_ref",
-    y="max_ratio_gtex_ref",
-    bins=30,
-    cbar=True,
-    cmap="rocket_r",
-    vmin=0,
-    vmax=120,
-    cbar_kws={"label": "# isoform pairs", "ticks": [0, 20, 40, 60, 80, 100, 120]},
-)
+ax = sns.histplot(data=df, x="min_ratio_gtex_ref", y="max_ratio_gtex_ref",
+                  bins=30, cbar=True, cmap="rocket_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
+                                                                                   "ticks": [0, 20, 40, 60,
+                                                                                             80, 100, 120]})
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
 ax.set_xlim((-2, 102))
@@ -1053,32 +827,22 @@ ax.set_xlabel("max isoform fraction")
 ax.set_ylabel("min isoform fraction")
 ax.set_title("n=%s ref isoforms" % len(df))
 
-fig.savefig(
-    "../../figures/fig1/expression-ratio-scatter-ref-gtex.pdf", bbox_inches="tight"
-)
+fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-gtex.pdf',
+            bbox_inches='tight')
 
 
-# In[57]:
+# In[ ]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
 
-df = ref_alt_map_nonan[
-    ["alt", "min_ratio_gtex_alt", "max_ratio_gtex_alt"]
-].drop_duplicates()
+df = ref_alt_map_nonan[["alt", "min_ratio_gtex_alt", "max_ratio_gtex_alt"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_gtex_alt"])) & (~pd.isnull(df["max_ratio_gtex_alt"]))]
 
-ax = sns.histplot(
-    data=ref_alt_map_nonan,
-    x="min_ratio_gtex_alt",
-    y="max_ratio_gtex_alt",
-    bins=30,
-    cbar=True,
-    cmap="rocket_r",
-    vmin=0,
-    vmax=120,
-    cbar_kws={"label": "# isoform pairs", "ticks": [0, 20, 40, 60, 80, 100, 120]},
-)
+ax = sns.histplot(data=ref_alt_map_nonan, x="min_ratio_gtex_alt", y="max_ratio_gtex_alt",
+                  bins=30, cbar=True, cmap="rocket_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
+                                                                                   "ticks": [0, 20, 40, 60,
+                                                                                             80, 100, 120]})
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
 ax.set_xlim((-2, 102))
@@ -1088,21 +852,20 @@ ax.set_yticks([0, 20, 40, 60, 80, 100])
 ax.set_xlabel("min isoform fraction")
 ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s alt isoforms" % len(df))
-fig.savefig(
-    "../../figures/fig1/expression-ratio-scatter-alt-gtex.pdf", bbox_inches="tight"
-)
+fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-gtex.pdf',
+            bbox_inches='tight')
 
 
 # ### GTEx: downsample
 
-# In[58]:
+# In[ ]:
 
 
 MIN_THRESH = 20
 MAX_THRESH = 80
 
 
-# In[59]:
+# In[ ]:
 
 
 # percentage of alternative isoform
@@ -1110,98 +873,60 @@ MAX_THRESH = 80
 
 # has to be fraction where isoform TPM is at least 1, right (fill na with 0)
 
-per_gene_gtex = (2**df_gtex - 1).groupby(genes_gtex).transform("sum")
-f_gtex_downsample = (
-    ((2**df_gtex - 1) / per_gene_gtex)
-    .groupby(df_gtex.columns.map(metadata_gtex_dummy["body_site"]), axis=1)
-    .mean()
-)
-f_gtex_downsample = f_gtex_downsample * (
-    per_gene_gtex.groupby(
-        df_gtex.columns.map(metadata_gtex_dummy["body_site"]), axis=1
-    ).mean()
-    >= 1
-).applymap(
-    lambda x: {False: np.nan, True: 1}[x]
-)  # only count fractions if gene TPM is >= 1
+per_gene_gtex = ((2 ** df_gtex - 1)
+                .groupby(genes_gtex)
+                .transform('sum'))
+f_gtex_downsample = (((2 ** df_gtex - 1) / per_gene_gtex)
+        .groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1)
+        .mean())
+f_gtex_downsample = f_gtex_downsample * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean() >= 1).applymap(lambda x: {False: np.nan, True: 1}[x])  # only count fractions if gene TPM is >= 1
 
 f_gtex_downsample = f_gtex_downsample * 100
 
 
-# In[60]:
+# In[ ]:
 
 
 print(len(f_gtex_downsample))
 f_gtex_downsample["max_ratio_gtex_downsample"] = f_gtex_downsample.max(axis=1)
 f_gtex_downsample["min_ratio_gtex_downsample"] = f_gtex_downsample.min(axis=1)
-f_gtex_downsample_nonan = f_gtex_downsample[
-    (~pd.isnull(f_gtex_downsample["max_ratio_gtex_downsample"]))
-    & (~pd.isnull(f_gtex_downsample["min_ratio_gtex_downsample"]))
-]
+f_gtex_downsample_nonan = f_gtex_downsample[(~pd.isnull(f_gtex_downsample["max_ratio_gtex_downsample"])) & 
+                                            (~pd.isnull(f_gtex_downsample["min_ratio_gtex_downsample"]))]
 print(len(f_gtex_downsample_nonan))
 
 f_gtex_downsample_ri = f_gtex_downsample_nonan.reset_index()
 f_gtex_downsample_ri["UID_rep"] = f_gtex_downsample_ri["UID"].str.replace("_", "|")
 
 
-# In[61]:
+# In[ ]:
 
 
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    f_gtex_downsample_ri[
-        ["UID_rep", "max_ratio_gtex_downsample", "min_ratio_gtex_downsample"]
-    ],
-    left_on="ref",
-    right_on="UID_rep",
-    how="left",
-)
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    f_gtex_downsample_ri[
-        ["UID_rep", "max_ratio_gtex_downsample", "min_ratio_gtex_downsample"]
-    ],
-    left_on="alt",
-    right_on="UID_rep",
-    suffixes=("_ref", "_alt"),
-    how="left",
-)
+ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "max_ratio_gtex_downsample", 
+                                                       "min_ratio_gtex_downsample"]], left_on="ref", 
+                                            right_on="UID_rep", how="left")
+ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "max_ratio_gtex_downsample", 
+                                                                  "min_ratio_gtex_downsample"]], left_on="alt", 
+                                            right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[62]:
+# In[ ]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
 
-df = ref_alt_map_nonan[
-    ["ref", "min_ratio_gtex_downsample_ref", "max_ratio_gtex_downsample_ref"]
-].drop_duplicates()
-df = df[
-    (~pd.isnull(df["min_ratio_gtex_downsample_ref"]))
-    & (~pd.isnull(df["max_ratio_gtex_downsample_ref"]))
-]
+df = ref_alt_map_nonan[["ref", "min_ratio_gtex_downsample_ref", "max_ratio_gtex_downsample_ref"]].drop_duplicates()
+df = df[(~pd.isnull(df["min_ratio_gtex_downsample_ref"])) & (~pd.isnull(df["max_ratio_gtex_downsample_ref"]))]
 
-n_switches = df[
-    (df["min_ratio_gtex_downsample_ref"] < MIN_THRESH)
-    & (df["max_ratio_gtex_downsample_ref"] > MAX_THRESH)
-]
-n_off = df[
-    (df["min_ratio_gtex_downsample_ref"] < MIN_THRESH)
-    & (df["max_ratio_gtex_downsample_ref"] < MIN_THRESH)
-]
+n_switches = df[(df["min_ratio_gtex_downsample_ref"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_ref"] > MAX_THRESH)]
+n_off = df[(df["min_ratio_gtex_downsample_ref"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_ref"] < MIN_THRESH)]
 print(len(n_switches))
-p_switches_ref_gtex_ds = len(n_switches) / len(df)
-p_off_ref_gtex_ds = len(n_off) / len(df)
+p_switches_ref_gtex_ds = len(n_switches)/len(df)
+p_off_ref_gtex_ds = len(n_off)/len(df)
 
-ax = sns.histplot(
-    data=df,
-    x="min_ratio_gtex_downsample_ref",
-    y="max_ratio_gtex_downsample_ref",
-    bins=30,
-    cbar=True,
-    cmap="mako_r",
-    vmin=0,
-    vmax=120,
-    cbar_kws={"label": "# isoform pairs", "ticks": [0, 20, 40, 60, 80, 100, 120]},
-)
+ax = sns.histplot(data=df, x="min_ratio_gtex_downsample_ref", y="max_ratio_gtex_downsample_ref",
+                  bins=30, cbar=True, cmap="mako_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
+                                                                                   "ticks": [0, 20, 40, 60,
+                                                                                             80, 100, 120]})
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
 ax.set_xlim((-2, 102))
@@ -1211,48 +936,28 @@ ax.set_yticks([0, 20, 40, 60, 80, 100])
 ax.set_xlabel("min isoform fraction")
 ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s ref isoforms" % len(df))
-fig.savefig(
-    "../../figures/fig1/expression-ratio-scatter-ref-gtex-downsample.pdf",
-    bbox_inches="tight",
-)
+fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-gtex-downsample.pdf',
+            bbox_inches='tight')
 
 
-# In[63]:
+# In[ ]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
 
-df = ref_alt_map_nonan[
-    ["alt", "min_ratio_gtex_downsample_alt", "max_ratio_gtex_downsample_alt"]
-].drop_duplicates()
-df = df[
-    (~pd.isnull(df["min_ratio_gtex_downsample_alt"]))
-    & (~pd.isnull(df["max_ratio_gtex_downsample_alt"]))
-]
+df = ref_alt_map_nonan[["alt", "min_ratio_gtex_downsample_alt", "max_ratio_gtex_downsample_alt"]].drop_duplicates()
+df = df[(~pd.isnull(df["min_ratio_gtex_downsample_alt"])) & (~pd.isnull(df["max_ratio_gtex_downsample_alt"]))]
 
-n_switches = df[
-    (df["min_ratio_gtex_downsample_alt"] < MIN_THRESH)
-    & (df["max_ratio_gtex_downsample_alt"] > MAX_THRESH)
-]
-n_off = df[
-    (df["min_ratio_gtex_downsample_alt"] < MIN_THRESH)
-    & (df["max_ratio_gtex_downsample_alt"] < MIN_THRESH)
-]
+n_switches = df[(df["min_ratio_gtex_downsample_alt"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_alt"] > MAX_THRESH)]
+n_off = df[(df["min_ratio_gtex_downsample_alt"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_alt"] < MIN_THRESH)]
 print(len(n_switches))
-p_switches_alt_gtex_ds = len(n_switches) / len(df)
-p_off_alt_gtex_ds = len(n_off) / len(df)
+p_switches_alt_gtex_ds = len(n_switches)/len(df)
+p_off_alt_gtex_ds = len(n_off)/len(df)
 
-ax = sns.histplot(
-    data=ref_alt_map_nonan,
-    x="min_ratio_gtex_downsample_alt",
-    y="max_ratio_gtex_downsample_alt",
-    bins=30,
-    cbar=True,
-    cmap="mako_r",
-    vmin=0,
-    vmax=120,
-    cbar_kws={"label": "# isoform pairs", "ticks": [0, 20, 40, 60, 80, 100, 120]},
-)
+ax = sns.histplot(data=ref_alt_map_nonan, x="min_ratio_gtex_downsample_alt", y="max_ratio_gtex_downsample_alt",
+                  bins=30, cbar=True, cmap="mako_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
+                                                                                   "ticks": [0, 20, 40, 60,
+                                                                                             80, 100, 120]})
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
 ax.set_xlim((-2, 102))
@@ -1268,28 +973,16 @@ ax.plot([MIN_THRESH, 0], [MIN_THRESH, MIN_THRESH], linestyle="dotted", color="bl
 ax.plot([MIN_THRESH, MIN_THRESH], [0, MIN_THRESH], linestyle="dotted", color="black")
 ax.plot([0, MIN_THRESH], [MAX_THRESH, MAX_THRESH], linestyle="dotted", color="black")
 ax.plot([MIN_THRESH, MIN_THRESH], [MAX_THRESH, 100], linestyle="dotted", color="black")
-ax.text(
-    MIN_THRESH, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey"
-)
-ax.text(
-    MIN_THRESH,
-    MAX_THRESH + 5,
-    " switch",
-    ha="left",
-    va="center",
-    fontstyle="italic",
-    color=sns.color_palette("mako")[1],
-)
+ax.text(MIN_THRESH, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
+ax.text(MIN_THRESH, MAX_THRESH+5, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
 
-fig.savefig(
-    "../../figures/fig1/expression-ratio-scatter-alt-gtex-downsample.pdf",
-    bbox_inches="tight",
-)
+fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-gtex-downsample.pdf',
+            bbox_inches='tight')
 
 
 # ### Dev
 
-# In[64]:
+# In[ ]:
 
 
 # percentage of alternative isoform
@@ -1297,96 +990,61 @@ fig.savefig(
 
 # has to be fraction where isoform TPM is at least 1, right (fill na with 0)
 
-per_gene_dev = (2**df_dev - 1).groupby(genes_dev).transform("sum")
-f_dev = (
-    ((2**df_dev - 1) / per_gene_dev)
-    .groupby(
-        df_dev.columns.map(
-            metadata_dev["organism_part"] + " " + metadata_dev["dev_stage"]
-        ),
-        axis=1,
-    )
-    .mean()
-)
-f_dev = f_dev * (
-    (
-        per_gene_dev.groupby(
-            df_dev.columns.map(
-                metadata_dev["organism_part"] + " " + metadata_dev["dev_stage"]
-            ),
-            axis=1,
-        ).mean()
-        >= 1
-    ).applymap(lambda x: {False: np.nan, True: 1}[x])
-)  # only count fractions if gene TPM is >= 1
+per_gene_dev = ((2 ** df_dev - 1)
+                .groupby(genes_dev)
+                .transform('sum'))
+f_dev = (((2 ** df_dev - 1) / per_gene_dev)
+        .groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']),
+         axis=1)
+        .mean())
+f_dev = f_dev * ((per_gene_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']),
+                                             axis=1)
+                                             .mean() >= 1)
+                                         .applymap(lambda x: {False: np.nan, True: 1}[x]))  # only count fractions if gene TPM is >= 1
 
 f_dev = f_dev * 100
 
 
-# In[65]:
+# In[ ]:
 
 
 print(len(f_dev))
 f_dev["max_ratio_dev"] = f_dev.max(axis=1)
 f_dev["min_ratio_dev"] = f_dev.min(axis=1)
-f_dev_nonan = f_dev[
-    (~pd.isnull(f_dev["max_ratio_dev"])) & (~pd.isnull(f_dev["min_ratio_dev"]))
-]
+f_dev_nonan = f_dev[(~pd.isnull(f_dev["max_ratio_dev"])) & (~pd.isnull(f_dev["min_ratio_dev"]))]
 print(len(f_dev_nonan))
 
 f_dev_ri = f_dev_nonan.reset_index()
 f_dev_ri["UID_rep"] = f_dev_ri["UID"].str.replace("_", "|")
 
 
-# In[66]:
+# In[ ]:
 
 
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    f_dev_ri[["UID_rep", "max_ratio_dev", "min_ratio_dev"]],
-    left_on="ref",
-    right_on="UID_rep",
-    how="left",
-)
-ref_alt_map_nonan = ref_alt_map_nonan.merge(
-    f_dev_ri[["UID_rep", "max_ratio_dev", "min_ratio_dev"]],
-    left_on="alt",
-    right_on="UID_rep",
-    suffixes=("_ref", "_alt"),
-    how="left",
-)
+ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev", "min_ratio_dev"]], left_on="ref", 
+                                            right_on="UID_rep", how="left")
+ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev", "min_ratio_dev"]], left_on="alt", 
+                                            right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[67]:
+# In[ ]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
 
-df = ref_alt_map_nonan[
-    ["ref", "min_ratio_dev_ref", "max_ratio_dev_ref"]
-].drop_duplicates()
+df = ref_alt_map_nonan[["ref", "min_ratio_dev_ref", "max_ratio_dev_ref"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_dev_ref"])) & (~pd.isnull(df["max_ratio_dev_ref"]))]
 
-n_switches = df[
-    (df["min_ratio_dev_ref"] < MIN_THRESH) & (df["max_ratio_dev_ref"] > MAX_THRESH)
-]
-n_off = df[
-    (df["min_ratio_dev_ref"] < MIN_THRESH) & (df["max_ratio_dev_ref"] < MIN_THRESH)
-]
+n_switches = df[(df["min_ratio_dev_ref"] < MIN_THRESH) & (df["max_ratio_dev_ref"] > MAX_THRESH)]
+n_off = df[(df["min_ratio_dev_ref"] < MIN_THRESH) & (df["max_ratio_dev_ref"] < MIN_THRESH)]
 print(len(n_switches))
-p_switches_ref_dev = len(n_switches) / len(df)
-p_off_ref_dev = len(n_off) / len(df)
+p_switches_ref_dev = len(n_switches)/len(df)
+p_off_ref_dev = len(n_off)/len(df)
 
-ax = sns.histplot(
-    data=ref_alt_map_nonan,
-    x="min_ratio_dev_ref",
-    y="max_ratio_dev_ref",
-    bins=30,
-    cbar=True,
-    cmap="mako_r",
-    vmin=0,
-    vmax=120,
-    cbar_kws={"label": "# isoform pairs", "ticks": [0, 20, 40, 60, 80, 100, 120]},
-)
+ax = sns.histplot(data=ref_alt_map_nonan, x="min_ratio_dev_ref", y="max_ratio_dev_ref",
+                  bins=30, cbar=True, cmap="mako_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
+                                                                                   "ticks": [0, 20, 40, 60,
+                                                                                             80, 100, 120]})
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
 ax.set_xlim((-2, 102))
@@ -1397,42 +1055,28 @@ ax.set_xlabel("min isoform fraction")
 ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s ref isoforms" % len(df))
 
-fig.savefig(
-    "../../figures/fig1/expression-ratio-scatter-ref-dev.pdf", bbox_inches="tight"
-)
+fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-dev.pdf',
+            bbox_inches='tight')
 
 
-# In[68]:
+# In[ ]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
 
-df = ref_alt_map_nonan[
-    ["alt", "min_ratio_dev_alt", "max_ratio_dev_alt"]
-].drop_duplicates()
+df = ref_alt_map_nonan[["alt", "min_ratio_dev_alt", "max_ratio_dev_alt"]].drop_duplicates()
 df = df[(~pd.isnull(df["min_ratio_dev_alt"])) & (~pd.isnull(df["max_ratio_dev_alt"]))]
 
-n_switches = df[
-    (df["min_ratio_dev_alt"] < MIN_THRESH) & (df["max_ratio_dev_alt"] > MAX_THRESH)
-]
-n_off = df[
-    (df["min_ratio_dev_alt"] < MIN_THRESH) & (df["max_ratio_dev_alt"] < MIN_THRESH)
-]
+n_switches = df[(df["min_ratio_dev_alt"] < MIN_THRESH) & (df["max_ratio_dev_alt"] > MAX_THRESH)]
+n_off = df[(df["min_ratio_dev_alt"] < MIN_THRESH) & (df["max_ratio_dev_alt"] < MIN_THRESH)]
 print(len(n_switches))
-p_switches_alt_dev = len(n_switches) / len(df)
-p_off_alt_dev = len(n_off) / len(df)
+p_switches_alt_dev = len(n_switches)/len(df)
+p_off_alt_dev = len(n_off)/len(df)
 
-ax = sns.histplot(
-    data=ref_alt_map_nonan,
-    x="min_ratio_dev_alt",
-    y="max_ratio_dev_alt",
-    bins=30,
-    cbar=True,
-    cmap="mako_r",
-    vmin=0,
-    vmax=120,
-    cbar_kws={"label": "# isoform pairs", "ticks": [0, 20, 40, 60, 80, 100, 120]},
-)
+ax = sns.histplot(data=ref_alt_map_nonan, x="min_ratio_dev_alt", y="max_ratio_dev_alt",
+                  bins=30, cbar=True, cmap="mako_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
+                                                                                   "ticks": [0, 20, 40, 60,
+                                                                                             80, 100, 120]})
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
 ax.set_xlim((-2, 102))
@@ -1448,227 +1092,177 @@ ax.plot([MIN_THRESH, 0], [MIN_THRESH, MIN_THRESH], linestyle="dotted", color="bl
 ax.plot([MIN_THRESH, MIN_THRESH], [0, MIN_THRESH], linestyle="dotted", color="black")
 ax.plot([0, MIN_THRESH], [MAX_THRESH, MAX_THRESH], linestyle="dotted", color="black")
 ax.plot([MIN_THRESH, MIN_THRESH], [MAX_THRESH, 100], linestyle="dotted", color="black")
-ax.text(
-    MIN_THRESH, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey"
-)
-ax.text(
-    MIN_THRESH,
-    MAX_THRESH + 5,
-    " switch",
-    ha="left",
-    va="center",
-    fontstyle="italic",
-    color=sns.color_palette("mako")[1],
-)
+ax.text(MIN_THRESH, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
+ax.text(MIN_THRESH, MAX_THRESH+5, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
 
-fig.savefig(
-    "../../figures/fig1/expression-ratio-scatter-alt-dev.pdf", bbox_inches="tight"
-)
+fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-dev.pdf',
+            bbox_inches='tight')
 
 
-# In[69]:
+# In[ ]:
 
 
-bar = pd.DataFrame.from_dict(
-    {
-        "gtex_ds_ref": {
-            "switch": p_switches_ref_gtex_ds * 100,
-            "low": p_off_ref_gtex_ds * 100,
-        },
-        "gtex_ds_alt": {
-            "switch": p_switches_alt_gtex_ds * 100,
-            "low": p_off_alt_gtex_ds * 100,
-        },
-        "dev_ref": {"switch": p_switches_ref_dev * 100, "low": p_off_ref_dev * 100},
-        "dev_alt": {"switch": p_switches_alt_dev * 100, "low": p_off_alt_dev * 100},
-    },
-    orient="index",
-).reset_index()
-bar["shift"] = 100 - (bar["switch"] + bar["low"])
+bar = pd.DataFrame.from_dict({"gtex_ds_ref": {"switch": p_switches_ref_gtex_ds*100, "low": p_off_ref_gtex_ds*100},
+                              "gtex_ds_alt": {"switch": p_switches_alt_gtex_ds*100, "low": p_off_alt_gtex_ds*100},
+                              "dev_ref": {"switch": p_switches_ref_dev*100, "low": p_off_ref_dev*100},
+                              "dev_alt": {"switch": p_switches_alt_dev*100, "low": p_off_alt_dev*100}}, 
+                             orient="index").reset_index()
+bar["shift"] = 100-(bar["switch"]+bar["low"])
 bar = bar[["index", "low", "switch", "shift"]]
 bar
 
 
-# In[70]:
+# In[ ]:
 
 
-palette = {
-    "low": "lightgrey",
-    "switch": sns.color_palette("mako")[1],
-    "shift": sns.color_palette("mako")[5],
-}
+palette = {"low": "lightgrey",
+           "switch": sns.color_palette("mako")[1],
+           "shift": sns.color_palette("mako")[5]}
 palette
 
 
-# In[71]:
+# In[ ]:
 
 
 gtex_bar = bar[bar["index"].str.contains("gtex")]
 ax = gtex_bar.plot.bar(x="index", stacked=True, color=palette.values(), figsize=(1, 1))
 ax.set_ylabel("% of isoforms")
 ax.set_xlabel("")
-# ax.set_title("GTEx")
+#ax.set_title("GTEx")
 
 plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
 ax.set_xticklabels(["ref", "alt"], ha="right", va="top", rotation=30)
 
-plt.savefig("../../figures/fig1/expression-switch-bar-gtex.pdf", bbox_inches="tight")
+plt.savefig('../../figures/fig1/expression-switch-bar-gtex.pdf',
+            bbox_inches='tight')
 
 
-# In[72]:
+# In[ ]:
 
 
 dev_bar = bar[bar["index"].str.contains("dev")]
 ax = dev_bar.plot.bar(x="index", stacked=True, color=palette.values(), figsize=(1, 1))
 ax.set_ylabel("% of isoforms")
 ax.set_xlabel("")
-# ax.set_title("dev")
+#ax.set_title("dev")
 
 plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
 ax.set_xticklabels(["ref", "alt"], ha="right", va="top", rotation=30)
 
-plt.savefig("../../figures/fig1/expression-switch-bar-dev.pdf", bbox_inches="tight")
+plt.savefig('../../figures/fig1/expression-switch-bar-dev.pdf',
+            bbox_inches='tight')
 
 
 # ### example plot: TF gene whose isoform ratios change across tissues
 
-# In[73]:
+# In[ ]:
 
 
 tmp = ref_alt_map_nonan
-tmp["mm_gtex_ds_ref"] = (
-    tmp["max_ratio_gtex_downsample_ref"] - tmp["min_ratio_gtex_downsample_ref"]
-)
-tmp["mm_gtex_ds_alt"] = (
-    tmp["max_ratio_gtex_downsample_alt"] - tmp["min_ratio_gtex_downsample_alt"]
-)
-tmp["mm_dev_ref"] = tmp["max_ratio_dev_ref"] - tmp["min_ratio_dev_ref"]
-tmp["mm_dev_alt"] = tmp["max_ratio_dev_alt"] - tmp["min_ratio_dev_alt"]
-tmp["dg_ref"] = tmp["mm_dev_ref"] - tmp["mm_gtex_ds_ref"]
-tmp["dg_alt"] = tmp["mm_dev_alt"] - tmp["mm_gtex_ds_alt"]
-# tmp.sort_values(by="dg_alt", ascending=False).head(30)
+tmp["mm_gtex_ds_ref"] = tmp["max_ratio_gtex_downsample_ref"]-tmp["min_ratio_gtex_downsample_ref"]
+tmp["mm_gtex_ds_alt"] = tmp["max_ratio_gtex_downsample_alt"]-tmp["min_ratio_gtex_downsample_alt"]
+tmp["mm_dev_ref"] = tmp["max_ratio_dev_ref"]-tmp["min_ratio_dev_ref"]
+tmp["mm_dev_alt"] = tmp["max_ratio_dev_alt"]-tmp["min_ratio_dev_alt"]
+tmp["dg_ref"] = tmp["mm_dev_ref"]-tmp["mm_gtex_ds_ref"]
+tmp["dg_alt"] = tmp["mm_dev_alt"]-tmp["mm_gtex_ds_alt"]
+#tmp.sort_values(by="dg_alt", ascending=False).head(30)
 
 
-# In[74]:
+# In[ ]:
 
 
 if not (genes_gtex == genes_dev).all():
-    raise UserWarning()
+        raise UserWarning()
 genes = genes_gtex
 
 
-# In[75]:
+# In[ ]:
 
 
-def developmental_tissue_expression_plot(
-    gene_name, palette_name, figsize, ylim, means, cols, fig_suffix
-):
+def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim, means, cols, fig_suffix):
     n_isos = len(means.loc[genes == gene_name])
     palette = sns.color_palette(palette_name, as_cmap=False, n_colors=n_isos)
     fig, axes = plt.subplots(2, 1, sharex=True)
     fig.set_size_inches(figsize)
     ### bar chart ###
-    (
-        means.loc[genes == gene_name, cols].T.plot.bar(
-            ax=axes[0], legend=False, width=0.7, color=list(palette)
-        )
-    )
+    (means.loc[genes == gene_name, cols]
+          .T
+          .plot.bar(ax=axes[0],
+                    legend=False,
+                    width=0.7,
+                    color=list(palette)))
     ### percentages ###
-    raw_means = 2 ** means.loc[genes == gene_name, cols] - 1.0
-    (
-        raw_means.div(raw_means.sum(axis=0)).T.plot.bar(
-            ax=axes[1], stacked=True, legend=False, color=list(palette)
-        )
-    )
-    axes[0].set_ylabel("log2(tpm + 1)\n")
+    raw_means = 2 ** means.loc[genes == gene_name, cols] - 1.
+    (raw_means.div(raw_means.sum(axis=0))
+              .T.plot.bar(ax=axes[1], 
+                          stacked=True,
+                          legend=False,
+                          color=list(palette)))
+    axes[0].set_ylabel('log2(tpm + 1)\n')
     axes[0].set_ylim(ylim)
-    axes[1].set_ylabel("percent")
-    axes[1].set_yticklabels(["{:.0%}".format(t) for t in axes[1].get_yticks()])
-    axes[1].legend(loc="lower left", bbox_to_anchor=(1, 0))
-    axes[0].axhline(y=1, color="black", linewidth=0.5, linestyle="dashed")
+    axes[1].set_ylabel('percent')
+    axes[1].set_yticklabels(['{:.0%}'.format(t) for t in axes[1].get_yticks()])
+    axes[1].legend(loc='lower left', bbox_to_anchor=(1, 0))
+    axes[0].axhline(y=1, color='black', linewidth=0.5, linestyle="dashed")
     plt.subplots_adjust(hspace=0.25)
-    plt.savefig(
-        "../../figures/fig1/expression_" + gene_name + "_" + fig_suffix + ".pdf",
-        bbox_inches="tight",
-    )
+    plt.savefig('../../figures/fig1/expression_' + gene_name + '_' + fig_suffix + '.pdf',
+                bbox_inches='tight')
 
 
-# In[76]:
+# In[ ]:
 
 
 heart_cols = [x for x in means_dev.columns if "heart" in x]
 ovary_cols = [x for x in means_dev.columns if "ovary" in x]
-developmental_tissue_expression_plot(
-    "HEY2",
-    "Spectral",
-    (4, 1.75),
-    (0, 6),
-    means_dev,
-    heart_cols + ovary_cols,
-    "means_dev_heart_ovary",
-)
+developmental_tissue_expression_plot("HEY2", "Spectral", (4, 1.75), (0, 6), means_dev, heart_cols + ovary_cols, 
+                                     "means_dev_heart_ovary")
 
 
-# In[77]:
+# In[ ]:
 
 
 heart_cols = [x for x in means_gtex.columns if "Heart" in x]
 ovary_cols = [x for x in means_gtex.columns if "Ovary" in x]
-developmental_tissue_expression_plot(
-    "HEY2",
-    "Spectral",
-    (0.5, 1.75),
-    (0, 6),
-    means_gtex,
-    heart_cols + ovary_cols,
-    "means_gtex_heart_ovary",
-)
+developmental_tissue_expression_plot("HEY2", "Spectral", (0.5, 1.75), (0, 6), means_gtex, heart_cols + ovary_cols, 
+                                     "means_gtex_heart_ovary")
 
 
-# In[78]:
+# In[ ]:
 
 
-ss_alt_gtex = len(
-    ref_alt_map_nonan[
-        (ref_alt_map_nonan["max_ratio_gtex_downsample_alt"] > MIN_THRESH)
-    ].gene.unique()
-)
+ss_alt_gtex = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_gtex_downsample_alt"] > MIN_THRESH)].gene.unique())
 ss_alt_gtex
 
 
-# In[79]:
+# In[ ]:
 
 
-ss_alt_dev = len(
-    ref_alt_map_nonan[
-        (ref_alt_map_nonan["max_ratio_dev_alt"] > MIN_THRESH)
-    ].gene.unique()
-)
+ss_alt_dev = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_dev_alt"] > MIN_THRESH)].gene.unique())
 ss_alt_dev
 
 
-# In[80]:
+# In[ ]:
 
 
 tot_genes = len(ref_alt_map_nonan.gene.unique())
 tot_genes
 
 
-# In[81]:
+# In[ ]:
 
 
-ss_alt_gtex / tot_genes
+ss_alt_gtex/tot_genes
 
 
-# In[82]:
+# In[ ]:
 
 
-ss_alt_dev / tot_genes
+ss_alt_dev/tot_genes
 
 
 # ## 7. calculate domain switches in annotated isoforms
 
-# In[83]:
+# In[ ]:
 
 
 # loop through ref/alt pairs above and calculate total num AAs inserted/deleted/frameshifted
@@ -1697,7 +1291,7 @@ for i, row in ref_alt_map_nonan.iterrows():
     ref = row.ref.split("|")[0]
     alt = row.alt.split("|")[0]
     gene = ref[:-4]
-
+    
     # manual fixes
     if gene == "AC092072.1":
         gene = "ZNF223"
@@ -1713,8 +1307,8 @@ for i, row in ref_alt_map_nonan.iterrows():
         gene = "POU6F1"
     if gene == "PHF19":
         gene = "PHF19 "
-    # print("gene: %s | ref: %s | alt: %s" % (gene, ref, alt))
-
+    #print("gene: %s | ref: %s | alt: %s" % (gene, ref, alt))
+    
     pp_str = tfs[gene].pairwise_changes_relative_to_reference(ref, alt)
     aa_ftr = tfs[gene].aa_feature_disruption(ref)
     if len(aa_ftr) == 0:
@@ -1724,7 +1318,7 @@ for i, row in ref_alt_map_nonan.iterrows():
         perc_dd_dom = 0
         f_dom = 0
         perc_f_dom = 0
-
+        
         ins_eff = 0
         perc_ins_eff = 0
         dd_eff = 0
@@ -1733,24 +1327,20 @@ for i, row in ref_alt_map_nonan.iterrows():
         perc_f_eff = 0
     else:
         aa_ftr_alt = aa_ftr[aa_ftr["alt_iso"] == alt]
-
+        
         # separate pfam and effector domains
         pfam = aa_ftr_alt[aa_ftr_alt["category"] == "Pfam_domain"]
         eff = aa_ftr_alt[aa_ftr_alt["category"] == "effector_domain"]
-
+        
         if len(pfam) > 0:
-            pfam_grp = (
-                pfam.groupby("alt_iso")[["deletion", "insertion", "frameshift"]]
-                .agg("sum")
-                .reset_index()
-            )
-
+            pfam_grp = pfam.groupby("alt_iso")[["deletion", "insertion", "frameshift"]].agg("sum").reset_index()
+        
             ins_dom = pfam_grp.insertion.iloc[0]
-            perc_ins_dom = ins_dom / len(pp_str) * 100
+            perc_ins_dom = ins_dom/len(pp_str)*100
             dd_dom = pfam_grp.deletion.iloc[0]
-            perc_dd_dom = dd_dom / len(pp_str) * 100
+            perc_dd_dom = dd_dom/len(pp_str)*100
             f_dom = pfam_grp.frameshift.iloc[0]
-            perc_f_dom = f_dom / len(pp_str) * 100
+            perc_f_dom = f_dom/len(pp_str)*100
         else:
             ins_dom = 0
             perc_ins_dom = 0
@@ -1758,20 +1348,16 @@ for i, row in ref_alt_map_nonan.iterrows():
             perc_dd_dom = 0
             f_dom = 0
             perc_f_dom = 0
-
+            
         if len(eff) > 0:
-            eff_grp = (
-                eff.groupby("alt_iso")[["deletion", "insertion", "frameshift"]]
-                .agg("sum")
-                .reset_index()
-            )
-
+            eff_grp = eff.groupby("alt_iso")[["deletion", "insertion", "frameshift"]].agg("sum").reset_index()
+        
             ins_eff = eff_grp.insertion.iloc[0]
-            perc_ins_eff = ins_eff / len(pp_str) * 100
+            perc_ins_eff = ins_eff/len(pp_str)*100
             dd_eff = eff_grp.deletion.iloc[0]
-            perc_dd_eff = dd_eff / len(pp_str) * 100
+            perc_dd_eff = dd_eff/len(pp_str)*100
             f_eff = eff_grp.frameshift.iloc[0]
-            perc_f_eff = f_eff / len(pp_str) * 100
+            perc_f_eff = f_eff/len(pp_str)*100
         else:
             ins_eff = 0
             perc_ins_eff = 0
@@ -1779,29 +1365,32 @@ for i, row in ref_alt_map_nonan.iterrows():
             perc_dd_eff = 0
             f_eff = 0
             perc_f_eff = 0
-
+        
+        
+    
+    
     ins = pp_str.count("I")
-    perc_ins = ins / len(pp_str) * 100
+    perc_ins = ins/len(pp_str)*100
     dd = pp_str.count("D")
-    perc_dd = dd / len(pp_str) * 100
+    perc_dd = dd/len(pp_str)*100
     f = pp_str.count("F")
     f += pp_str.count("f")
-    perc_f = f / len(pp_str) * 100
-
+    perc_f = f/len(pp_str)*100
+    
     tot_ins.append(ins)
     tot_perc_ins.append(perc_ins)
     tot_dd.append(dd)
     tot_perc_dd.append(perc_dd)
     tot_f.append(f)
     tot_perc_f.append(perc_f)
-
+    
     tot_ins_dom.append(ins_dom)
     tot_perc_ins_dom.append(perc_ins_dom)
     tot_dd_dom.append(dd_dom)
     tot_perc_dd_dom.append(perc_dd_dom)
     tot_f_dom.append(f_dom)
     tot_perc_f_dom.append(perc_f_dom)
-
+    
     tot_ins_eff.append(ins_eff)
     tot_perc_ins_eff.append(perc_ins_eff)
     tot_dd_eff.append(dd_eff)
@@ -1833,21 +1422,21 @@ ref_alt_map_nonan["perc_f_eff"] = tot_perc_f_eff
 ref_alt_map_nonan.sample(5)
 
 
-# In[84]:
+# In[ ]:
 
 
 def mimic_r_boxplot(ax):
     for i, patch in enumerate(ax.artists):
         r, g, b, a = patch.get_facecolor()
         col = (r, g, b, 1)
-        patch.set_facecolor((r, g, b, 0.5))
+        patch.set_facecolor((r, g, b, .5))
         patch.set_edgecolor((r, g, b, 1))
 
         # Each box has 6 associated Line2D objects (to make the whiskers, fliers, etc.)
         # Loop over them here, and use the same colour as above
         line_order = ["lower", "upper", "whisker_1", "whisker_2", "med", "fliers"]
-        for j in range(i * 6, i * 6 + 6):
-            elem = line_order[j % 6]
+        for j in range(i*6,i*6+6):
+            elem = line_order[j%6]
             line = ax.lines[j]
             if "whisker" in elem:
                 line.set_visible(False)
@@ -1858,7 +1447,7 @@ def mimic_r_boxplot(ax):
                 line.set_alpha(0.5)
 
 
-# In[85]:
+# In[ ]:
 
 
 def comp_cat(row):
@@ -1870,118 +1459,92 @@ def comp_cat(row):
         return "total"
 
 
-# In[86]:
+# In[ ]:
 
 
-to_plot = pd.melt(
-    ref_alt_map_nonan,
-    id_vars=["ref", "gene", "alt"],
-    value_vars=[
-        "n_ins",
-        "perc_ins",
-        "n_dd",
-        "perc_dd",
-        "n_f",
-        "perc_f",
-        "n_ins_dom",
-        "perc_ins_dom",
-        "n_dd_dom",
-        "perc_dd_dom",
-        "n_f_dom",
-        "perc_f_dom",
-        "n_ins_eff",
-        "perc_ins_eff",
-        "n_dd_eff",
-        "perc_dd_eff",
-        "n_f_eff",
-        "perc_f_eff",
-    ],
-)
+to_plot = pd.melt(ref_alt_map_nonan, id_vars=["ref", "gene", "alt"], value_vars=["n_ins", "perc_ins",
+                                                                                 "n_dd", "perc_dd",
+                                                                                 "n_f", "perc_f",
+                                                                                 "n_ins_dom", "perc_ins_dom",
+                                                                                 "n_dd_dom", "perc_dd_dom",
+                                                                                 "n_f_dom", "perc_f_dom",
+                                                                                 "n_ins_eff", "perc_ins_eff",
+                                                                                 "n_dd_eff", "perc_dd_eff",
+                                                                                 "n_f_eff", "perc_f_eff"])
 to_plot["n_or_perc"] = to_plot["variable"].str.split("_", expand=True)[0]
 to_plot["type"] = to_plot["variable"].str.split("_", expand=True)[1]
 to_plot["dom_cat"] = to_plot.apply(comp_cat, axis=1)
 to_plot.sample(5)
 
 
-# In[87]:
+# In[ ]:
 
 
 fig = plt.figure(figsize=(2.3, 1.25))
-ax = sns.boxplot(
-    data=to_plot[to_plot["n_or_perc"] == "perc"],
-    x="type",
-    y="value",
-    hue="dom_cat",
-    order=["dd", "ins", "f"],
-    palette=sns.color_palette("Set2"),
-    fliersize=5,
-    notch=True,
-    flierprops={"marker": "."},
-)
+ax = sns.boxplot(data=to_plot[to_plot["n_or_perc"] == "perc"], 
+                 x="type", y="value", hue="dom_cat", order=["dd", "ins", "f"],
+                 palette=sns.color_palette("Set2"), fliersize=5, notch=True,
+                 flierprops={"marker": "."})
 mimic_r_boxplot(ax)
 
 
 ax.set_xlabel("")
-ax.set_xticklabels(
-    ["deletions", "insertions", "frameshift"], rotation=30, ha="right", va="top"
-)
+ax.set_xticklabels(["deletions", "insertions", "frameshift"], rotation=30, ha="right", va="top")
 ax.set_ylabel("% AA affected")
 ax.set_title("alt v. ref TF isoforms")
 handles, labels = ax.get_legend_handles_labels()
 labels = ["all", "Pfam", "effector"]
 ax.legend(handles, labels, loc=2, bbox_to_anchor=(1.01, 1))
-fig.savefig("../../figures/fig1/domain-overall-boxplot.pdf", bbox_inches="tight")
+fig.savefig('../../figures/fig1/domain-overall-boxplot.pdf',
+            bbox_inches='tight')
 
 
-# In[88]:
+# In[ ]:
 
 
 to_plot[to_plot["n_or_perc"] == "perc"].groupby(["type", "dom_cat"]).agg("median")
 
 
-# In[89]:
+# In[ ]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f_dom"] > 0])
 
 
-# In[90]:
+# In[ ]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_ins"] >= 10])
 
 
-# In[91]:
+# In[ ]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f"] >= 10])
 
 
-# In[92]:
+# In[ ]:
 
 
 len(ref_alt_map_nonan)
 
 
-# In[93]:
+# In[ ]:
 
 
-214 / 2305
+214/2305
 
 
-# In[94]:
+# In[ ]:
 
 
-len(
-    ref_alt_map_nonan[
-        (ref_alt_map_nonan["perc_dd_eff"] > 0)
-        | (ref_alt_map_nonan["perc_ins_eff"] > 0)
-        | (ref_alt_map_nonan["perc_f_eff"] > 0)
-    ]
-)
+len(ref_alt_map_nonan[(ref_alt_map_nonan["perc_dd_eff"] > 0) |
+                      (ref_alt_map_nonan["perc_ins_eff"] > 0) |
+                      (ref_alt_map_nonan["perc_f_eff"] > 0)])
 
 
-# In[95]:
+# In[ ]:
 
 
-684 / 2305
+684/2305
+
