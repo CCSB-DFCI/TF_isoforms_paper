@@ -21,6 +21,7 @@ from .sequence_features import (
     load_pfam_domains_TFiso1,
     load_pfam_domains_gencode,
     load_pfam_clans,
+    load_NLS_and_NES,
 )
 
 
@@ -198,6 +199,7 @@ def load_annotated_gencode_tfs(
         genes=genes, path_MANE_select=path_MANE_select, path_APPRIS=path_APPRIS
     )
     _add_effector_domains(genes, genes_to_rename)
+    _add_NLS_NES(genes)
 
     return genes
 
@@ -284,6 +286,7 @@ def load_annotated_TFiso1_collection(
     _add_Pfam_domains_TFiso1(genes)
     _make_c2h2_zf_arrays(genes)
     _add_dbd_flanks(genes)
+    _add_NLS_NES(genes)
 
     tfs_gencode = load_annotated_gencode_tfs(
         subset={g.ensembl_gene_id for g in genes.values()}
@@ -579,6 +582,34 @@ def _add_disordered_regions(genes, path_disorder):
                         "inconsistent amino acid sequence and disordered residues data for {}".format(
                             iso.name
                         )
+                    )
+
+
+def _add_NLS_NES(genes):
+    df = load_NLS_and_NES()
+
+    def n_matches(ss, s):
+        return len(re.findall("(?={})".format(ss), s))
+
+    for tf in genes.values():
+        for _i, row in df.loc[df["uniprot_ac"] == tf.uniprot_ac, :].iterrows():
+            if any(n_matches(row["motif_seq"], iso.aa_seq) > 1 for iso in tf.isoforms):
+                print("more than one match for", row["motif_seq"], tf.name)
+                print("skipping")
+                continue
+            for iso in tf.isoforms:
+                if row["motif_seq"] in iso.aa_seq:
+                    start = iso.aa_seq.index(row["motif_seq"])
+                    stop = start + len(row["motif_seq"])
+                    iso.add_aa_seq_feature(
+                        category="UniProt motif",
+                        name=row["type"],
+                        accession="{}_{}_{}_{}".format(
+                            row["type"], row["uniprot_ac"], row["start"], row["stop"]
+                        ),
+                        start=start,
+                        end=stop,
+                        description=row["type"],
                     )
 
 

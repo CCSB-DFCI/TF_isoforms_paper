@@ -1,12 +1,14 @@
 import itertools
 import functools
 from pathlib import Path
+import re
 
 import numpy as np
 import pandas as pd
 import tqdm
 from Bio.PDB.DSSP import make_dssp_dict
 from Bio.Data.IUPACData import protein_letters_3to1
+from Bio import SeqIO
 
 from .utils import DATA_DIR, CACHE_DIR
 
@@ -467,4 +469,111 @@ def load_disorder_predictions():
     df.loc[to_change, "is_disordered"] = False
 
     df.to_csv(cache_path, index=False, sep="\t")
+    return df
+
+
+def load_NLS_and_NES():
+    """
+    From UniProt. Note: sequnece positions are relative to the UniProt
+    aa sequence
+    """
+    df = pd.read_csv(
+        DATA_DIR
+        / "external/uniprotkb_ft_motif_AND_taxonomy_id_9606_AND_reviewed_2023_10_02.tsv",
+        sep="\t",
+    )
+    data = []
+    for idx_protein, row in df["Motif"].items():
+        motif_rows = ["MOTIF" + x for x in row.strip().split("MOTIF") if x != ""]
+        for motif_row in motif_rows:
+            data_row = [
+                idx_protein,
+            ]
+            m = re.search("MOTIF (.*?);", motif_row)
+            if m is not None:
+                data_row.append(m.group(1))
+            else:
+                data_row.append(np.nan)
+            m = re.search('\/note\="(.*?)"', motif_row)
+            if m is not None:
+                data_row.append(m.group(1))
+            else:
+                data_row.append(np.nan)
+            m = re.search('\/evidence\="(.*?)"', motif_row)
+            if m is not None:
+                data_row.append(m.group(1))
+            else:
+                data_row.append(np.nan)
+            data.append(data_row)
+    motif_df = pd.DataFrame(
+        data=data,
+        columns=[
+            "protein_index",
+            "coords",
+            "note",
+            "evidence",
+        ],
+    )
+    df = pd.merge(
+        df.drop(columns="Motif"),
+        motif_df,
+        how="outer",
+        left_index=True,
+        right_on=["protein_index"],
+    )
+
+    # Note that there are null values below
+    nls_rows = df["note"].str.contains("[Nn]uclear localization signal", regex=True)
+    nes_rows = df["note"].str.contains("[Nn]uclear export signal", regex=True)
+    df = df.loc[nls_rows | nes_rows, :]
+    df["type"] = ""
+    df.loc[nls_rows == True, "type"] = "NLS"
+    df.loc[nes_rows == True, "type"] = "NES"
+
+    def valid_coords(x):
+        try:
+            int(x.split("..")[0])
+            return True
+        except ValueError:
+            return False
+
+    df = df.loc[df["coords"].apply(valid_coords), :]
+    df["start"] = df["coords"].apply(lambda x: int(x.split("..")[0]))
+    df["stop"] = df["coords"].apply(lambda x: int(x.split("..")[1]))
+
+    # From the NLSdb paper: Bernhofer et al. NAR 2018
+    valid_evidence_code = (
+        df["evidence"].str.contains("ECO:0000269")
+        | df["evidence"].str.contains("ECO:0000305")
+        | df["evidence"].str.contains("ECO:0000250")
+        | df["evidence"].str.contains("ECO:0000255")
+    )
+    # df = df.loc[valid_evidence_code, :]
+    df = df.loc[:, ["Entry", "Gene Names (primary)", "type", "start", "stop"]].rename(
+        columns={"Entry": "uniprot_ac", "Gene Names (primary)": "gene_symbol"}
+    )
+    if df.isnull().any().any():
+        raise UserWarning("unexpected missing values")
+    if not (df["start"] < df["stop"]).all():
+        raise UserWarning("start position should be before stop")
+    # remove a small number of huge NLS which are maybe a mistake in the UniProt annotation?
+    MAX_NLS_N_AA = 30
+    df = df.loc[(df["stop"] - df["start"]) <= MAX_NLS_N_AA, :]
+
+    uniprot_aa_seq = {
+        r.id.split("|")[1]: str(r.seq)
+        for r in SeqIO.parse(
+            DATA_DIR / "external/UP000005640_9606.fasta", format="fasta"
+        )
+    }
+    df["uniprot_aa_seq"] = df["uniprot_ac"].map(uniprot_aa_seq)
+    # It's only endogenous retrovirus genes that don't have a sequence
+    # in the uniprot reference proteome
+    df = df.dropna()
+
+    def subsequence(row):
+        return row["uniprot_aa_seq"][row["start"] - 1 : row["stop"]]
+
+    df["motif_seq"] = df.apply(subsequence, axis=1)
+
     return df
