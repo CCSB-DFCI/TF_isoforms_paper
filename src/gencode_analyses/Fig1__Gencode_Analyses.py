@@ -115,49 +115,49 @@ ref_isos = {'|'.join(sorted(orf.ensembl_transcript_names))
             if tf.has_MANE_select_isoform and orf.is_MANE_select_transcript}
 
 
-# In[ ]:
+# In[6]:
 
 
 len(tfs)
 
 
-# In[ ]:
+# In[7]:
 
 
 metadata_dev.shape
 
 
-# In[ ]:
+# In[8]:
 
 
 metadata_gtex.shape
 
 
-# In[ ]:
+# In[9]:
 
 
 len(all_isos)
 
 
-# In[ ]:
+# In[10]:
 
 
 len(ref_isos)
 
 
-# In[ ]:
+# In[11]:
 
 
 len(alt_isos)
 
 
-# In[ ]:
+# In[12]:
 
 
 (means_gtex > 1).any(axis=1).value_counts()
 
 
-# In[ ]:
+# In[13]:
 
 
 (means_gtex.loc[means_gtex.index.isin(alt_isos), :].sum(axis=1) >= 1).sum()
@@ -165,7 +165,7 @@ len(alt_isos)
 
 # ## 2. isoforms per family
 
-# In[ ]:
+# In[14]:
 
 
 # number of isoforms vs gene expression, publications, and exons 
@@ -178,7 +178,7 @@ gn = tpm_per_gene.max(axis=1).rename('TPM - gene-level, max across GTEx tissues'
 gn['n_isoforms'] = gn.index.map(genes_gtex.value_counts())
 
 
-# In[ ]:
+# In[15]:
 
 
 fam = load_tf_families()
@@ -187,43 +187,43 @@ gn['is_nuclear_receptor'] = (gn['family'] == 'Nuclear receptor')
 gn.head()
 
 
-# In[ ]:
+# In[16]:
 
 
 len(gn)
 
 
-# In[ ]:
+# In[17]:
 
 
 len(gn[gn["n_isoforms"] > 1])
 
 
-# In[ ]:
+# In[18]:
 
 
 gn.n_isoforms.mean()
 
 
-# In[ ]:
+# In[19]:
 
 
 gn[gn["family"] == "Homeodomain"].n_isoforms.mean()
 
 
-# In[ ]:
+# In[20]:
 
 
 gn[gn["family"] == "Nuclear receptor"].n_isoforms.mean()
 
 
-# In[ ]:
+# In[21]:
 
 
 gn.sort_values(by="n_isoforms", ascending=False).head()
 
 
-# In[ ]:
+# In[22]:
 
 
 fam_members = pd.DataFrame(gn['family'].value_counts()).reset_index()
@@ -231,7 +231,7 @@ fam_members_ov20 = fam_members[fam_members["family"] >= 20]
 fam_members_ov20
 
 
-# In[ ]:
+# In[23]:
 
 
 def collapse_families(row, families_to_keep):
@@ -245,7 +245,7 @@ gn['family_updated'] = gn.apply(collapse_families, axis=1,
 gn.family_updated.value_counts()
 
 
-# In[ ]:
+# In[24]:
 
 
 def annotate(data, **kws):
@@ -270,21 +270,21 @@ g.savefig("../../figures/fig1/GENCODE_iso_counts_per_family.pdf", bbox_inches="t
 # 
 # GTEx has more samples per condition than Dev, but Dev has more conditions
 
-# In[ ]:
+# In[25]:
 
 
 # conditions (body sites): gtex
 len(metadata_gtex['body_site'].value_counts())
 
 
-# In[ ]:
+# In[26]:
 
 
 # samples per body site: gtex
 metadata_gtex['body_site'].value_counts()
 
 
-# In[ ]:
+# In[27]:
 
 
 # conditions (body sites): dev
@@ -292,7 +292,7 @@ metadata_dev['body_site'] = metadata_dev['organism_part'] + ' ' + metadata_dev['
 len(metadata_dev['body_site'].value_counts())
 
 
-# In[ ]:
+# In[28]:
 
 
 # samples per body site: dev
@@ -302,7 +302,7 @@ metadata_dev['body_site'].value_counts()
 # ### loop through GTEx tissues and pick the # of samples by randomly matching to a dev dataset
 # this is inherently unstable when sampling w/o replacement as will end up with times where there are more samps in the dev that you're randomly matching to than the gtex (rare but happens)
 
-# In[ ]:
+# In[29]:
 
 
 # loop through gtex tissues
@@ -334,43 +334,43 @@ if metadata_gtex_dummy.index.duplicated().any():
     raise UserWarning('Unexpected duplicates')
 
 
-# In[ ]:
+# In[30]:
 
 
 metadata_gtex_dummy.shape
 
 
-# In[ ]:
+# In[31]:
 
 
 len(metadata_gtex_dummy.body_site.unique())
 
 
-# In[ ]:
+# In[32]:
 
 
 len(metadata_gtex_dummy.body_site.str.split("_", expand=True)[0].unique())
 
 
-# In[ ]:
+# In[33]:
 
 
 metadata_dev.shape
 
 
-# In[ ]:
+# In[34]:
 
 
 len(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).unique())
 
 
-# In[ ]:
+# In[35]:
 
 
 df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).unique()
 
 
-# In[ ]:
+# In[36]:
 
 
 tmp = metadata_dev.groupby(["organism_part", "dev_stage"])["BioSample"].agg("count").reset_index()
@@ -380,14 +380,14 @@ tmp.sort_values(by="BioSample")
 # #### this dataframe is now the same shape as the dev data in both # of samples and # of "sites"
 # gets to the same # of "sites" by re-sampling among GTEx tissues
 
-# In[ ]:
+# In[37]:
 
 
 # write this file so we can load it in the DN section later
 metadata_gtex_dummy.to_csv("../../data/processed/metadata_gtex_dummy.csv")
 
 
-# In[ ]:
+# In[38]:
 
 
 means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean()
@@ -397,7 +397,7 @@ means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy[
 
 # ### GTEx: all
 
-# In[ ]:
+# In[39]:
 
 
 # plot number of isoforms above 1 TPM
@@ -450,7 +450,7 @@ fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx.pdf
 
 # ### GTEx: downsample
 
-# In[ ]:
+# In[40]:
 
 
 # plot number of isoforms above 1 TPM
@@ -486,7 +486,7 @@ fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_dow
 
 # ### Dev
 
-# In[ ]:
+# In[41]:
 
 
 # plot number of isoforms above 1 TPM
@@ -522,7 +522,7 @@ fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_dev
 
 # ## 5. ref v alt 2D heatmaps: max expression
 
-# In[ ]:
+# In[42]:
 
 
 ref_alt_map = pd.DataFrame([ref_isos]).T
@@ -540,7 +540,7 @@ print(len(ref_alt_map_nonan))
 ref_alt_map_nonan.head()
 
 
-# In[ ]:
+# In[43]:
 
 
 ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
@@ -548,7 +548,7 @@ ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
 
 # ### GTEx: all
 
-# In[ ]:
+# In[44]:
 
 
 means_gtex["max_gtex"] = means_gtex.max(axis=1)
@@ -563,7 +563,7 @@ means_gtex_ri = means_gtex.reset_index()
 means_gtex_ri["UID_rep"] = means_gtex_ri["UID"].str.replace("_", "|")
 
 
-# In[ ]:
+# In[45]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex", "min_gtex"]], left_on="ref", 
@@ -572,7 +572,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex"
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[ ]:
+# In[46]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -618,7 +618,7 @@ fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-gtex.pdf',
 
 # ### GTEx: downsampled
 
-# In[ ]:
+# In[47]:
 
 
 means_gtex_downsample["max_gtex_downsample"] = means_gtex_downsample.max(axis=1)
@@ -633,7 +633,7 @@ means_gtex_downsample_ri = means_gtex_downsample.reset_index()
 means_gtex_downsample_ri["UID_rep"] = means_gtex_downsample_ri["UID"].str.replace("_", "|")
 
 
-# In[ ]:
+# In[48]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep", "max_gtex_downsample",
@@ -644,7 +644,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep",
                                             left_on="alt", right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[ ]:
+# In[49]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -690,7 +690,7 @@ fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-gtex-downsample.pdf
 
 # ### Dev
 
-# In[ ]:
+# In[50]:
 
 
 means_dev["max_dev"] = means_dev.max(axis=1)
@@ -705,7 +705,7 @@ means_dev_ri = means_dev.reset_index()
 means_dev_ri["UID_rep"] = means_dev_ri["UID"].str.replace("_", "|")
 
 
-# In[ ]:
+# In[51]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", "min_dev"]], left_on="ref", 
@@ -714,7 +714,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", 
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[ ]:
+# In[52]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -764,7 +764,7 @@ fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-dev.pdf',
 
 # ### GTEx: all
 
-# In[ ]:
+# In[53]:
 
 
 # percentage of alternative isoform
@@ -783,7 +783,7 @@ f_gtex = f_gtex * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex['body
 f_gtex = f_gtex * 100
 
 
-# In[ ]:
+# In[54]:
 
 
 print(len(f_gtex))
@@ -796,7 +796,7 @@ f_gtex_ri = f_gtex_nonan.reset_index()
 f_gtex_ri["UID_rep"] = f_gtex_ri["UID"].str.replace("_", "|")
 
 
-# In[ ]:
+# In[55]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gtex", "min_ratio_gtex"]], left_on="ref", 
