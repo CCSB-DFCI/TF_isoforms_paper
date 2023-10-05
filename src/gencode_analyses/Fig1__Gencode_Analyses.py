@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # ## Figure 1: Gencode Analyses: TF isoform annotations, expression patterns, domains
@@ -14,6 +14,7 @@ import numpy as np
 from scipy import stats
 import seaborn as sns
 from matplotlib import pyplot as plt
+from poibin import PoiBin
 import pandas as pd
 import sys
 
@@ -29,7 +30,9 @@ from data_loading import (load_isoform_and_paralog_y2h_data,
                           load_seq_comparison_data,
                           load_gtex_gencode,
                           load_developmental_tissue_expression_gencode,
-                          load_tf_families)
+                          load_tf_families,
+                          load_pfam_clans,
+                          load_DNA_binding_domains)
 
 
 # In[2]:
@@ -805,7 +808,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gte
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[ ]:
+# In[56]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -831,7 +834,7 @@ fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-gtex.pdf',
             bbox_inches='tight')
 
 
-# In[ ]:
+# In[57]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -858,14 +861,14 @@ fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-gtex.pdf',
 
 # ### GTEx: downsample
 
-# In[ ]:
+# In[58]:
 
 
-MIN_THRESH = 20
-MAX_THRESH = 80
+MIN_THRESH = 10
+MAX_THRESH = 90
 
 
-# In[ ]:
+# In[59]:
 
 
 # percentage of alternative isoform
@@ -884,7 +887,7 @@ f_gtex_downsample = f_gtex_downsample * (per_gene_gtex.groupby(df_gtex.columns.m
 f_gtex_downsample = f_gtex_downsample * 100
 
 
-# In[ ]:
+# In[60]:
 
 
 print(len(f_gtex_downsample))
@@ -898,7 +901,7 @@ f_gtex_downsample_ri = f_gtex_downsample_nonan.reset_index()
 f_gtex_downsample_ri["UID_rep"] = f_gtex_downsample_ri["UID"].str.replace("_", "|")
 
 
-# In[ ]:
+# In[61]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "max_ratio_gtex_downsample", 
@@ -909,7 +912,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "ma
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[ ]:
+# In[62]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -940,7 +943,7 @@ fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-gtex-downsample.pdf
             bbox_inches='tight')
 
 
-# In[ ]:
+# In[63]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -982,7 +985,7 @@ fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-gtex-downsample.pdf
 
 # ### Dev
 
-# In[ ]:
+# In[64]:
 
 
 # percentage of alternative isoform
@@ -1005,7 +1008,7 @@ f_dev = f_dev * ((per_gene_dev.groupby(df_dev.columns.map(metadata_dev['organism
 f_dev = f_dev * 100
 
 
-# In[ ]:
+# In[65]:
 
 
 print(len(f_dev))
@@ -1018,7 +1021,7 @@ f_dev_ri = f_dev_nonan.reset_index()
 f_dev_ri["UID_rep"] = f_dev_ri["UID"].str.replace("_", "|")
 
 
-# In[ ]:
+# In[66]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev", "min_ratio_dev"]], left_on="ref", 
@@ -1027,7 +1030,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev"
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
 
-# In[ ]:
+# In[67]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1059,7 +1062,7 @@ fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-dev.pdf',
             bbox_inches='tight')
 
 
-# In[ ]:
+# In[68]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -1099,7 +1102,7 @@ fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-dev.pdf',
             bbox_inches='tight')
 
 
-# In[ ]:
+# In[69]:
 
 
 bar = pd.DataFrame.from_dict({"gtex_ds_ref": {"switch": p_switches_ref_gtex_ds*100, "low": p_off_ref_gtex_ds*100},
@@ -1112,7 +1115,7 @@ bar = bar[["index", "low", "switch", "shift"]]
 bar
 
 
-# In[ ]:
+# In[70]:
 
 
 palette = {"low": "lightgrey",
@@ -1121,7 +1124,7 @@ palette = {"low": "lightgrey",
 palette
 
 
-# In[ ]:
+# In[71]:
 
 
 gtex_bar = bar[bar["index"].str.contains("gtex")]
@@ -1137,7 +1140,7 @@ plt.savefig('../../figures/fig1/expression-switch-bar-gtex.pdf',
             bbox_inches='tight')
 
 
-# In[ ]:
+# In[72]:
 
 
 dev_bar = bar[bar["index"].str.contains("dev")]
@@ -1155,7 +1158,7 @@ plt.savefig('../../figures/fig1/expression-switch-bar-dev.pdf',
 
 # ### example plot: TF gene whose isoform ratios change across tissues
 
-# In[ ]:
+# In[73]:
 
 
 tmp = ref_alt_map_nonan
@@ -1168,7 +1171,7 @@ tmp["dg_alt"] = tmp["mm_dev_alt"]-tmp["mm_gtex_ds_alt"]
 #tmp.sort_values(by="dg_alt", ascending=False).head(30)
 
 
-# In[ ]:
+# In[74]:
 
 
 if not (genes_gtex == genes_dev).all():
@@ -1176,7 +1179,7 @@ if not (genes_gtex == genes_dev).all():
 genes = genes_gtex
 
 
-# In[ ]:
+# In[75]:
 
 
 def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim, means, cols, fig_suffix):
@@ -1209,7 +1212,7 @@ def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim,
                 bbox_inches='tight')
 
 
-# In[ ]:
+# In[76]:
 
 
 heart_cols = [x for x in means_dev.columns if "heart" in x]
@@ -1218,7 +1221,7 @@ developmental_tissue_expression_plot("HEY2", "Spectral", (4, 1.75), (0, 6), mean
                                      "means_dev_heart_ovary")
 
 
-# In[ ]:
+# In[77]:
 
 
 heart_cols = [x for x in means_gtex.columns if "Heart" in x]
@@ -1227,34 +1230,34 @@ developmental_tissue_expression_plot("HEY2", "Spectral", (0.5, 1.75), (0, 6), me
                                      "means_gtex_heart_ovary")
 
 
-# In[ ]:
+# In[78]:
 
 
 ss_alt_gtex = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_gtex_downsample_alt"] > MIN_THRESH)].gene.unique())
 ss_alt_gtex
 
 
-# In[ ]:
+# In[79]:
 
 
 ss_alt_dev = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_dev_alt"] > MIN_THRESH)].gene.unique())
 ss_alt_dev
 
 
-# In[ ]:
+# In[80]:
 
 
 tot_genes = len(ref_alt_map_nonan.gene.unique())
 tot_genes
 
 
-# In[ ]:
+# In[81]:
 
 
 ss_alt_gtex/tot_genes
 
 
-# In[ ]:
+# In[82]:
 
 
 ss_alt_dev/tot_genes
@@ -1262,7 +1265,7 @@ ss_alt_dev/tot_genes
 
 # ## 7. calculate domain switches in annotated isoforms
 
-# In[ ]:
+# In[83]:
 
 
 # loop through ref/alt pairs above and calculate total num AAs inserted/deleted/frameshifted
@@ -1422,7 +1425,7 @@ ref_alt_map_nonan["perc_f_eff"] = tot_perc_f_eff
 ref_alt_map_nonan.sample(5)
 
 
-# In[ ]:
+# In[84]:
 
 
 def mimic_r_boxplot(ax):
@@ -1447,7 +1450,7 @@ def mimic_r_boxplot(ax):
                 line.set_alpha(0.5)
 
 
-# In[ ]:
+# In[85]:
 
 
 def comp_cat(row):
@@ -1547,4 +1550,303 @@ len(ref_alt_map_nonan[(ref_alt_map_nonan["perc_dd_eff"] > 0) |
 
 
 684/2305
+
+
+# ## 8. calculate domains that are affected compared to null
+
+# In[ ]:
+
+
+clans = load_pfam_clans()
+dbd = load_DNA_binding_domains()
+
+
+# In[ ]:
+
+
+pfam = pd.read_csv('../../data/external/Pfam-A.clans.tsv',
+                   sep='\t',
+                   names=['pfam_accession', 'clan', 'clan_name', 'short_name', 'name'])
+
+
+# In[ ]:
+
+
+dbd['clan'] = dbd['pfam'].map(clans)
+dbd['num_genes'] = dbd['pfam'].map(df.groupby('accession')['gene_symbol'].size())
+
+
+# In[ ]:
+
+
+ref_isos = dict([(tf.name, orf.name)
+            for tf in tfs.values()
+            for orf in tf.isoforms
+            if tf.has_MANE_select_isoform and orf.is_MANE_select_transcript])
+ref_isos['TBX5']
+
+
+# In[ ]:
+
+
+# now every comparison is alt vs annotated reference isoform
+df = pd.concat([g.aa_feature_disruption(ref_isos[g.name]) for g in tfs.values() if g.has_MANE_select_isoform])
+df.head()
+
+
+# In[ ]:
+
+
+len(df.gene_symbol.unique())
+
+
+# In[ ]:
+
+
+len(df.ref_iso.unique())
+
+
+# In[ ]:
+
+
+len(df.alt_iso.unique())
+
+
+# In[ ]:
+
+
+df['is_DBD'] = df['accession'].isin(dbd['pfam'].values) | df['accession'].str.startswith('C2H2_ZF_array')
+df.head()
+
+
+# In[ ]:
+
+
+# TODO: move to isolib.py
+df['is_affected_at_all'] = (df['deletion'] + df['insertion'] + df['frameshift']) > 0
+for frac in [1.0, 0.9, 0.5, 0.1]:
+    df[f"is_affected_{frac * 100:.0f}pct"] = (df['deletion'] + df['insertion'] + df['frameshift']) >= frac * df['length']
+
+dbd_acc = set(dbd['pfam'].values).union(
+            set(df['accession'][df['accession'].str.startswith('C2H2_ZF_array')].unique())
+            )
+
+
+# In[ ]:
+
+
+def is_DBD(domain):
+    return (domain.accession in dbd['pfam'].values) or domain.accession.startswith('C2H2_ZF_array')
+
+n_aa_dbd = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if is_DBD(dom)]
+n_aa_pfam = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if not is_DBD(dom) and dom.category == 'Pfam_domain']
+n_aa_effector = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if not is_DBD(dom) and dom.category == 'effector_domain']
+
+
+# In[ ]:
+
+
+df.loc[df['accession'].str.startswith('C2H2_ZF_array'), 'accession'] = 'C2H2_ZF_array'
+doms = (df.loc[(df['category'] == 'Pfam_domain') | 
+              (df['category'] == 'ZF_array'), :]
+              .groupby('accession')
+              ['alt_iso']
+              .nunique()
+              .to_frame(name='n_alt_iso'))
+for c in [c for c in df.columns if c.startswith('is_affected_')]:
+    doms['n_' + c] = (df.loc[(df['category'] == 'Pfam_domain') |
+                        (df['category'] == 'ZF_array'), :]
+                        .groupby(['accession', 'alt_iso'])
+                        [c]
+                        .any()
+                        .sum(level='accession'))
+    doms['f_' + c] = doms['n_' + c] / doms['n_alt_iso']
+doms = doms.sort_values('n_alt_iso', ascending=False)
+
+
+# In[ ]:
+
+
+get_ipython().run_cell_magic('time', '', "df_null = pd.concat([g.null_fraction_per_aa_feature(g.isoforms[0].name) for g in tfs.values()])\ndf = pd.merge(df, df_null, how='left', on=['gene_symbol', 'ref_iso', 'alt_iso', 'length'])")
+
+
+# In[ ]:
+
+
+df.head()
+
+
+# In[ ]:
+
+
+def prob_or(probabilities):
+    return 1 - (np.prod(1 - probabilities))
+        
+
+def null_quantile(values, q):
+    n = len(values.values)
+    for i, v in enumerate(PoiBin(values.values).cdf(range(n + 1))):
+        if v >= q:
+            return i / n
+
+
+for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
+    null_p = (df.loc[(df['category'] == 'Pfam_domain') |
+                    (df['category'] == 'ZF_array'), :]
+                .groupby(['accession', 'alt_iso'])
+                [null_col]
+                .apply(prob_or))
+    doms[null_col + '_99CI_low'] = null_p.groupby('accession').apply(null_quantile, 0.01)
+    doms[null_col + '_99CI_high'] = null_p.groupby('accession').apply(null_quantile, 0.99)
+    doms[null_col + '_center'] = null_p.groupby('accession').apply(null_quantile, 0.5)
+
+
+# In[136]:
+
+
+doms['is_DBD'] = doms.index.isin(dbd['pfam'].values) | (doms.index == 'C2H2_ZF_array')
+# Use the custom DBD names
+doms.loc[doms['is_DBD'], 'domain_name'] = doms[doms['is_DBD']].index.map(dbd.set_index('pfam')['dbd'])
+doms.loc[~doms['is_DBD'], 'domain_name'] = doms[~doms['is_DBD']].index.map(pfam.set_index('pfam_accession')['name'])
+doms.loc[doms.index == 'C2H2_ZF_array', 'domain_name'] = ['C2H2 ZF array']
+
+
+# In[137]:
+
+
+dom_affected_levels = [c[5:] for c in doms.columns if c.startswith('f_is_affected_')]
+level_desc = {'affected_at_all': 'at least partial domain removal',
+ 'affected_100pct': '100% removal',
+ 'affected_90pct': '90% removal',
+ 'affected_50pct': '50% removal',
+ 'affected_10pct': '10% removal'}
+
+
+# In[138]:
+
+
+# all domains, all DBD, non-DBD
+doms = df.groupby('is_DBD')['alt_iso'].nunique().to_frame(name='n_alt_iso')
+for c in [c for c in df.columns if c.startswith('is_affected_')]:
+    doms['n_' + c] = (df.groupby(['is_DBD', 'alt_iso'])
+                        [c]
+                        .any()
+                        .sum(level='is_DBD'))
+    doms['f_' + c] = doms['n_' + c] / doms['n_alt_iso']
+
+
+doms = doms.sort_values('n_alt_iso', ascending=False)
+    
+def prob_or(probabilities):
+    return 1 - (np.prod(1 - probabilities))
+        
+
+def null_quantile(values, q):
+    n = len(values.values)
+    for i, v in enumerate(PoiBin(values.values).cdf(range(n + 1))):
+        if v >= q:
+            return i / n
+
+
+for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
+    null_p = (df.groupby(['is_DBD', 'alt_iso'])
+                [null_col]
+                .apply(prob_or))
+    doms[null_col + '_99CI_low'] = null_p.groupby('is_DBD').apply(null_quantile, 0.01)
+    doms[null_col + '_99CI_high'] = null_p.groupby('is_DBD').apply(null_quantile, 0.99)
+    doms[null_col + '_center'] = null_p.groupby('is_DBD').apply(null_quantile, 0.5)
+doms.head()
+
+
+# In[139]:
+
+
+df['category_a'] = np.nan
+df.loc[df['is_DBD'], 'category_a'] = 'DBD'
+df.loc[(df['category'] == 'Pfam_domain') & ~df['is_DBD'], 'category_a'] = 'Other Pfam domain'
+df.loc[(df['category'] == 'effector_domain'), 'category_a'] = 'Effector domain'
+
+
+# In[140]:
+
+
+# split pfam into dbd and 
+doms = df.groupby('category_a')['alt_iso'].nunique().to_frame(name='n_alt_iso')
+for c in [c for c in df.columns if c.startswith('is_affected_')]:
+    doms['n_' + c] = (df.groupby(['category_a', 'alt_iso'])
+                        [c]
+                        .any()
+                        .sum(level='category_a'))
+    doms['f_' + c] = doms['n_' + c] / doms['n_alt_iso']
+doms = doms.sort_values('n_alt_iso', ascending=False)
+
+    
+def prob_or(probabilities):
+    return 1 - (np.prod(1 - probabilities))
+        
+
+def null_quantile(values, q):
+    n = len(values.values)
+    for i, v in enumerate(PoiBin(values.values).cdf(range(n + 1))):
+        if v >= q:
+            return i / n
+
+
+for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
+    null_p = (df.groupby(['category_a', 'alt_iso'])
+                [null_col]
+                .apply(prob_or))
+    doms[null_col + '_99CI_low'] = null_p.groupby('category_a').apply(null_quantile, 0.01)
+    doms[null_col + '_99CI_high'] = null_p.groupby('category_a').apply(null_quantile, 0.99)
+    doms[null_col + '_center'] = null_p.groupby('category_a').apply(null_quantile, 0.5)
+
+data = doms.copy()
+
+
+# In[142]:
+
+
+df.columns
+
+
+# In[141]:
+
+
+for level in dom_affected_levels:
+        fig, ax = plt.subplots(1, 1)
+        fig.set_size_inches(1.75, 1.2)
+        # removing C2H2-ZF clan becuase we look at the ZF arrays instead
+        ax.barh(data.index, 
+                data[f'f_is_{level}'].values * 100,
+                label='Observed values',
+                color=sns.color_palette("Set2")[0])
+        ax.errorbar(y=data.index,
+                x=data[f'null_fraction_{level}_center'].values * 100,
+                xerr=[(data[f'null_fraction_{level}_center'] - data[f'null_fraction_{level}_99CI_low']).values * 100,
+                        (data[f'null_fraction_{level}_99CI_high'] - data[f'null_fraction_{level}_center']).values * 100],
+                                fmt='none',
+                                capsize=3,
+                                color='black',
+                                label='Null distribution: 99% CI')
+        ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.55))
+        ax.set_xlim(0, 100)
+        ax.set_ylim(ax.get_ylim()[::-1])
+        ax.yaxis.set_tick_params(length=0)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.xaxis.tick_top()
+        ax.set_yticklabels(["DBD", "Other\nPfam domain", "Effector\ndomain"])
+        ax.set_xlabel(f'Fraction of alt. isoforms\nwith {level_desc[level]}')
+        ax.xaxis.set_label_position('top')
+        ax.set_xticks(range(0, 101, 20))
+        ax.set_xticks(range(0, 101, 10), minor=True)
+        plt.savefig(f'../figures/domain_categories_{level}.resized.pdf'.format(level),
+                bbox_inches='tight')
+
+
+# In[ ]:
+
+
+
 

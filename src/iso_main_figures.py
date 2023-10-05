@@ -66,15 +66,15 @@ len([orf for tf in tfs.values() for orf in tf.isoforms])
 
 # ## PDIs
 
-# In[6]:
+# In[25]:
 
 
-# gene_name = "PKNOX1"
+gene_name = "PKNOX1"
 
-# tf = tfs[gene_name]
-# fig, ax = plt.subplots(1, 1, figsize=(1.3, 1.0))
-# y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
-# plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+tf = tfs[gene_name]
+fig, ax = plt.subplots(1, 1, figsize=(2, 1.3))
+y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
+plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
 # In[7]:
@@ -88,15 +88,15 @@ y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax, iso_order=["HEY1-2", "HEY1-
 plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[8]:
+# In[27]:
 
 
-# gene_name = "GRHL3"
+gene_name = "KLF7"
 
-# tf = tfs[gene_name]
-# fig, ax = plt.subplots(1, 1, figsize=(6, 1.0))
-# y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
-# plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+tf = tfs[gene_name]
+fig, ax = plt.subplots(1, 1, figsize=(1.6, 1.6))
+y1h_pdi_per_tf_gene_plot(gene_name, data=y1h, ax=ax)
+plt.savefig('../figures/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
 # In[9]:
@@ -209,6 +209,17 @@ gene_name = "PKNOX1"
 fig, ax = plt.subplots(1, 1, figsize=(3, 1.5))
 
 df = m1h_activation_per_tf_gene_plot("PKNOX1", data=m1h, ax=ax, xlim=(0, 6))
+plt.savefig('../figures/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[30]:
+
+
+gene_name = "CREB1"
+
+fig, ax = plt.subplots(1, 1, figsize=(2, 1))
+
+df = m1h_activation_per_tf_gene_plot("CREB1", data=m1h, ax=ax)
 plt.savefig('../figures/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
