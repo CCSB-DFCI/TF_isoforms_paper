@@ -1462,7 +1462,7 @@ def comp_cat(row):
         return "total"
 
 
-# In[ ]:
+# In[86]:
 
 
 to_plot = pd.melt(ref_alt_map_nonan, id_vars=["ref", "gene", "alt"], value_vars=["n_ins", "perc_ins",
@@ -1480,7 +1480,7 @@ to_plot["dom_cat"] = to_plot.apply(comp_cat, axis=1)
 to_plot.sample(5)
 
 
-# In[ ]:
+# In[87]:
 
 
 fig = plt.figure(figsize=(2.3, 1.25))
@@ -1502,43 +1502,43 @@ fig.savefig('../../figures/fig1/domain-overall-boxplot.pdf',
             bbox_inches='tight')
 
 
-# In[ ]:
+# In[88]:
 
 
 to_plot[to_plot["n_or_perc"] == "perc"].groupby(["type", "dom_cat"]).agg("median")
 
 
-# In[ ]:
+# In[89]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f_dom"] > 0])
 
 
-# In[ ]:
+# In[90]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_ins"] >= 10])
 
 
-# In[ ]:
+# In[91]:
 
 
 len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f"] >= 10])
 
 
-# In[ ]:
+# In[92]:
 
 
 len(ref_alt_map_nonan)
 
 
-# In[ ]:
+# In[93]:
 
 
 214/2305
 
 
-# In[ ]:
+# In[94]:
 
 
 len(ref_alt_map_nonan[(ref_alt_map_nonan["perc_dd_eff"] > 0) |
@@ -1546,7 +1546,7 @@ len(ref_alt_map_nonan[(ref_alt_map_nonan["perc_dd_eff"] > 0) |
                       (ref_alt_map_nonan["perc_f_eff"] > 0)])
 
 
-# In[ ]:
+# In[95]:
 
 
 684/2305
@@ -1554,14 +1554,14 @@ len(ref_alt_map_nonan[(ref_alt_map_nonan["perc_dd_eff"] > 0) |
 
 # ## 8. calculate domains that are affected compared to null
 
-# In[ ]:
+# In[96]:
 
 
 clans = load_pfam_clans()
 dbd = load_DNA_binding_domains()
 
 
-# In[ ]:
+# In[97]:
 
 
 pfam = pd.read_csv('../../data/external/Pfam-A.clans.tsv',
@@ -1569,14 +1569,7 @@ pfam = pd.read_csv('../../data/external/Pfam-A.clans.tsv',
                    names=['pfam_accession', 'clan', 'clan_name', 'short_name', 'name'])
 
 
-# In[ ]:
-
-
-dbd['clan'] = dbd['pfam'].map(clans)
-dbd['num_genes'] = dbd['pfam'].map(df.groupby('accession')['gene_symbol'].size())
-
-
-# In[ ]:
+# In[98]:
 
 
 ref_isos = dict([(tf.name, orf.name)
@@ -1586,40 +1579,43 @@ ref_isos = dict([(tf.name, orf.name)
 ref_isos['TBX5']
 
 
-# In[ ]:
+# In[99]:
 
 
 # now every comparison is alt vs annotated reference isoform
 df = pd.concat([g.aa_feature_disruption(ref_isos[g.name]) for g in tfs.values() if g.has_MANE_select_isoform])
+
+# next line is the old code we were using (not limiting to ref v alt only)
+#df = pd.concat([g.aa_feature_disruption(g.isoforms[0].name) for g in tfs.values()])
 df.head()
 
 
-# In[ ]:
+# In[100]:
 
 
 len(df.gene_symbol.unique())
 
 
-# In[ ]:
+# In[101]:
 
 
 len(df.ref_iso.unique())
 
 
-# In[ ]:
+# In[102]:
 
 
 len(df.alt_iso.unique())
 
 
-# In[ ]:
+# In[103]:
 
 
 df['is_DBD'] = df['accession'].isin(dbd['pfam'].values) | df['accession'].str.startswith('C2H2_ZF_array')
 df.head()
 
 
-# In[ ]:
+# In[104]:
 
 
 # TODO: move to isolib.py
@@ -1632,7 +1628,14 @@ dbd_acc = set(dbd['pfam'].values).union(
             )
 
 
-# In[ ]:
+# In[105]:
+
+
+dbd['clan'] = dbd['pfam'].map(clans)
+dbd['num_genes'] = dbd['pfam'].map(df.groupby('accession')['gene_symbol'].size())
+
+
+# In[106]:
 
 
 def is_DBD(domain):
@@ -1643,7 +1646,7 @@ n_aa_pfam = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_
 n_aa_effector = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if not is_DBD(dom) and dom.category == 'effector_domain']
 
 
-# In[ ]:
+# In[107]:
 
 
 df.loc[df['accession'].str.startswith('C2H2_ZF_array'), 'accession'] = 'C2H2_ZF_array'
@@ -1664,19 +1667,19 @@ for c in [c for c in df.columns if c.startswith('is_affected_')]:
 doms = doms.sort_values('n_alt_iso', ascending=False)
 
 
-# In[ ]:
+# In[108]:
 
 
-get_ipython().run_cell_magic('time', '', "df_null = pd.concat([g.null_fraction_per_aa_feature(g.isoforms[0].name) for g in tfs.values()])\ndf = pd.merge(df, df_null, how='left', on=['gene_symbol', 'ref_iso', 'alt_iso', 'length'])")
+get_ipython().run_cell_magic('time', '', "# again, explicitly compare ref v alt\ndf_null = pd.concat([g.null_fraction_per_aa_feature(ref_isos[g.name]) for g in tfs.values() if g.has_MANE_select_isoform])\n\n# next line is the old code we were using (not expilcitly limiting to ref v alt)\n#df_null = pd.concat([g.null_fraction_per_aa_feature(g.isoforms[0].name) for g in tfs.values()])\ndf = pd.merge(df, df_null, how='left', on=['gene_symbol', 'ref_iso', 'alt_iso', 'length'])")
 
 
-# In[ ]:
+# In[109]:
 
 
 df.head()
 
 
-# In[ ]:
+# In[110]:
 
 
 def prob_or(probabilities):
@@ -1701,7 +1704,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
     doms[null_col + '_center'] = null_p.groupby('accession').apply(null_quantile, 0.5)
 
 
-# In[136]:
+# In[111]:
 
 
 doms['is_DBD'] = doms.index.isin(dbd['pfam'].values) | (doms.index == 'C2H2_ZF_array')
@@ -1711,7 +1714,7 @@ doms.loc[~doms['is_DBD'], 'domain_name'] = doms[~doms['is_DBD']].index.map(pfam.
 doms.loc[doms.index == 'C2H2_ZF_array', 'domain_name'] = ['C2H2 ZF array']
 
 
-# In[137]:
+# In[112]:
 
 
 dom_affected_levels = [c[5:] for c in doms.columns if c.startswith('f_is_affected_')]
@@ -1722,7 +1725,7 @@ level_desc = {'affected_at_all': 'at least partial domain removal',
  'affected_10pct': '10% removal'}
 
 
-# In[138]:
+# In[113]:
 
 
 # all domains, all DBD, non-DBD
@@ -1758,7 +1761,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 doms.head()
 
 
-# In[139]:
+# In[114]:
 
 
 df['category_a'] = np.nan
@@ -1767,7 +1770,7 @@ df.loc[(df['category'] == 'Pfam_domain') & ~df['is_DBD'], 'category_a'] = 'Other
 df.loc[(df['category'] == 'effector_domain'), 'category_a'] = 'Effector domain'
 
 
-# In[140]:
+# In[115]:
 
 
 # split pfam into dbd and 
@@ -1803,18 +1806,18 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 data = doms.copy()
 
 
-# In[142]:
+# In[116]:
 
 
 df.columns
 
 
-# In[141]:
+# In[117]:
 
 
 for level in dom_affected_levels:
         fig, ax = plt.subplots(1, 1)
-        fig.set_size_inches(1.75, 1.2)
+        fig.set_size_inches(1.4, 0.8)
         # removing C2H2-ZF clan becuase we look at the ZF arrays instead
         ax.barh(data.index, 
                 data[f'f_is_{level}'].values * 100,
@@ -1841,12 +1844,6 @@ for level in dom_affected_levels:
         ax.xaxis.set_label_position('top')
         ax.set_xticks(range(0, 101, 20))
         ax.set_xticks(range(0, 101, 10), minor=True)
-        plt.savefig(f'../figures/domain_categories_{level}.resized.pdf'.format(level),
+        plt.savefig(f'../../figures/fig1/domain_categories_{level}.resized.pdf'.format(level),
                 bbox_inches='tight')
-
-
-# In[ ]:
-
-
-
 
