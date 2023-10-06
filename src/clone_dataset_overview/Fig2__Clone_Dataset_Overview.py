@@ -27,8 +27,11 @@ from data_loading import (load_valid_isoform_clones,
                           load_annotated_TFiso1_collection,
                           load_developmental_tissue_expression_remapped,
                           load_gtex_remapped,
-                          load_tf_families)
-from plotting import mimic_r_boxplot
+                          load_tf_families,
+                          load_isoform_and_paralog_y2h_data,
+                          load_ref_vs_alt_isoforms_table,
+                          load_PDI_luciferase_validation_experiment)
+from plotting import mimic_r_boxplot, validation_titration_plot
 
 
 # In[2]:
@@ -1088,9 +1091,306 @@ fig.savefig('../../figures/fig2/at-least-some-assay-result_ref-vs-alt-vs-novel_a
             bbox_inches='tight')
 
 
-# ## 7. make tables needed for cytoscape network fig
+# ## 7. make validation figures for Y2H (N2H)
+# ## kaia to update the rest of this code when N2H data is moved over
+# source notebook is n2h_validation.ipynb
 
 # In[84]:
+
+
+y2h = load_isoform_and_paralog_y2h_data()
+iso_gte_1_pos_ppi_iso_data_only = set(y2h.loc[(y2h['category'] == 'tf_isoform_ppis') &
+                          (y2h['Y2H_result'] == True), 'ad_clone_acc'].unique()) 
+iso_gte_1_pos_ppi_all_data = set(y2h.loc[(y2h['Y2H_result'] == True), 'ad_clone_acc'].unique())
+
+
+# In[85]:
+
+
+# restict to TF isoform data (i.e. not paralogs etc.)
+ppi = y2h.loc[(y2h['category'] == 'tf_isoform_ppis'), 
+              ['category',
+               'ad_clone_acc',
+               'ad_gene_symbol',
+               'db_gene_symbol',
+               'Y2H_result']].copy()
+
+# at least one positive per PPI partner
+ppi = ppi.loc[ppi.groupby(['ad_gene_symbol', 'db_gene_symbol'])
+                 ['Y2H_result']
+                 .transform(lambda row: (row == True).any()),
+              :]
+
+# at least one successfully tested PPI per isoform
+ppi = ppi.loc[ppi.groupby('ad_clone_acc')
+                  ['Y2H_result']
+                  .transform(lambda x: (x.notnull().any())),
+              :]
+
+# at least two partners per isoform
+ppi = ppi.loc[ppi.groupby('ad_gene_symbol')
+                 ['ad_clone_acc']
+                 .transform(lambda x: x.nunique() >= 2),
+              :]
+
+
+# In[86]:
+
+
+#isoforms = load_valid_isoform_clones()
+iso_pairs = load_ref_vs_alt_isoforms_table()
+iso_pairs['both_iso_y2h_pos'] = (iso_pairs['clone_acc_ref'].isin(iso_gte_1_pos_ppi_iso_data_only) &
+                                 iso_pairs['clone_acc_alt'].isin(iso_gte_1_pos_ppi_iso_data_only))
+iso_pairs['both_iso_y2h_pos_all_data'] = (iso_pairs['clone_acc_ref'].isin(iso_gte_1_pos_ppi_all_data) &
+                                          iso_pairs['clone_acc_alt'].isin(iso_gte_1_pos_ppi_all_data))
+
+
+# In[87]:
+
+
+clone_to_orf_id = y2h[['ad_clone_acc', 'ad_orf_id']].drop_duplicates().set_index('ad_clone_acc')['ad_orf_id']
+
+
+# In[88]:
+
+
+non_zero_iso = set(iso_pairs.loc[(iso_pairs['n_PPI_successfully_tested_in_ref_and_alt'] >= 2)
+                             & iso_pairs['both_iso_y2h_pos'], ['clone_acc_ref', 'clone_acc_alt']].values.flatten())
+non_zero_iso = {clone_to_orf_id[s] for s in non_zero_iso}
+
+
+# In[89]:
+
+
+# qry = """SELECT a.test_orf_ida,
+# 	   a.test_orf_idb,
+# 	   b.iso_orf_id,
+# 	   b.huri_orf_id,
+# 	   b.source,
+# 	   a.call_1_percent_RRS AS result,
+# 	   a.final_score,
+# 	   c.score,
+# 	   c.empty_n1, c.empty_n2
+#         FROM tf_validation.validation AS a
+#         LEFT JOIN tf_validation.validation_source AS b
+#         ON (a.test_orf_ida = b.orf_id1
+#         	AND a.test_orf_idb = b.orf_id2)
+#           OR (a.test_orf_idb = b.orf_id1
+#         	AND a.test_orf_ida = b.orf_id2)
+#         LEFT JOIN (select j.score_id, j.score, 
+# 	   						k.empty_n1, k.empty_n2 
+# 							from tf_validation.mn2h_scoring AS j
+# 							left join tf_validation.mn2h_control AS k
+# 							using (plate, well)) AS c
+#           on a.final_score_id = c.score_id;"""
+# n2h = pd.read_sql(qry, paros_connection())
+
+
+# In[90]:
+
+
+# n2h['max_control'] = n2h[['empty_n1', 'empty_n2']].max(axis=1)
+# n2h['non_zero_iso'] = n2h['iso_orf_id'].isin(non_zero_iso)
+# n_rows_b4 = n2h.shape[0]
+# n2h = pd.merge(n2h,
+#          y2h.loc[y2h['category'].isin({'tf_isoform_ppis', 
+#                                         'tf_paralog_ppis',
+#                                         'paralog_with_PDI',
+#                                         'non_paralog_control'}),
+# 				 ['ad_orf_id',
+# 				 'db_orf_id',
+# 				 'ad_gene_symbol',
+# 				 'ad_clone_acc',
+# 				 'db_gene_symbol',
+# 				 'category',
+# 				 'Y2H_result']],
+#          how='left',
+#          left_on=['iso_orf_id', 'huri_orf_id'],
+#          right_on=['ad_orf_id', 'db_orf_id'],
+#          suffixes=('_n2h', '_y2h'))
+# if n2h.shape[0] != n_rows_b4:
+#     raise UserWarning('Problem with table join')
+
+
+# ## 8. make validation figures for Y1H (luciferase)
+
+# In[91]:
+
+
+df = load_PDI_luciferase_validation_experiment()
+
+
+# In[92]:
+
+
+df['Set'].value_counts()
+
+
+# In[93]:
+
+
+print('In PDI validation experiment, tested:')
+print(df['gene_symbol'].nunique(), 'different TF genes')
+print(df['clone_acc'].nunique(), 'different TF isoforms')
+print(df['Bait'].nunique(), 'different baits')
+print(df.shape[0], 'total PDIs')
+
+
+# In[94]:
+
+
+# update the interaction calls if needed
+new_calls = []
+for i, row in df.iterrows():
+    clone = row.clone_acc
+    bait = row.Bait
+    orig_y1h_call = row['Interaction?']
+    
+    try:
+        updated_y1h_call = y1h[y1h['clone_acc'] == clone][bait].iloc[0]
+    except:
+        print("not found: clone: %s | bait: %s | orig call: %s" % (clone, bait, orig_y1h_call))
+        updated_y1h_call = np.nan
+    new_calls.append(updated_y1h_call)
+
+
+# In[95]:
+
+
+df["updated_y1h_call"] = new_calls
+df.updated_y1h_call.value_counts(dropna=False)
+
+
+# In[96]:
+
+
+# remove any updated calls that became NaN
+df_nn = df[~pd.isnull(df['updated_y1h_call'])]
+
+
+# In[97]:
+
+
+print('In PDI validation experiment, tested (updated w new calls):')
+print(df_nn['gene_symbol'].nunique(), 'different TF genes')
+print(df_nn['clone_acc'].nunique(), 'different TF isoforms')
+print(df_nn['Bait'].nunique(), 'different baits')
+print(df_nn.shape[0], 'total PDIs')
+
+
+# In[98]:
+
+
+print('Isoforms per gene:')
+df_nn.groupby(['gene_symbol'])['clone_acc'].nunique().value_counts().sort_index()
+
+
+# In[99]:
+
+
+print('Baits per isoform:')
+df_nn.groupby(['clone_acc'])['Bait'].nunique().value_counts().sort_index()
+
+
+# In[100]:
+
+
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(w=1.5, h=2.)
+sns.stripplot(data=df, x='updated_y1h_call', y='Log2(FC)', ax=ax, order=[True, False], 
+              palette=sns.color_palette("Set2"), zorder=1)
+sns.pointplot(data=df, x='updated_y1h_call', y='Log2(FC)', ax=ax, order=[True, False],
+              color='black', zorder=10)
+effectsize, pvalue = stats.ttest_ind(df.loc[df['Y1H_positive'], 'Log2(FC)'].values,
+                df.loc[~df['Y1H_positive'], 'Log2(FC)'].values)
+ax.text(x=0.5, y=4, s='P = {:.1}'.format(pvalue), ha='center')
+ax.set_xlabel('eY1H result')
+ax.set_xticklabels(['+', '-'])
+ax.set_ylabel('Luciferase mean Log2(FC)')
+fig.savefig('../../figures/fig2/PDI-luciferase_validation_point-plot.pdf',
+            bbox_inches='tight')
+
+
+# In[101]:
+
+
+df.updated_y1h_call.value_counts()
+
+
+# In[102]:
+
+
+df.Y1H_positive.value_counts()
+
+
+# In[103]:
+
+
+# titration plot of positive vs negative
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(w=2.5, h=1.5)
+validation_titration_plot(data=df_nn,
+                          selections=[df_nn['updated_y1h_call'], 
+                                      ~df_nn['updated_y1h_call']],
+                          score_column='Log2(FC)',
+                          labels=['eY1H +', 'eY1H -'],
+                          colors=[sns.color_palette("Set2")[0], 'grey'],
+                          ax=ax)
+ax.set_xlabel('Threshold of luciferase mean Log2(FC)')
+fig.savefig('../../figures/fig2/PDI-luciferase_validation_titration-plot.pdf',
+            bbox_inches='tight')
+
+
+# In[105]:
+
+
+def p_value(row):
+    a = row[['Replicate1', 'Replicate2', 'Replicate3']].values
+    b = row['Average (empty-pEZY3-VP160)']
+    
+    # this code doesn't work on kaia's env; need to update scipy which requires updating to py3.7
+    #pval = stats.ttest_1samp(list(a), b, alternative='greater').pvalue
+    
+    # return two-sided pval * 2 for now
+    pval = stats.ttest_1samp(list(a), b).pvalue * 2
+    
+    return pval
+
+df['p-value'] = df.apply(p_value, axis=1)
+
+
+# In[ ]:
+
+
+# from ccsblib.ccsbplotlib import validation_plot
+# from plotting import COLOR_PURPLE
+
+# fig, ax = plt.subplots(1, 1)
+# fig.set_size_inches(w=1.6, h=2.6)
+# validation_plot(data=df,
+#                           selections=[df['Y1H_positive'], 
+#                                       ~df['Y1H_positive']],
+#                           result_column='positive',
+#                           labels=['+', '-'],
+#                           colors=[COLOR_PURPLE, 'grey'],
+#                           errorbar_capsize=0.25,
+#                           ax=ax)
+# ax.set_ylim(0, 0.7)
+# ax.set_xlabel('eY1H result')
+# ax.set_ylabel('Fraction positive\nin luciferase assay')
+# fig.savefig('../figures/PDI-luciferase_validation_bar-plot.pdf',
+#             bbox_inches='tight')
+
+
+# In[ ]:
+
+
+#stats.fisher_exact([[51, 86-51], [17, 55-17]])
+
+
+# ## 9. make tables needed for cytoscape network fig
+
+# In[ ]:
 
 
 # # table of edges
@@ -1125,9 +1425,9 @@ fig.savefig('../../figures/fig2/at-least-some-assay-result_ref-vs-alt-vs-novel_a
 # nodes.to_csv('../../output/node_table.tsv', sep='\t', index=False)
 
 
-# ## 8. make example expression plot for ZNF414
+# ## 10. make example expression plot for ZNF414
 
-# In[85]:
+# In[ ]:
 
 
 def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, fig_suffix):
@@ -1165,7 +1465,7 @@ def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, 
                 bbox_inches='tight')
 
 
-# In[86]:
+# In[ ]:
 
 
 notestis_cols = [x for x in means_dev.columns if "testis" not in x]
@@ -1175,10 +1475,4 @@ notestis_cols = [x for x in notestis_cols if "ovary" not in x]
 notestis_cols = [x for x in notestis_cols if "brain" not in x]
 developmental_tissue_expression_plot("ZNF414", (7.2, 1.75), (0, 6), means_dev, notestis_cols, 
                                      "means_dev_notestis_large")
-
-
-# In[87]:
-
-
-y2h[y2h['ad_gene_symbol'] == 'PKNOX1']
 

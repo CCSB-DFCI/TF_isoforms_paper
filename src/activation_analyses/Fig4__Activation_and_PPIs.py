@@ -1,29 +1,43 @@
-
+#!/usr/bin/env python
 # coding: utf-8
+
+# # Fig 4: Activation and PPIs/Dimerization
 
 # In[1]:
 
 
 import numpy as np
+import matplotlib as mpl
 from scipy import stats
 from matplotlib import pyplot as plt
+from matplotlib.patches import Rectangle
 import pandas as pd
 import seaborn as sns
 import sys
+
+from statannotations.Annotator import Annotator
 
 # import utils
 sys.path.append("../")
 sys.path.append("../data_loading")
 
 import plotting
-from plotting import mimic_r_boxplot
+from plotting import (mimic_r_boxplot,
+                      violinplot_reflected,
+                      y2h_ppi_per_tf_gene_plot,
+                      y1h_pdi_per_tf_gene_plot,
+                      m1h_activation_per_tf_gene_plot)
 
 from data_loading import (load_y2h_isoform_data, 
     load_m1h_activation_data, 
     load_ppi_partner_categories, 
     load_annotated_TFiso1_collection,
     load_human_tf_db,
-    load_y1h_pdi_data)
+    load_y1h_pdi_data,
+    load_tf_families,
+    DIMERIZING_TF_FAMILIES,
+   load_isoform_and_paralog_y2h_data,
+                          load_valid_isoform_clones)
 
 from isoform_pairwise_metrics import load_ref_vs_alt_isoforms_table, _add_PPI_columns
 
@@ -48,9 +62,15 @@ sns.set(**PAPER_PRESET)
 fontsize = PAPER_FONTSIZE
 
 
+# In[4]:
+
+
+np.random.seed(2023)
+
+
 # ## 1. load TFs, assay data (Y2H, M1H), Pfam domains, and PPI partner categories/cofactors
 
-# In[4]:
+# In[5]:
 
 
 tfs = load_annotated_TFiso1_collection()
@@ -64,7 +84,7 @@ pairs['alt_iso'] = pairs['clone_acc_alt'].apply(lambda x: x.split('|')[0] + '-' 
 pairs['f_disorder_difference'] = pairs.apply(lambda x: tfs[x['gene_symbol']].disordered_fraction_of_different_regions(x['ref_iso'], x['alt_iso']), axis=1)
 
 
-# In[5]:
+# In[6]:
 
 
 y2h = load_y2h_isoform_data()
@@ -73,7 +93,7 @@ m1h['mean'] = m1h[['M1H_rep1', 'M1H_rep2', 'M1H_rep3']].mean(axis=1)
 cats = load_ppi_partner_categories()
 
 
-# In[6]:
+# In[7]:
 
 
 df = pd.read_excel('../../data/external/Geiger-et-al_MCP_2012_Supplementary-Table-2.xlsx',
@@ -87,7 +107,7 @@ print('of {} PPI partners, {} are expressed in HEK293 cells'.format(len(all_part
       len(all_partners.intersection(hek_expressed_genes))))
 
 
-# In[7]:
+# In[8]:
 
 
 # now add Pfam AD/RDs
@@ -96,7 +116,7 @@ pfam = pd.read_csv('../../data/external/Pfam-A.clans.tsv',
                    names=['pfam_accession', 'clan', 'clan_name', 'short_name', 'name'])
 
 
-# In[8]:
+# In[9]:
 
 
 cof = pd.read_csv('../../data/external/AnimalTFDB3_Homo_sapiens_TF_cofactors.txt',
@@ -107,7 +127,7 @@ if cof['Symbol'].duplicated().any():
 
 # ## 2. categorize effector domain changes between alt/ref iso
 
-# In[9]:
+# In[10]:
 
 
 dom = pd.concat([g.aa_feature_disruption(g.cloned_reference_isoform.name) for g in tfs.values()])
@@ -121,7 +141,7 @@ for tf in tfs.values():
 dom['type'] = dom['accession'].map(effector_domain_type)
 
 
-# In[10]:
+# In[11]:
 
 
 # add activation or repression annotation from Pfam domains directly
@@ -148,7 +168,7 @@ def get_pfam_type(row):
 dom["type_incl_pfam"] = dom.apply(get_pfam_type, axis=1)
 
 
-# In[11]:
+# In[12]:
 
 
 # considering Pfam and Effector domains
@@ -183,7 +203,7 @@ for effector_type in ['AD', 'RD', 'Bif']:
 
 # ## 3. plot number of annotated domains (of various types) across isoforms
 
-# In[12]:
+# In[13]:
 
 
 # plot of number of activation domains per ref iso
@@ -207,7 +227,7 @@ ax.set_ylabel('Number of genes ({} total)'.format(len(tfs)))
 ax.set_xlabel('Effector domains in reference isoform')
 
 
-# In[13]:
+# In[14]:
 
 
 # plot of number of activation domains per ref iso
@@ -232,7 +252,7 @@ ax.set_xlabel('Effector domains in reference isoform')
 ax.set_title('Soto et al. data')
 
 
-# In[14]:
+# In[15]:
 
 
 # plot of number of activation domains per ref iso
@@ -257,7 +277,7 @@ ax.set_xlabel('Effector domains in reference isoform')
 ax.set_title('Data from Bintu lab papers')
 
 
-# In[15]:
+# In[16]:
 
 
 counter = {'Soto': {'AD': 0, 'RD': 0, 'Bif': 0},
@@ -271,7 +291,7 @@ for tf in tfs.values():
 counter
 
 
-# In[16]:
+# In[17]:
 
 
 fig, ax = plt.subplots(1, 1, figsize=(2, 2))
@@ -285,7 +305,7 @@ ax.set_ylabel('Number of effector domains')
 
 # ## 4. summary plot looking at gain/loss of domains and activity
 
-# In[17]:
+# In[18]:
 
 
 m1h['gte_2_fold'] = (m1h['mean'].abs() >= 1)
@@ -295,7 +315,7 @@ pairs['m1h_gte_2_fold_at_least_one_iso_per_gene'] = pairs['gene_symbol'].map(m1h
 pairs['abs_activation_fold_change_log2'] = pairs['activation_fold_change_log2'].abs()
 
 
-# In[18]:
+# In[19]:
 
 
 # create a color map of domain length
@@ -319,7 +339,7 @@ def re_color(row, palette):
 pairs["color_dom_length_incl_pfam"] = pairs.apply(re_color, axis=1, palette=palette_dom_length_incl_pfam)
 
 
-# In[20]:
+# In[127]:
 
 
 df = pairs.copy()
@@ -329,7 +349,7 @@ hue = 'tot_dom_length_incl_pfam'
 color = 'color_dom_length_incl_pfam'
 t = t_dom_length_incl_pfam
 
-gs_kw = dict(width_ratios=[0.4, 0.4, 0.5, 1.2, 1.2, 1.5, 0.8])
+gs_kw = dict(width_ratios=[0.4, 0.4, 0.5, 1.1, 1.1, 1.75, 0.85])
 
 fig, axs = plt.subplots(1, 7, sharey=True, gridspec_kw=gs_kw)
 fig.set_size_inches(w=8.2, h=2)
@@ -358,6 +378,17 @@ axs[0].set_xticks([])
 axs[0].set_xlabel('')
 axs[0].get_legend().remove()
 
+tbx5_y = df.loc[(df["clone_acc_alt"] == "TBX5|3/3|08H01"), 'activation_fold_change_log2'].values[0]
+for point in axs[0].collections:
+    for x, y in point.get_offsets():
+        if np.isclose(tbx5_y, y):
+            print("found: %s, %s" % (x, y))
+            axs[0].annotate("TBX5-3", xy=(x, y), xytext=(0, -10), textcoords='offset points',
+                            arrowprops = dict(arrowstyle="-", connectionstyle="arc3,rad=0.3",
+                                              color='black'), 
+                            ha="center", va="top", fontsize=7,
+                            bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+
 tot_loss_repr = df.loc[(df['fraction_of_RD_domains_removed_incl_pfam'] == 1)
                           & (df['fraction_of_AD_domains_removed_incl_pfam'].isnull() | 
                              (df['fraction_of_AD_domains_removed_incl_pfam'] == 0))
@@ -378,6 +409,17 @@ sns.swarmplot(data=tot_loss_repr,
 axs[1].set_xticks([])
 axs[1].set_xlabel('')
 axs[1].get_legend().remove()
+
+dlx1_y = df.loc[(df["clone_acc_alt"] == "DLX1|2/2|07E09"), 'activation_fold_change_log2'].values[0]
+for point in axs[1].collections:
+    for x, y in point.get_offsets():
+        if np.isclose(dlx1_y, y):
+            print("found: %s, %s" % (x, y))
+            axs[1].annotate("DLX1-2", xy=(x, y), xytext=(0, 10), textcoords='offset points',
+                            arrowprops = dict(arrowstyle="-", connectionstyle="arc3,rad=0.3",
+                                              color='black'), 
+                            ha="center", va="bottom", fontsize=7,
+                            bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
 
 
 tot_loss_both = df.loc[(df['fraction_of_AD_domains_removed_incl_pfam'] == 1) &
@@ -469,30 +511,41 @@ axs[5].set_xticks([])
 axs[5].set_xlabel('')
 axs[5].get_legend().remove()
 
-# # annotate pbx1 and rfx3
-# pbx1_y = df.loc[(df["clone_acc_alt"] == "PBX1|2/2|02C05"), 'activation_fold_change_log2'].values[0]
-# rfx3_y = df.loc[(df["clone_acc_alt"] == "RFX3|3/5|08G08"), 'activation_fold_change_log2'].values[0]
-# rfx4_y = df.loc[(df["clone_acc_alt"] == "RFX3|4/5|11D09"), 'activation_fold_change_log2'].values[0]
-# for point in axs[4].collections:
-#     for x, y in point.get_offsets():
-#         if np.isclose(pbx1_y, y):
-#             print("found: %s, %s" % (x, y))
-#             axs[4].annotate("PBX1-2", xy=(x, y), xytext=(-10, -20), textcoords='offset points',
-#                             arrowprops = dict(arrowstyle="-", connectionstyle="arc3,rad=-0.3"), 
-#                             ha="center", va="top", fontsize=7,
-#                             bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
-#         if np.isclose(rfx3_y, y):
-#             print("found: %s, %s" % (x, y))
-#             axs[4].annotate("RFX3-3", xy=(x, y), xytext=(-8, -7), textcoords='offset points',
-#                             arrowprops = dict(arrowstyle="-", connectionstyle="arc3,rad=-0.2"), 
-#                             ha="center", va="top", fontsize=7,
-#                             bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
-#         if np.isclose(rfx4_y, y):
-#             print("found: %s, %s" % (x, y))
-#             axs[4].annotate("RFX3-4", xy=(x, y), xytext=(8, -8), textcoords='offset points',
-#                             arrowprops = dict(arrowstyle="-", connectionstyle="arc3,rad=0.3"), 
-#                             ha="center", va="top", fontsize=7,
-#                             bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+# annotate pbx1 and rfx3
+pbx1_y = df.loc[(df["clone_acc_alt"] == "PBX1|2/2|02C05"), 'activation_fold_change_log2'].values[0]
+rfx3_y = df.loc[(df["clone_acc_alt"] == "RFX3|3/5|08G08"), 'activation_fold_change_log2'].values[0]
+rfx4_y = df.loc[(df["clone_acc_alt"] == "RFX3|4/5|11D09"), 'activation_fold_change_log2'].values[0]
+creb5_y = df.loc[(df["clone_acc_alt"] == "CREB5|2/3|08A12"), 'activation_fold_change_log2'].values[0]
+for point in axs[5].collections:
+    for x, y in point.get_offsets():
+        if np.isclose(pbx1_y, y):
+            print("found: %s, %s" % (x, y))
+            axs[5].annotate("PBX1-2", xy=(x, y), xytext=(-10, -10), textcoords='offset points',
+                            arrowprops = dict(arrowstyle="-", connectionstyle="arc3,rad=0.3",
+                                              color='black'), 
+                            ha="center", va="top", fontsize=7,
+                            bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+        if np.isclose(rfx3_y, y):
+            print("found: %s, %s" % (x, y))
+            axs[5].annotate("RFX3-3", xy=(x, y), xytext=(-8, -7), textcoords='offset points',
+                            arrowprops = dict(arrowstyle="-", connectionstyle="arc3,rad=-0.2",
+                                              color='black'), 
+                            ha="center", va="top", fontsize=7,
+                            bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+        if np.isclose(rfx4_y, y):
+            print("found: %s, %s" % (x, y))
+            axs[5].annotate("RFX3-4", xy=(x, y), xytext=(8, -8), textcoords='offset points',
+                            arrowprops = dict(arrowstyle="-", connectionstyle="arc3,rad=0.3",
+                                              color='black'), 
+                            ha="center", va="top", fontsize=7,
+                            bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
+        if np.isclose(creb5_y, y):
+            print("found: %s, %s" % (x, y))
+            axs[5].annotate("CREB5-2", xy=(x, y), xytext=(-23, -8), textcoords='offset points',
+                            arrowprops = dict(arrowstyle="-", connectionstyle="arc3,rad=0.3",
+                                              color='black'), 
+                            ha="center", va="top", fontsize=7,
+                            bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
 
 # missing stuff
 incl = pd.concat([tot_loss_activ, 
@@ -522,21 +575,20 @@ axs[6].set_xlabel('')
 
 # add colorbar
 # mirror figure
-gs_kw = dict(width_ratios=[0.4, 0.4, 0.5, 1.2, 1.2, 1.5, 0.8])
 fig2, axs2 = plt.subplots(1, 7, sharey=True, gridspec_kw=gs_kw)
 fig2.set_size_inches(w=8.2, h=2)
-map1 = axs2[5].imshow(np.stack([t, t]), cmap="flare", vmin=25, vmax=250)
-cbar = fig.colorbar(map1, ax=axs[5], aspect=40)
+map1 = axs2[6].imshow(np.stack([t, t]), cmap="flare", vmin=25, vmax=250)
+cbar = fig.colorbar(map1, ax=axs[6], aspect=30, pad=0.2)
 cbar.set_ticks([25, 75, 150, 250])
 cbar.set_ticklabels(["<=25", "75", "150", ">=250"])
-cbar.set_label("# AA in annotated domain", labelpad=-4)
+cbar.set_label("# AA in annotated domain", labelpad=0)
 
 
 for ax in axs:
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
     ax.set_ylim(-7.5, 7.5)
-    ax.axhline(y=0, color='black', linewidth=1, linestyle='dashed')
+    ax.axhline(y=0, color='black', linewidth=1, linestyle='dashed', zorder=1)
 for ax in axs[1:]:
     ax.spines['left'].set_visible(False)
     ax.yaxis.set_tick_params(which='both', length=0)
@@ -696,15 +748,10 @@ fig.savefig("../../figures/fig4/PPIs-gene-level-manual-categories_cofactors.pdf"
 
 
 # ## 6. plot the relationship between gain/loss of PPIs and changes in activity
+# 
+# # TO-DO: Luke is updating the PPI list and we will use gain/loss of cofactors not separated by coactivator/corepressor and absolute fc plots
 
 # In[34]:
-
-
-pairs = load_ref_vs_alt_isoforms_table()
-tfs = load_annotated_TFiso1_collection()
-
-
-# In[35]:
 
 
 def add_restricted_ppi_columns(pairs, rows, label):
@@ -717,7 +764,7 @@ def add_restricted_ppi_columns(pairs, rows, label):
                     suffixes=('', '_' + label))
 
 
-# In[36]:
+# In[35]:
 
 
 pairs = add_restricted_ppi_columns(pairs, 
@@ -767,7 +814,7 @@ pairs = add_restricted_ppi_columns(pairs,
 )
 
 
-# In[37]:
+# In[36]:
 
 
 def bar_activation_vs_ppi(x, y, pairs=pairs, x_label=None, y_label=None, color=None):
@@ -858,13 +905,13 @@ def bar_activation_vs_ppi(x, y, pairs=pairs, x_label=None, y_label=None, color=N
                 bbox_inches='tight')
 
 
-# In[38]:
+# In[37]:
 
 
 pairs['activation_abs_fold_change'] = pairs['activation_fold_change_log2'].abs()
 
 
-# In[39]:
+# In[38]:
 
 
 bar_activation_vs_ppi(
@@ -875,7 +922,7 @@ bar_activation_vs_ppi(
     y_label='log-2 fold-change in activation')
 
 
-# In[40]:
+# In[39]:
 
 
 bar_activation_vs_ppi(
@@ -887,7 +934,7 @@ bar_activation_vs_ppi(
     color=sns.color_palette("Set2")[3])
 
 
-# In[41]:
+# In[40]:
 
 
 bar_activation_vs_ppi(
@@ -899,7 +946,7 @@ bar_activation_vs_ppi(
     color=sns.color_palette("Set2")[0])
 
 
-# In[42]:
+# In[41]:
 
 
 bar_activation_vs_ppi(
@@ -911,7 +958,7 @@ bar_activation_vs_ppi(
     color=sns.color_palette("Set2")[5])
 
 
-# In[43]:
+# In[42]:
 
 
 pairs[pairs['gene_symbol'] == 'TCF4'].sort_values(by='activation_fold_change_log2')[['clone_acc_ref',
@@ -919,4 +966,492 @@ pairs[pairs['gene_symbol'] == 'TCF4'].sort_values(by='activation_fold_change_log
                                                                                      'at_least_one_isoform_in_gene_abs_activation_gte_2fold',
                                                                                      'PPI_delta_n_coactivators_HEK',
                                                                                      'activation_fold_change_log2']]
+
+
+# ## 7. dimerizing TFs: plot conservation of interactions across isoforms
+
+# In[43]:
+
+
+ppi = load_y2h_isoform_data(require_at_least_one_ppi_per_isoform=True)
+ppi.head()
+
+
+# In[44]:
+
+
+n_iso_per_ppi = (ppi.groupby(['ad_gene_symbol', 'db_gene_symbol']))['ad_clone_acc'].agg("count").reset_index()
+n_true_iso_per_ppi = (ppi[ppi['Y2H_result'] == True].groupby(['ad_gene_symbol', 
+                                                              'db_gene_symbol']))['ad_clone_acc'].agg("count").reset_index()
+n_iso_per_ppi = n_iso_per_ppi.merge(n_true_iso_per_ppi, on=['ad_gene_symbol', 'db_gene_symbol'], how='left')
+n_iso_per_ppi['f_iso_positive'] = n_iso_per_ppi['ad_clone_acc_y']/n_iso_per_ppi['ad_clone_acc_x']
+n_iso_per_ppi = n_iso_per_ppi[['ad_gene_symbol', 'db_gene_symbol', 'f_iso_positive']]
+n_iso_per_ppi
+
+
+# In[45]:
+
+
+n_iso_per_ppi = pd.merge(n_iso_per_ppi,
+                         ppi.groupby(['ad_gene_symbol',
+                                      'db_gene_symbol'])
+                                ['Y2H_result']
+                                .apply(lambda x: x.notnull().sum())
+                                .rename('n_iso_successfully_tested')
+                                .reset_index(),
+                            how='left',
+                            on=['ad_gene_symbol', 'db_gene_symbol'],
+                            )
+if n_iso_per_ppi['n_iso_successfully_tested'].isnull().any():
+    raise UserWarning('unexpected missing values')
+n_iso_per_ppi = n_iso_per_ppi.loc[n_iso_per_ppi['n_iso_successfully_tested'] >= 2, :]
+
+
+# In[46]:
+
+
+tf_fam = load_tf_families()
+
+
+# In[47]:
+
+
+n_iso_per_ppi['db_is_tf'] = n_iso_per_ppi['db_gene_symbol'].isin(tf_fam)
+n_iso_per_ppi['ad_tf_family'] = n_iso_per_ppi['ad_gene_symbol'].map(tf_fam)
+n_iso_per_ppi['db_tf_family'] = n_iso_per_ppi['db_gene_symbol'].map(tf_fam)
+
+
+# In[48]:
+
+
+def tf_tf_dimer_ppi_catagories(row):
+    is_dimer_ad = row['ad_tf_family'] in DIMERIZING_TF_FAMILIES
+    if pd.isnull(row['db_tf_family']):
+        if is_dimer_ad:
+            return 'Dimerizing TF / other'
+        else:
+            return 'Non-dimerizing TF / other'
+    else:  # TF-TF PPI
+        if is_dimer_ad:
+            if row['db_tf_family'] == row['ad_tf_family']:
+                return 'Dimerzing TF-TF PPI'
+            else:
+                return 'Outside family TF-TF PPI'
+        else:
+            if row['db_tf_family'] == row['ad_tf_family']:
+                return 'Non-dimer TF-TF PPI'
+            else:
+                return 'Outside family TF-TF PPI'
+
+
+n_iso_per_ppi['dimer_cat'] = n_iso_per_ppi.apply(tf_tf_dimer_ppi_catagories,
+                                                 axis=1)
+
+n_iso_per_ppi.head()
+
+
+# In[49]:
+
+
+# permutation test
+cats = [
+ 'Dimerzing TF-TF PPI',
+ 'Dimerizing TF / other',
+ 'Outside family TF-TF PPI',
+ 'Non-dimer TF-TF PPI',
+ 'Non-dimerizing TF / other',
+ ]
+
+rnd_vals = {}
+obs_val = {}
+for cat in cats[1:]:
+    rnd_vals[cat] = []
+    obs_val[cat] = (n_iso_per_ppi.loc[n_iso_per_ppi['dimer_cat'] == cats[0], 
+                                            'f_iso_positive'].mean() - 
+                n_iso_per_ppi.loc[n_iso_per_ppi['dimer_cat'] == cat, 
+                                            'f_iso_positive'].mean())
+for _i in range(1000):
+    rand_cats = n_iso_per_ppi['dimer_cat'].sample(frac=1).reset_index(drop=True)  # equivalent to shuffle
+    for cat in cats[1:]:
+        rnd_vals[cat].append(n_iso_per_ppi.loc[rand_cats == cats[0], 
+                                            'f_iso_positive'].mean() - 
+                            n_iso_per_ppi.loc[rand_cats == cat, 
+                                            'f_iso_positive'].mean())
+
+pvals = {}
+for cat in cats[1:]:
+    pvals[cat] = sum(v >= obs_val[cat] for v in rnd_vals[cat]) / len(rnd_vals[cat])
+pvals
+
+
+# In[50]:
+
+
+# n for each bar
+# axis labels etc.
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(w=2, h=2)
+violinplot_reflected(data=n_iso_per_ppi,
+              x='dimer_cat',
+              y='f_iso_positive',
+              inner=None,
+              cut=0,
+              color=sns.color_palette("Set2")[0],
+              order=cats,
+              ax=ax)
+
+pairs_to_test = [(cats[0], cat) for cat in cats[1:]]
+annotator = Annotator(ax=ax, pairs=pairs_to_test, data=n_iso_per_ppi, x='dimer_cat', y='f_iso_positive', order=cats)
+annotator.configure(loc='outside')
+
+# TODO: set this programmatically
+annotator.annotate_custom_annotations(['****',
+                                       '****',
+                                       '****',
+                                       '****'])
+
+# TODO: set the statistic and error bar calculation
+sns.pointplot(data=n_iso_per_ppi,
+              x='dimer_cat',
+              y='f_iso_positive',
+              order=cats,
+              color='black',
+              linestyles='',
+              edgecolors='black',
+              linewidth=1,
+              ax=ax)
+ax.set_ylabel('Fraction isoforms interacting')
+ax.set_xlabel('')
+
+ax.set_xticklabels(cats, rotation=30, ha='right', va='top')
+
+ax.set_ylim(0, 1)
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+
+fig.savefig('../../figures/fig4/n_iso_ppi_by_dimer_cat.pdf',
+            bbox_inches='tight')
+
+
+# ## 8. dimerizing TFs: plot M1H change
+
+# In[51]:
+
+
+len(pairs)
+
+
+# In[52]:
+
+
+len(pairs[~pd.isnull(pairs['activation_abs_fold_change'])])
+
+
+# In[53]:
+
+
+pairs[~pd.isnull(pairs['activation_abs_fold_change'])].groupby("is_dimerizing_TF_family")["activation_abs_fold_change"].agg("mean")
+
+
+# In[54]:
+
+
+# absolute difference
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(w=1.2, h=2)
+sns.boxplot(data=pairs, x='is_dimerizing_TF_family', y='activation_abs_fold_change', 
+            order=[True, False], ax=ax, boxprops={'facecolor': 'w'})#, fliersize=0)
+#sns.stripplot(data=df, x='is_dimerizing_tf', y='m1h_abs_change', order=[True, False], ax=ax, color='.25')
+ax.set_xlabel('Is dimerizing TF')
+ax.set_ylabel('absolute log2 fold change of M1H activation\nbetween reference and alternative isoforms')
+ax.xaxis.set_tick_params(rotation=90, length=0)
+for loc in ['bottom', 'right', 'top']:
+    ax.spines[loc].set_visible(False)
+
+# p-value
+pval = stats.mannwhitneyu(pairs.loc[pairs['is_dimerizing_TF_family'] & pairs['activation_abs_fold_change'].notnull(), 'activation_abs_fold_change'].values,
+                          pairs.loc[~pairs['is_dimerizing_TF_family'] & pairs['activation_abs_fold_change'].notnull(), 'activation_abs_fold_change'].values)[1]
+print(pval)
+annotator = Annotator(ax=ax, pairs=[(True, False)], data=pairs, x='is_dimerizing_TF_family', y='activation_abs_fold_change', order=[True, False],)
+annotator.configure(loc='outside')
+# TODO: set this programmatically
+annotator.annotate_custom_annotations(['P = {:.3f}'.format(pval)])
+plt.savefig('../../figures/fig4/M1H-absolute-change_by-dimerizing-TF-family_boxplot.pdf',
+            bbox_inches='tight')
+
+
+# ## 9. dimerizing TFs: retained interactions heatmap
+
+# In[55]:
+
+
+# TF-TF binding
+tftf = ppi.loc[ppi['Y2H_result'] == True, ['ad_gene_symbol', 'db_gene_symbol']].drop_duplicates().copy()
+tftf['ad_dbd'] = tftf['ad_gene_symbol'].map(tf_fam)
+tftf['db_dbd'] = tftf['db_gene_symbol'].map(tf_fam)
+tftf = tftf.dropna()
+tftf.head()
+
+
+# In[56]:
+
+
+# TF-TF rewiring
+tftf = pd.merge(tftf, 
+        (ppi.groupby(['ad_gene_symbol', 'db_gene_symbol'])['Y2H_result'].apply(lambda x: (x == False).sum()) / 
+ ppi.groupby(['ad_gene_symbol', 'db_gene_symbol'])['Y2H_result'].apply(lambda x: (x.notnull().sum()))).reset_index(),
+        how='left',
+        on=['ad_gene_symbol', 'db_gene_symbol'])
+
+
+# In[57]:
+
+
+tftf.loc[tftf['db_dbd'] == 'bHLH', 'ad_gene_symbol'].value_counts()
+
+
+# In[58]:
+
+
+DIMERIZING_TF_FAMILIES
+
+
+# In[59]:
+
+
+fams = tf_fam.value_counts().index
+fams = list(filter(lambda x: x in tftf['ad_dbd'].unique() or x in tftf['db_dbd'].unique(), fams))
+len(fams)
+
+
+# In[60]:
+
+
+num_pairs = [((tftf['ad_dbd'] == x) & (tftf['db_dbd'] == y)).sum() for x in fams for y in fams]
+num_pairs = np.reshape(num_pairs, (-1, len(fams)))
+num_pairs = pd.DataFrame(num_pairs, index=fams, columns=fams)
+num_pairs.head()
+
+
+# In[61]:
+
+
+rewiring = [tftf.loc[(tftf['ad_dbd'] == x) & (tftf['db_dbd'] == y), 'Y2H_result'].mean() for x in fams for y in fams]
+rewiring = np.reshape(rewiring, (-1, len(fams)))
+rewiring = pd.DataFrame(rewiring, index=fams, columns=fams)
+rewiring.head()
+
+
+# In[62]:
+
+
+# limit to fams w 10 DB
+num_pairs_sum = num_pairs.sum(axis=0)
+filt_fams = num_pairs_sum[num_pairs_sum >= 3]
+filt_fams
+
+
+# In[63]:
+
+
+rewiring_filt = rewiring.loc[list(filt_fams.index), list(filt_fams.index)]
+rewiring_filt
+
+
+# In[64]:
+
+
+fig = plt.figure(figsize=(2.2, 2))
+g = sns.heatmap(rewiring_filt, cmap="viridis_r", cbar_kws={"label": "rewiring score"})
+
+# highlight the squares corresponding to dimerizing pairs
+for i, fam in enumerate(list(filt_fams.index)):
+    if fam in DIMERIZING_TF_FAMILIES:
+        g.add_patch(Rectangle((i, i), 1, 1, fill=False, edgecolor='black', lw=1))
+        
+g.set_xlabel("TF isoform family")
+g.set_ylabel("Y2H partner TF family")
+fig.savefig("../../figures/fig4/Dimerizing_PPI_heatmap.small.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[65]:
+
+
+fig = plt.figure(figsize=(4.5, 4.5))
+g = sns.heatmap(rewiring, cmap="viridis_r", cbar_kws={"label": "rewiring score", "aspect": 40},
+                annot=num_pairs, annot_kws={"fontsize": 6})
+
+# highlight the squares corresponding to dimerizing pairs
+for i, fam in enumerate(list(rewiring.index)):
+    if fam in DIMERIZING_TF_FAMILIES:
+        g.add_patch(Rectangle((i, i), 1, 1, fill=False, edgecolor='black', lw=1))
+        
+g.set_xlabel("TF isoform family")
+g.set_ylabel("Y2H partner TF family")
+fig.savefig("../../figures/fig4/Dimerizing_PPI_heatmap.all.pdf", dpi="figure", bbox_inches="tight")
+
+
+# ## 10. isoform example vignettes
+
+# In[66]:
+
+
+# reload data since we edited dfs above
+y2h = load_isoform_and_paralog_y2h_data()
+y1h = load_y1h_pdi_data(add_missing_data=True)
+m1h = load_m1h_activation_data(add_missing_data=True)
+isoforms = load_valid_isoform_clones()
+y2h = y2h.loc[y2h['ad_clone_acc'].isin(isoforms['clone_acc']).values, :]
+y1h = y1h.loc[y1h['clone_acc'].isin(isoforms['clone_acc']).values, :]
+m1h = m1h.loc[m1h['clone_acc'].isin(isoforms['clone_acc'].values), :]
+
+tfs = load_annotated_TFiso1_collection()
+
+
+# ### RFX3
+
+# In[67]:
+
+
+gene_name = "RFX3"
+
+
+# In[68]:
+
+
+fig, ax = plt.subplots(1, 1, figsize=(2, 0.8))
+
+df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(0, 6))
+plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[69]:
+
+
+fig, ax = plt.subplots(figsize=(5, 1))
+
+tfs[gene_name].exon_diagram(ax=ax)
+fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# In[70]:
+
+
+fig, ax = plt.subplots(figsize=(5, 1))
+
+tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# In[71]:
+
+
+fig, ax = plt.subplots(figsize=(5, 1))
+
+tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# ### PBX1
+
+# In[72]:
+
+
+gene_name = "PBX1"
+
+
+# In[73]:
+
+
+tf = tfs[gene_name]
+fig, ax = plt.subplots(1, 1, figsize=(2, 2))
+y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
+plt.savefig('../../figures/fig4/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[74]:
+
+
+fig, ax = plt.subplots(1, 1, figsize=(2, 0.7))
+
+df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(0, 2.5))
+plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[75]:
+
+
+fig, ax = plt.subplots(figsize=(5, 2))
+
+tfs[gene_name].exon_diagram(ax=ax)
+fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# In[76]:
+
+
+fig, ax = plt.subplots(figsize=(5, 1))
+
+tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# ### CREB5
+
+# In[77]:
+
+
+gene_name = "CREB5"
+
+
+# In[78]:
+
+
+tf = tfs[gene_name]
+fig, ax = plt.subplots(1, 1, figsize=(0.8, 0.8))
+y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
+plt.savefig('../../figures/fig4/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[79]:
+
+
+fig, ax = plt.subplots(1, 1, figsize=(2, 0.6))
+
+df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(-2.2, 2.2))
+plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[80]:
+
+
+fig, ax = plt.subplots(figsize=(5, 1))
+
+tfs[gene_name].exon_diagram(ax=ax)
+fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# In[81]:
+
+
+fig, ax = plt.subplots(figsize=(5, 0.7))
+
+tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# In[125]:
+
+
+gene_name = "DLX1"
+fig, ax = plt.subplots(figsize=(5, 0.7))
+
+tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# In[ ]:
+
+
+
 

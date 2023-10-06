@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # ### TODO
@@ -911,6 +911,12 @@ age = age.set_index('hgnc_symbol')['gene_age']
 for age_category in age.unique():
     genes_list = age[age == age_category].index.values
     partners['is_partner_age_' + age_category] = partners.index.isin(genes_list)
+
+
+# In[ ]:
+
+
+
 
 
 # In[47]:

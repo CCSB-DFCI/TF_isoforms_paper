@@ -1584,6 +1584,9 @@ ref_isos['TBX5']
 
 # now every comparison is alt vs annotated reference isoform
 df = pd.concat([g.aa_feature_disruption(ref_isos[g.name]) for g in tfs.values() if g.has_MANE_select_isoform])
+
+# next line is the old code we were using (not limiting to ref v alt only)
+#df = pd.concat([g.aa_feature_disruption(g.isoforms[0].name) for g in tfs.values()])
 df.head()
 
 
@@ -1664,19 +1667,19 @@ for c in [c for c in df.columns if c.startswith('is_affected_')]:
 doms = doms.sort_values('n_alt_iso', ascending=False)
 
 
+# In[108]:
+
+
+get_ipython().run_cell_magic('time', '', "# again, explicitly compare ref v alt\ndf_null = pd.concat([g.null_fraction_per_aa_feature(ref_isos[g.name]) for g in tfs.values() if g.has_MANE_select_isoform])\n\n# next line is the old code we were using (not expilcitly limiting to ref v alt)\n#df_null = pd.concat([g.null_fraction_per_aa_feature(g.isoforms[0].name) for g in tfs.values()])\ndf = pd.merge(df, df_null, how='left', on=['gene_symbol', 'ref_iso', 'alt_iso', 'length'])")
+
+
 # In[109]:
-
-
-get_ipython().run_cell_magic('time', '', "df_null = pd.concat([g.null_fraction_per_aa_feature(ref_isos[g.name]) for g in tfs.values() if g.has_MANE_select_isoform])\ndf = pd.merge(df, df_null, how='left', on=['gene_symbol', 'ref_iso', 'alt_iso', 'length'])")
-
-
-# In[112]:
 
 
 df.head()
 
 
-# In[113]:
+# In[110]:
 
 
 def prob_or(probabilities):
@@ -1701,7 +1704,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
     doms[null_col + '_center'] = null_p.groupby('accession').apply(null_quantile, 0.5)
 
 
-# In[114]:
+# In[111]:
 
 
 doms['is_DBD'] = doms.index.isin(dbd['pfam'].values) | (doms.index == 'C2H2_ZF_array')
@@ -1711,7 +1714,7 @@ doms.loc[~doms['is_DBD'], 'domain_name'] = doms[~doms['is_DBD']].index.map(pfam.
 doms.loc[doms.index == 'C2H2_ZF_array', 'domain_name'] = ['C2H2 ZF array']
 
 
-# In[115]:
+# In[112]:
 
 
 dom_affected_levels = [c[5:] for c in doms.columns if c.startswith('f_is_affected_')]
@@ -1722,7 +1725,7 @@ level_desc = {'affected_at_all': 'at least partial domain removal',
  'affected_10pct': '10% removal'}
 
 
-# In[116]:
+# In[113]:
 
 
 # all domains, all DBD, non-DBD
@@ -1758,7 +1761,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 doms.head()
 
 
-# In[117]:
+# In[114]:
 
 
 df['category_a'] = np.nan
@@ -1767,7 +1770,7 @@ df.loc[(df['category'] == 'Pfam_domain') & ~df['is_DBD'], 'category_a'] = 'Other
 df.loc[(df['category'] == 'effector_domain'), 'category_a'] = 'Effector domain'
 
 
-# In[118]:
+# In[115]:
 
 
 # split pfam into dbd and 
@@ -1803,13 +1806,13 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 data = doms.copy()
 
 
-# In[119]:
+# In[116]:
 
 
 df.columns
 
 
-# In[122]:
+# In[117]:
 
 
 for level in dom_affected_levels:
@@ -1843,10 +1846,4 @@ for level in dom_affected_levels:
         ax.set_xticks(range(0, 101, 10), minor=True)
         plt.savefig(f'../../figures/fig1/domain_categories_{level}.resized.pdf'.format(level),
                 bbox_inches='tight')
-
-
-# In[ ]:
-
-
-
 

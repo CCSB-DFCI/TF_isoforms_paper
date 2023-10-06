@@ -1,9 +1,9 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Fig3: eY1H/PDI analyses
 
-# In[1]:
+# In[2]:
 
 
 import numpy as np
@@ -16,36 +16,45 @@ import sys
 # import utils
 sys.path.append("../")
 
-from data_loading import *
-from isoform_pairwise_metrics import *
-from plotting import y1h_pdi_per_tf_gene_plot, m1h_activation_per_tf_gene_plot, COLOR_PURPLE
-from data_loading import load_annotated_6k_collection, load_y1h_pdi_data
+from data_loading import load_annotated_TFiso1_collection, load_y1h_pdi_data
+from plotting import y1h_pdi_per_tf_gene_plot, m1h_activation_per_tf_gene_plot
+
+
+# In[3]:
+
+
+PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+                "rc": {"font.size":7,"axes.titlesize":7,
+                       "axes.labelsize":7, 'axes.linewidth':0.5,
+                       "legend.fontsize":6, "xtick.labelsize":6,
+                       "ytick.labelsize":6, "xtick.major.size": 3.0,
+                       "ytick.major.size": 3.0, "axes.edgecolor": "black",
+                       "xtick.major.pad": 3.0, "ytick.major.pad": 3.0}}
+PAPER_FONTSIZE = 7
+
+
+# In[4]:
+
+
+sns.set(**PAPER_PRESET)
+fontsize = PAPER_FONTSIZE
+
+
+# In[5]:
+
+
+np.random.seed(2023)
 
 
 # ## 1. load PDI data
 
-# In[2]:
+# In[6]:
 
 
-disorder = pd.read_csv('../data/processed/TFiso1_disorder-and-ss_from-alphafold.tsv',
-                       sep='\t')
-tfs = load_annotated_6k_collection()
+tfs = load_annotated_TFiso1_collection()
 
-# TODO: fix missing data
-clones_with_disorder_data = set(disorder['clone_name'].unique())
-for tf in tfs.values():
-    for iso in tf.cloned_isoforms:
-        if iso.name not in clones_with_disorder_data:
-            print('missing disorder data for {}'.format(iso.name))
-            continue
-        iso.disorder = disorder.loc[disorder['clone_name'] == iso.name, 'is_disordered'].values
 
-# sanity check
-for tf in tfs.values():
-    for iso in tf.cloned_isoforms:
-        if hasattr(iso, 'disorder'):
-            if len(iso.disorder) != len(iso.aa_seq):
-                raise UserWarning('inconsistent amino acid sequence and disordered residues data for {}'.format(iso.name))
+# In[7]:
 
 
 def disordered_fraction_of_different_regions(gene, ref_iso_name, alt_iso_name):
@@ -70,7 +79,7 @@ def disordered_fraction_of_different_regions(gene, ref_iso_name, alt_iso_name):
 disordered_fraction_of_different_regions(tfs['CREB1'], 'CREB1-2', 'CREB1-1')
 
 
-# In[3]:
+# In[31]:
 
 
 # TODO move to isolib
@@ -110,10 +119,10 @@ def n_aa_change_from_feature(gene, ref_iso_name, alt_iso_name, domain_start, dom
 
 def n_aa_to_all_features(self, ref_iso_name):
     results = []
-    ref_iso = self._orf_dict[ref_iso_name]
+    ref_iso = self[ref_iso_name]
     row = {"gene": self.name, "ref_iso": ref_iso_name}
     for aa_feature in ref_iso.aa_seq_features:
-        for alt_iso_name, alt_iso in self._orf_dict.items():
+        for alt_iso_name, alt_iso in self._iso_dict.items():
             if alt_iso_name == ref_iso_name:
                 continue
             row.update(
@@ -132,51 +141,51 @@ def n_aa_to_all_features(self, ref_iso_name):
     return results
 
 
-gene = tfs['TBX5']
-ref_iso_name = 'TBX5-1'
-alt_iso_name = 'TBX5-3'
+# In[33]:
 
-#for dom in gene[ref_iso_name].aa_seq_features:
-#    print(dom)
-#    n = n_aa_change_from_feature(gene, ref_iso_name, alt_iso_name, dom.start, dom.end)
-#    print(n)
-
-# get for all domains
-# get DBDs
-# find min over DBDs
 
 dist = pd.concat([n_aa_to_all_features(g, g.cloned_reference_isoform.name) for g in tfs.values()])
 dist['is_DBD'] = dist['accession'].isin(load_dbd_accessions())
 
 
-# In[4]:
+# In[46]:
 
 
 y1h = load_y1h_pdi_data()
 y1h = y1h.drop_duplicates()  # TODO: why is this here?
-n_pdi = (y1h.drop(columns='tf')
-            .set_index('unique_acc')
+n_pdi = (y1h.drop(columns='gene_symbol')
+            .set_index('clone_acc')
             .sum(axis=1))
+n_pdi.index = n_pdi.index.map(lambda x: x.split('|')[0] + '-' + x.split('|')[1].split('/')[0])
 
 
-# In[5]:
+# In[36]:
 
-
-tfs = load_annotated_6k_collection()
 
 df = pd.concat([g.aa_feature_disruption(g.cloned_reference_isoform.name) for g in tfs.values()])
 df['is_DBD'] = df['accession'].isin(load_dbd_accessions())
 df['is_DBD_flank'] = (df['accession'].str.endswith('_flank_N') |
                       df['accession'].str.endswith('_flank_C'))
+
+
+# In[40]:
+
+
+dist
+
+
+# In[41]:
+
+
 df_new = (df.loc[df['is_DBD'], :]
-        .groupby(['gene', 'ref_iso', 'alt_iso'])
+        .groupby(['gene_symbol', 'ref_iso', 'alt_iso'])
         [['deletion', 'frameshift']].sum()
         .sum(axis=1) / df.loc[df['is_DBD'], :]
-        .groupby(['gene', 'ref_iso', 'alt_iso'])
+        .groupby(['gene_symbol', 'ref_iso', 'alt_iso'])
         ['length'].sum()).to_frame(name='dbd_fraction')
 
 df_new['dbd_insertion_n_aa'] = (df.loc[df['is_DBD'], :]
-                                  .groupby(['gene', 'ref_iso', 'alt_iso'])
+                                  .groupby(['gene_symbol', 'ref_iso', 'alt_iso'])
                                   ['insertion']
                                   .sum())
 
@@ -184,14 +193,21 @@ df_new['dbd_n_aa_to_change'] = (dist.loc[dist['is_DBD'], :]
                                   .groupby(['gene', 'ref_iso', 'alt_iso'])
                                   ['n_aa_change_to_domain']
                                   .min())
-        
+
+
+# In[43]:
+
+
 # flank affected
 df_new['dbd_flank_affected'] = (df.loc[df['is_DBD_flank'], :]
-        .groupby(['gene', 'ref_iso', 'alt_iso'])
+        .groupby(['gene_symbol', 'ref_iso', 'alt_iso'])
         [['deletion', 'insertion', 'frameshift']].sum()
         .sum(axis=1) > 0)
 df = df_new.reset_index()
 df['dbd_pct_lost'] = df['dbd_fraction'] * 100.
+
+
+# In[44]:
 
 
 def dbd_affected_categories(pct_lost):
@@ -209,13 +225,15 @@ df['dbd_or_flank_affected'] = df['dbd_affected']
 df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') &
        df['dbd_flank_affected'], 'dbd_or_flank_affected'] = 'DBD flank affected'
 
+
+# In[45]:
+
+
 isoforms = load_valid_isoform_clones()
-y1h = load_y1h_pdi_data()
-y1h = y1h.drop_duplicates()  # TODO: why is this here?
-n_pdi = (y1h.drop(columns='tf')
-            .set_index('unique_acc')
-            .sum(axis=1))
-n_pdi.index = n_pdi.index.map(lambda x: x.split('|')[0] + '-' + x.split('|')[1].split('/')[0])
+
+
+# In[48]:
+
 
 # map each isoform to change in PDI vs reference
 def delta_pdi(row):
@@ -233,7 +251,7 @@ def delta_pdi(row):
 df['delta_pdi'] = df.apply(delta_pdi, axis=1)
 df = df.dropna(subset=['delta_pdi'])
 
-df['tf_family'] = df['gene'].map(lambda x: tfs[x].tf_family)
+df['tf_family'] = df['gene_symbol'].map(lambda x: tfs[x].tf_family)
 df['delta_pdi_trunc'] = df['delta_pdi'].clip(upper=1)
 
 if (((df['dbd_fraction'] > 0) | (df['dbd_insertion_n_aa'] > 0)) & (df['dbd_n_aa_to_change'] > 0)).any():
@@ -242,48 +260,48 @@ if ((df['dbd_fraction'] == 0) & (df['dbd_insertion_n_aa'] == 0) & (df['dbd_n_aa_
     raise UserWarning('something wrong with calculations')
 
 
-# In[6]:
+# In[49]:
 
 
 df.loc[df['dbd_insertion_n_aa'] > 0 ]
 
 
-# In[7]:
+# In[51]:
 
 
 # count
 print(len(tfs), 'TF genes')
-print(sum([len(tf.orfs[0].aa_seq_features) > 0 for tf in tfs.values()]),
-      'TF genes with at least one Pfam domain in longest cloned isoform')
-print(sum([len(tf.orfs[0].dna_binding_domains) > 0 for tf in tfs.values()]))
+print(sum([len(tf.cloned_reference_isoform.aa_seq_features) > 0 for tf in tfs.values()]),
+      'TF genes with at least one Pfam domain in cloned reference isoform')
+print(sum([len(tf.cloned_reference_isoform.dna_binding_domains) > 0 for tf in tfs.values()]))
 tfs_no_dbd = {k: v for k, v in tfs.items()
-              if len(v.orfs[0].dna_binding_domains) == 0
-              and len(v.orfs[0].aa_seq_features) > 0}
+              if len(v.cloned_reference_isoform.dna_binding_domains) == 0
+              and len(v.cloned_reference_isoform.aa_seq_features) > 0}
 
 
-# In[8]:
+# In[52]:
 
 
 df['delta_pdi_trunc'] = df['delta_pdi'].clip(upper=1)
 
 
-# In[9]:
+# In[53]:
 
 
 df['dbd_or_flank_affected'].value_counts().index.values
 
 
-# In[10]:
+# In[54]:
 
 
 df['tf_family_merged'] = df['tf_family'].map(lambda x: x if x in ['C2H2 ZF', 'bHLH', 'Homeodomain', 'Nuclear receptor'] else 'other')
 
 
-# In[11]:
+# In[57]:
 
 
 # TODO: move to data_loading.py
-dis = pd.read_csv('../data/processed/TFiso1_disorder-and-ss_from-alphafold.tsv',
+dis = pd.read_csv('../../data/processed/TFiso1_disorder-and-ss_from-alphafold.tsv',
                   sep='\t')
 n_aa = dis.groupby('clone_name').size().rename('n_aa').to_frame()
 n_aa['n_aa_disordered'] = dis.groupby('clone_name')['is_disordered'].sum()
@@ -293,145 +311,25 @@ for c in n_aa.columns:
     df[f'abs_delta_{c}'] = df[f'delta_{c}'].abs()
 
 
-# In[12]:
+# In[58]:
 
 
 df['f_disorder_delta_aa'] = df['abs_delta_n_aa_disordered'] / (df['abs_delta_n_aa_disordered'] + df['abs_delta_n_aa_ordered'])
 
 
-# In[13]:
+# In[59]:
 
 
 df['pdi_affected'] = (df['delta_pdi'] != 0)
 
 
-# In[14]:
-
-
-#charged_aas = ("K", "R", "H", "D", "E", "C", "Y")
-
-def delta_n_K_or_R(row):
-    aa_ref = tfs[row['gene']][row['ref_iso']].aa_seq
-    aa_alt = tfs[row['gene']][row['alt_iso']].aa_seq
-    return  (aa_alt.count('K') + aa_alt.count('R')) - (aa_ref.count('K') + aa_ref.count('R'))
-
-df['delta_n_K_or_R'] = df.apply(delta_n_K_or_R, axis=1)
-
-
-# In[15]:
-
-
-# for alternative isoforms, containing the DBD, that are associated with a change in 
-# DNA binding vs staying the same, is there a positively charged region in the different 
-# amino acid sequence?
-
-# three categories: lose, same, gain
-# variable is max postive charged residue count in 10aa sliding window, 
-
-# NOTE I've updated this since the copy and paste from domain/motif notebook
-def isoform_specific_regions(gene, subset=None):
-    """The name is a bit misleading because it's not specific to one isoform but just
-       not common to all isoforms.
-
-    Returns: dict(frozenset: list(str)): isoform IDs and list of contiguous AA sequences
-                                         that map to them only 
-
-    """
-    algn = gene.genomic_alignment_of_aa_seqs(subset=subset)
-    subset_prev = None
-    isr = {}
-    len_algn = len(list(algn.values())[0])
-    for i in range(len_algn):
-        subset = frozenset({k for k, v in algn.items() if v[i] != '-'})  # the isoforms that have an aa at that genomic position
-        if subset_prev is None:
-            if (len(subset) < len(algn)) and (len(subset) > 0):
-                start = i
-                subset_prev = subset
-        else:
-            if subset != subset_prev:
-                if (len(subset_prev) < len(algn)) and (len(subset_prev) > 0):
-                    subseq = (algn[list(subset_prev)[0]][start:i], start, i)
-                    isr[subset_prev] = isr.get(subset_prev, []) + [subseq]
-                start = i
-                subset_prev = subset
-            elif  i == (len_algn - 1):
-                if (len(subset_prev) < len(algn)) and (len(subset_prev) > 0):
-                    subseq = (algn[list(subset_prev)[0]][start:], start, i + 1)
-                    isr[subset_prev] = isr.get(subset_prev, []) + [subseq]
-                start = i
-                subset_prev = subset
-    merged = {}
-    for iso_subset, subseqs in isr.items():
-        merged[iso_subset] = []
-        prev_end = np.inf
-        prev_subseq = ''
-        for subseq, start, end in subseqs:
-            if start <= prev_end + 2:
-                prev_subseq += subseq
-                prev_end = end
-            else:
-                if prev_subseq != '':
-                    merged[iso_subset].append(prev_subseq)
-                prev_subseq = subseq
-                prev_end = end
-        merged[iso_subset].append(prev_subseq)
-    merged
-    return merged
-
-def count_K_or_R_sliding_window(row, window_size=6):
-    # get different amino acid sequence regions
-    specific_aa_regions = isoform_specific_regions(tfs[row['gene']], subset=[row['ref_iso'], row['alt_iso']])
-    aa_seq_regions_in_ref_not_in_alt = specific_aa_regions.get(frozenset([row['ref_iso']]), [])
-    aa_seq_regions_in_alt_not_in_ref = specific_aa_regions.get(frozenset([row['alt_iso']]), [])
-    max_count = 0
-    for aa_seq in aa_seq_regions_in_ref_not_in_alt:
-        for i in range(len(aa_seq) - window_size):
-            count = aa_seq[i:i + window_size].count('K') + aa_seq[i:i + window_size].count('R')
-            if count > max_count:
-                max_count = count
-    return max_count
-
-df['count_K_or_R_sliding_window'] = df.apply(count_K_or_R_sliding_window, axis=1)
-
-
-# In[16]:
-
-
-df['count_K_or_R_sliding_window'].value_counts()
-
-
-# In[17]:
+# In[61]:
 
 
 df['dbd_or_flank_affected'].value_counts()
 
 
-# In[18]:
-
-
-# only isoforms with DBD
-# three categories: lose, same, gain
-# variable is max postive charged residue count in 10aa sliding window,
-a = df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') &
-            (df['delta_pdi'] < 0),
-        'count_K_or_R_sliding_window'].values
-b = df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') &
-            (df['delta_pdi'] == 0),
-        'count_K_or_R_sliding_window'].values
-print(a)
-print(b)
-print(a.mean())
-print(b.mean())
-print(stats.mannwhitneyu(a, b))
-
-
-# In[19]:
-
-
-isoform_specific_regions(tfs['KLF7'], subset=['KLF7-1', 'KLF7-4'])
-
-
-# In[20]:
+# In[63]:
 
 
 # check for family enrichment of DBD unaffected PDI changes
@@ -439,159 +337,42 @@ df.loc[(df['dbd_or_flank_affected'] == 'Full DBD in\nalternative isoform') &
 (df['delta_pdi'] != 0), 'tf_family'].value_counts()
 
 
-# In[21]:
+# In[65]:
 
 
 df.loc[(df['dbd_or_flank_affected'] == 'Full DBD in\nalternative isoform') &
-(df['delta_pdi'] != 0), 'gene'].value_counts()
+(df['delta_pdi'] != 0), 'gene_symbol'].value_counts()
 
 
-# In[22]:
-
-
-# PPIs with other TFs as a predictor for non-DBD related PDI changes?
-
-
-# In[23]:
+# In[67]:
 
 
 # 15 aa flanks
 ' '.join(df.loc[(df['dbd_fraction'] == 0) &
        (df['dbd_flank_affected'] == False) &
-       (df['delta_pdi'] != 0), 'gene'].unique())
+       (df['delta_pdi'] != 0), 'gene_symbol'].unique())
 
 
-# In[24]:
+# In[68]:
 
 
 (df['dbd_pct_lost'] > 0).sum()
 
 
-# In[25]:
-
-
-# TODO
-# check y variable now that we use reference isoform
-# horizontal line across whole
-
-gs_kw = dict(width_ratios=[1, 1, 0.35, 0.4, 1.5])
-fig, axs = plt.subplots(nrows=1, 
-                        ncols=5,
-                        sharey=True,
-                        gridspec_kw=gs_kw)
-fig.set_size_inches(w=8, h=2)
-point_size = 6
-
-axs[0].set_title('Full loss of DBD',
-fontsize=10)
-sns.swarmplot(data=df,
-              y='delta_pdi_trunc', 
-              x='dbd_or_flank_affected',
-              size=point_size,
-              order=[
-                     'Full loss\nof DBD',
-                     ],
-              ax=axs[0],
-              color=sns.color_palette("Set2")[0],
-              linewidth=1,
-              edgecolor="black",
-              alpha=1)
-
-axs[1].set_title('Partial loss of DBD',
-fontsize=10)
-axs[1].scatter(df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'dbd_pct_lost'].values,
-               df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'delta_pdi_trunc'].values,
-           alpha=1,
-           s=point_size**2,
-            color=sns.color_palette("Set2")[0],
-               linewidths=1,
-               edgecolor="black",
-           clip_on=False)
-axs[1].set_xlabel('Proportion missing')
-axs[1].set_xlim(100, 0)
-axs[1].set_xticks([99, 50, 1])
-axs[1].set_xticklabels(['{}%'.format(x)for x in axs[1].get_xticks()])
-axs[1].set_xticks(range(10, 91, 10), minor=True)
-
-
-axs[2].set_title('Insertion\nwithin DBD',
-fontsize=10)
-axs[2].scatter(df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0), 'dbd_insertion_n_aa'].values,
-               df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0), 'delta_pdi_trunc'].values,
-           alpha=1,
-           s=point_size**2,
-            color=sns.color_palette("Set2")[0],
-               linewidths=1,
-               edgecolor="black",
-           clip_on=False)
-axs[2].set_xlabel('amino acids\ninserted')
-axs[2].set_xticks([1, 4])
-axs[2].set_xticks(range(1, 6), minor=True)
-
-axs[3].set_title('Flank of DBD\naffected',
-                 fontsize=10)
-sns.swarmplot(data=df,
-              y='delta_pdi_trunc', 
-              x='dbd_or_flank_affected',
-              size=point_size,
-              order=[
-                     'DBD flank affected',
-                     ],
-              ax=axs[3],
-            color=sns.color_palette("Set2")[0],
-               linewidth=1,
-               edgecolor="black",
-              alpha=1)
-
-axs[4].set_title('Full DBD + flanks\nin alternative isoform',
-fontsize=10)
-sns.swarmplot(data=df,
-              y='delta_pdi_trunc', 
-              x='dbd_or_flank_affected',
-              size=point_size,
-              order=[
-                     'Full DBD in\nalternative isoform',
-                     ],
-            color=sns.color_palette("Set2")[0],
-               linewidth=1,
-               edgecolor="black",
-              ax=axs[4],
-              alpha=1)
-
-for ax in axs:
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-for ax in axs[1:]:
-    ax.spines['left'].set_visible(False)
-    ax.yaxis.set_tick_params(which='both', length=0)
-for i in [0, 3, 4]:
-    axs[i].set_xlabel('')
-    axs[i].set_ylabel('')
-    axs[i].spines['bottom'].set_visible(False)
-    axs[i].xaxis.set_tick_params(length=0)
-    axs[i].set_xticks([])
-axs[0].set_yticks([-1, 0, 1])
-axs[0].set_yticks(np.linspace(-1, 1, 9), minor=True)
-axs[0].set_yticklabels(['-100%', '0', '+≥100%'])
-axs[0].set_ylabel('Change in number of PDI\nin alternative isoform')
-
-plt.savefig('../figures/DBD_or_flank_change_vs_PDI_composite.pdf', bbox_inches='tight')
-
-
-# In[26]:
+# In[70]:
 
 
 # full DBD in alternative isoform, fraction in disordered
-df['f_disorder_difference'] = df.apply(lambda x: disordered_fraction_of_different_regions(tfs[x['gene']], x['ref_iso'], x['alt_iso']), axis=1)
+df['f_disorder_difference'] = df.apply(lambda x: disordered_fraction_of_different_regions(tfs[x['gene_symbol']], x['ref_iso'], x['alt_iso']), axis=1)
 
 
-# In[27]:
+# In[71]:
 
 
 df.dbd_or_flank_affected.value_counts()
 
 
-# In[28]:
+# In[72]:
 
 
 # color map
@@ -611,7 +392,7 @@ df["color"] = df.apply(re_color, axis=1, palette=palette)
 df.sample(5)
 
 
-# In[29]:
+# In[75]:
 
 
 # try distance from DBD
@@ -761,16 +542,16 @@ axs[0].set_yticklabels(['-100%', '0', '+≥100%'])
 axs[0].set_ylabel('Change in number of PDI\nin alternative isoform')
 
 
-fig.savefig('../figures/DBD_or_flank_change_vs_PDI_composite_alt_with_distance_colored_annotated.pdf', bbox_inches='tight')
+fig.savefig('../../figures/fig3/DBD_or_flank_change_vs_PDI_composite_alt_with_distance_colored_annotated.pdf', bbox_inches='tight')
 
 
-# In[30]:
+# In[76]:
 
 
 df.dbd_affected.value_counts()
 
 
-# In[31]:
+# In[77]:
 
 
 # check low values
@@ -820,18 +601,18 @@ ax.axhline(y=1, linestyle="dashed", linewidth=1, color="black", zorder=1)
 
 fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 fig.suptitle('             Full DBD in alternative isoform\n', fontsize=10)
-fig.savefig('../figures/disordered-pct-alt-sequence_alt-isoforms-full-DBD-diff-PDI_dotplot.pdf',
+fig.savefig('../../figures/fig3/disordered-pct-alt-sequence_alt-isoforms-full-DBD-diff-PDI_dotplot.pdf',
             bbox_inches='tight')
 
 
-# In[32]:
+# In[78]:
 
 
 x = list(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['delta_pdi_trunc'] != 0), 'f_disorder_difference'])
 y = list(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['delta_pdi_trunc'] == 0), 'f_disorder_difference'])
 
 
-# In[33]:
+# In[79]:
 
 
 stats.mannwhitneyu(x, y)
@@ -891,4 +672,10 @@ fig, ax = plt.subplots(figsize=(4, 2))
 
 tfs["TBX5"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
 fig.savefig("../figures/TBX5_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[ ]:
+
+
+
 
