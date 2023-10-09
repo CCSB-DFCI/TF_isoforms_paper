@@ -8,6 +8,7 @@ from Bio.Seq import Seq
 from ucsc.api import Sequence
 
 from .utils import DATA_DIR
+from .protein_data import load_human_tf_db, load_cofactors, load_signaling_genes
 
 
 def load_valid_isoform_clones():
@@ -353,6 +354,33 @@ def load_paralog_pairs(filter_for_valid_clones=True):
 
 
 def load_ppi_partner_categories():
+    # table with gene_symbol_partner, category and cofactor_type
+    tfdb = load_human_tf_db()
+    tf_genes = set(tfdb["HGNC symbol"].unique())
+    cof = load_cofactors()
+    cofactor_genes = set(cof["gene_symbol"].unique())
+    signaling_genes = load_signaling_genes()
+
+    df = pd.DataFrame(
+        data=load_isoform_and_paralog_y2h_data()["db_gene_symbol"].unique(),
+        columns=["gene_symbol_partner"],
+    )
+    df["category"] = "other"
+    df.loc[df["gene_symbol_partner"].isin(tf_genes), "category"] = "TF"
+    df.loc[df["gene_symbol_partner"].isin(cofactor_genes), "category"] = "cofactor"
+    df.loc[df["gene_symbol_partner"].isin(signaling_genes), "category"] = "signaling"
+    df = pd.merge(
+        df,
+        cof.loc[:, ["gene_symbol", "cofactor_type"]],
+        left_on="gene_symbol_partner",
+        right_on="gene_symbol",
+        how="left",
+    ).drop(columns=["gene_symbol"])
+
+    return df
+
+
+def _load_old_ppi_partner_categories():
     """Juan's manual classification of the PPI interaction partners.
 
      Note that a gene can be in multiple categories.

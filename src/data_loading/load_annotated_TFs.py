@@ -15,7 +15,7 @@ import tqdm
 
 from . import isolib
 from .utils import cache_with_pickle, DATA_DIR, CACHE_DIR
-from .TF_data import load_human_tf_db, load_tf_families
+from .protein_data import load_human_tf_db, load_tf_families
 from .clones_and_assays_data import load_valid_isoform_clones
 from .sequence_features import (
     load_pfam_domains_TFiso1,
