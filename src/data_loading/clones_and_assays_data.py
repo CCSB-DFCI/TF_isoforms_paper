@@ -193,7 +193,7 @@ def load_y2h_isoform_data(
 def load_y2h_paralogs_additional_data():
     """Pairs tested in Y2H for the paralogs data, in addition to isoform pairs."""
     y2h = load_isoform_and_paralog_y2h_data()
-    pairs = load_paralog_pairs()
+    pairs = load_paralog_pairs_tested_in_y2h()
     y2h_paralog = y2h.loc[
         y2h["category"].isin(
             ["tf_paralog_ppis", "paralog_with_PDI", "non_paralog_control"]
@@ -301,7 +301,7 @@ def load_isoform_and_paralog_y2h_data(
     return df
 
 
-def load_paralog_pairs(filter_for_valid_clones=True):
+def load_paralog_pairs_tested_in_y2h(filter_for_valid_clones=True):
     """Pairs of TF gene paralogs and non-paralogs that were tested in Y2H pairwise tests.
 
     TODO: change name, since it's paralog pairs tested in Y2H

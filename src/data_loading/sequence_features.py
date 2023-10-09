@@ -50,11 +50,11 @@ function
 
 from Bio import Align
 
-from data_loading import load_valid_isoform_clones, load_paralog_pairs, load_isoforms_of_paralogs_pairs
+from data_loading import load_valid_isoform_clones, load_paralog_pairs_tested_in_y2h, load_isoforms_of_paralogs_pairs
 
 def calculate_aa_sequence_id():
     isoforms = load_valid_isoform_clones()
-    pairs = load_paralog_pairs()
+    pairs = load_paralog_pairs_tested_in_y2h()
     pairs = load_isoforms_of_paralogs_pairs(pairs, isoforms)
 
     aligner = Align.PairwiseAligner()
