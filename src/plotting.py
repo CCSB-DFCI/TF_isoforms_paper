@@ -569,7 +569,7 @@ def annotate_pval(ax, x1, x2, y, h, text_y, val, fontsize):
         text = "%.4f" % val
         # text = "*"
     else:
-        text = "%.4f" % val
+        text = "%.2f" % val
         # text = "n.s."
     ax.text(
         (x1 + x2) * 0.5,
