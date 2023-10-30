@@ -1,0 +1,292 @@
+
+import warnings
+warnings.filterwarnings('ignore')
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import met_brewer
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import sys
+import upsetplot
+
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+from Bio.Seq import Seq
+from scipy.stats import fisher_exact
+from scipy.stats import mannwhitneyu
+from scipy.stats import pearsonr
+
+import plotting
+from plotting import PAPER_PRESET, PAPER_FONTSIZE, nice_boxplot, nice_violinplot, mimic_r_boxplot
+
+
+%matplotlib inline
+%config InlineBackend.figure_format = 'svg'
+mpl.rcParams['figure.autolayout'] = False
+
+from data_loading import (load_annotated_6k_collection,
+                          load_valid_isoform_clones,
+                          load_developmental_tissue_expression_remapped)
+
+sns.set(**PAPER_PRESET)
+fontsize = PAPER_FONTSIZE
+
+np.random.seed(2023)
+
+def calculate_tau(df):
+    array = df.values
+    
+    ## will return NaN as tau for every row that has any NaNs
+    array_max = np.max(array, axis=1)
+    tmp = array.T / array_max
+    tmp = 1 - tmp.T
+    nonan_taus = np.sum(tmp, axis=1) / (array.shape[1])
+    
+    ## will ignore NaNs and compute on the rest of the values
+    array_max = np.nanmax(array, axis=1)
+    tmp = array.T / array_max
+    tmp = 1 - tmp.T
+    nan_taus = np.nansum(tmp, axis=1) / np.count_nonzero(~np.isnan(array), axis=1)
+    
+    
+    return nonan_taus, nan_taus, array_max
+
+rename_dev_stage = {'8 week post conception,embryo': '08',
+'11 week post conception,late embryo': '11',
+'embryo,7 week post conception': '07',
+'infant': 'infant',
+'10 week post conception,late embryo': '10',
+'young adult': 'young adult',
+'13 week post conception,late embryo': '13',
+'16 week post conception,late embryo': '16',
+'4 week post conception,embryo': '04',
+'neonate': 'neonate',
+'19 week post conception,late embryo': '19',
+'9 week post conception,late embryo': '09',
+'adolescent': 'adolescent',
+'5 week post conception,embryo': '05',
+'embryo,6 week post conception': '06',
+'12 week post conception,late embryo': '12',
+'18 week post conception,late embryo': '18',
+'toddler': 'toddler',
+'elderly': 'elderly',
+'middle adult': 'adult',
+'school age child': 'child'}
+
+dn_cats_f = "../data/processed/DN_cats_Joung.tsv"
+
+pal = {"ref": sns.color_palette("Set2")[0],
+       "ref-v-ref": sns.color_palette("Set2")[0],
+       "rewire": sns.color_palette("Set2")[2],
+       "DN": sns.color_palette("Set2")[1],
+       "NA": "lightgray",
+       "likely": "darkgray"}
+
+dn_cats = pd.read_table(dn_cats_f)
+dn_cats["dn_cat"].fillna("NA", inplace=True)
+dn_cats.dn_cat.value_counts()
+
+tfs = load_annotated_6k_collection()
+
+df_dev, metadata_dev, genes_dev = load_developmental_tissue_expression_remapped()
+print(len(df_dev))
+
+metadata_dev['dev_stage'] = metadata_dev['Developmental_Stage'].map(rename_dev_stage)
+means_dev = (df_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']), 
+                            axis=1).mean())
+means_dev.head()
+
+per_gene_dev = ((2 ** df_dev - 1)
+                .groupby(genes_dev)
+                .transform('sum'))
+f_dev = (((2 ** df_dev - 1) / per_gene_dev)
+        .groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']),
+         axis=1)
+        .mean())
+f_dev = f_dev * ((per_gene_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']),
+                                             axis=1)
+                                             .mean() >= 1)
+                                         .applymap(lambda x: {False: np.nan, True: 1}[x]))  # only count fractions if gene TPM is >= 1
+
+f_dev = f_dev * 100
+f_dev.head()
+
+nonan_taus, nan_taus, array_max = calculate_tau(means_dev)
+nan_taus[0:5]
+
+gene_nonan_taus, gene_nan_taus, gene_array_max = calculate_tau(per_gene_dev.drop_duplicates())
+gene_nan_taus[0:5]
+
+gene_taus = pd.DataFrame()
+gene_taus["UID"] = per_gene_dev.drop_duplicates().index
+gene_taus["tau"] = gene_nan_taus
+gene_taus["gene_name"] = gene_taus["UID"].str.split("|", expand=True)[0]
+gene_taus.sample(5)
+
+indiv_cols = f_dev.columns
+ratios = f_dev.reset_index()
+ratios["tau"] = nan_taus
+
+ratios["clone_acc"] = ratios["UID"].str.split(" ", expand=True)[0]
+ratios.head()
+
+ratios = ratios.merge(dn_cats, left_on="clone_acc", right_on="tf1p0_id")
+len(ratios)
+
+# also find max tpm
+means_dev["max_tpm"] = means_dev.max(axis=1)
+tpm = means_dev.reset_index()
+
+tpm["clone_acc"] = tpm["UID"].str.split(" ", expand=True)[0]
+ratios = ratios.merge(tpm[["clone_acc", "max_tpm"]], on="clone_acc")
+len(ratios)
+
+ratios["neglog_diff_pval"] = -np.log10(ratios["Diffusion P-value"])
+
+ratios["num_ov1"] = (ratios[indiv_cols] > 0.1).sum(axis=1)
+ratios["num_ov1"].fillna(0, inplace=True)
+ratios.sample(5)
+
+ratios = ratios.merge(gene_taus[["gene_name", "tau"]], on="gene_name", suffixes=("_iso", "_gene"))
+len(ratios)
+
+def count_coex(row, thresh):
+    tot = 0
+    for col in indiv_cols:
+        ref_val = row["%s_ref" % col]
+        alt_val = row["%s_alt" % col]
+        if ref_val > thresh and alt_val > thresh:
+            tot += 1
+    return tot
+
+ratios_ref = ratios[ratios["dn_cat"] == "ref"]
+ratios_alt = ratios[ratios["dn_cat"] != "ref"]
+
+ratios_v = ratios_ref.merge(ratios_alt, on="gene_name", suffixes=("_ref", "_alt"))
+ratios_v["num_coex"] = ratios_v.apply(count_coex, thresh=0.1, axis=1)
+ratios_v["num_coex"].fillna(0, inplace=True)
+ratios_v.sample(5)
+
+# do the null test: randomly sample 2 refs 100 times and do the same thing
+null = pd.DataFrame()
+for i in range(100):
+    ref1 = ratios_ref.sample()
+    ref2 = ratios_ref.sample()
+    
+    ref1["tmp_gene"] = "tmp_gene"
+    ref2["tmp_gene"] = "tmp_gene"
+    
+    mrg = ref1.merge(ref2, on="tmp_gene", suffixes=("_ref", "_alt"))
+    mrg["gene_name"] = mrg["gene_name_ref"] + "-v-" + mrg["gene_name_alt"]
+    mrg["dn_cat_alt"] = "ref-v-ref"
+    mrg["num_coex"] = mrg.apply(count_coex, thresh=0.1, axis=1)
+    null = null.append(mrg)
+
+null.sample(5)
+
+ratios_coex = ratios_v[["gene_name", "tf1p0_id_ref", 
+                        "tf1p0_id_alt", "dn_cat_alt", 
+                        "num_coex", "neglog_diff_pval_ref", 
+                        "neglog_diff_pval_alt"]].append(null[["gene_name", "tf1p0_id_ref", 
+                                                              "tf1p0_id_alt", "dn_cat_alt", "num_coex",
+                                                              "neglog_diff_pval_ref", "neglog_diff_pval_alt"]])
+ratios_coex.dn_cat_alt.value_counts()
+
+ratios_coex[ratios_coex["gene_name"] == "KLF7"]
+
+nice_violinplot((2.2, 2.2), ratios, "tau", "dn_cat", pal, ["ref", "rewire", "DN", "NA"], 
+                [1.07, 1.19, 1.31, 1.03], -0.05, "", ["reference", "rewirer", "negative regulator", "NA"], 
+                "tissue specificity (tau)", False, (-0.2, 1.43), 
+                "TF isoform expression in developmental RNA-seq\n(Cardoso-Moreira et al.)", 
+                "../figures/DN_DevTau_Violinplot.pdf")
+
+nice_violinplot((2.2, 2.2), ratios, "num_ov1", "dn_cat", pal, ["ref", "rewire", "DN", "NA"], 
+             [133, 147, 161, 130], -6, "", ["reference", "rewirer", "negative regulator", "NA"], 
+             "# samples where isoform ratio > 10%", False, (-19, 175), 
+             "TF isoform expression in developmental RNA-seq\n(Cardoso-Moreira et al.)", 
+             "../figures/DN_DevCount_Boxplot.pdf")
+
+ratios["max_tpm_log2"] = np.log2(ratios["max_tpm"]+1)
+
+nice_violinplot((2.2, 2.2), ratios, "max_tpm_log2", "dn_cat", pal, ["ref", "rewire", "DN", "NA"], 
+             [4.7, 5.3, 5.9, 3.6], -0.5, "", ["reference", "rewirer", "negative regulator", "NA"], 
+             "maximum isoform tpm", False, (-1, 6.5), 
+             "TF isoform expression in developmental RNA-seq\n(Cardoso-Moreira et al.)", 
+             "../figures/DN_DevTpm_Boxplot.pdf")
+
+g = sns.jointplot(data=ratios[ratios["dn_cat"].isin(["ref", "rewire", "DN"])], 
+                  x="max_tpm_log2", y="tau", hue="dn_cat", palette=pal,
+                  height=3, kind="scatter", marginal_kws={"fill": False},
+                  joint_kws={"s": 10, "linewidth": 0.5, "edgecolor": "black", "alpha": 0.75},
+                  xlim=(-0.1, 5), ylim=(0, 1.1))
+
+g = sns.jointplot(data=ratios[ratios["dn_cat"].isin(["ref", "rewire", "DN"])], 
+                  x="max_tpm_log2", y="num_ov1", hue="dn_cat", palette=pal,
+                  height=3, kind="scatter")
+
+ratios.groupby("dn_cat")[["num_ov1", "max_tpm_log2"]].agg(["mean", "median"])
+
+ref_expr = ratios_ref.groupby(["tf1p0_id", "gene_name", "dn_cat", "tau"])["max_tpm"].agg("max").reset_index()
+n_alt = ratios_alt.groupby(["gene_name", "dn_cat"])["tf1p0_id"].agg("count").reset_index()
+
+ref_expr = ref_expr.merge(n_alt[n_alt["dn_cat"] == "DN"][["gene_name", "tf1p0_id"]],
+                          on="gene_name", how="left")
+ref_expr = ref_expr.merge(n_alt[n_alt["dn_cat"] == "rewire"][["gene_name", "tf1p0_id"]],
+                          on="gene_name", how="left")
+ref_expr = ref_expr.merge(n_alt[n_alt["dn_cat"] == "NA"][["gene_name", "tf1p0_id"]],
+                          on="gene_name", how="left")
+ref_expr.columns = ["tf1p0_id", "gene_name", "dn_cat", "tau", "max_tpm_ref", "DN", "rewire", "NA"]
+ref_expr.fillna(0, inplace=True)
+ref_expr["max_tpm_ref"] = np.log2(ref_expr["max_tpm_ref"]+1)
+ref_expr.sample(5)
+
+to_plot = pd.melt(ref_expr, id_vars=["tf1p0_id", "gene_name", "dn_cat", "tau", "max_tpm_ref"])
+to_plot.head()
+
+sns.lmplot(data=to_plot, x="tau", y="value", hue="variable", palette=pal, col="variable", height=3)
+
+to_plot["value_bool"] = to_plot["value"] > 0
+to_plot.sample(5)
+
+fig = plt.figure(figsize=(4, 3))
+
+ax = sns.boxplot(data=to_plot, x="variable", y="tau", hue="value_bool", 
+                 hue_order=[False, True], fliersize=0)
+
+sns.swarmplot(data=to_plot, x="variable", y="tau", hue="value_bool",
+              hue_order=[False, True], ax=ax, split=True,
+              size=4, edgecolor="black", linewidth=0.5, alpha=0.5)
+
+mimic_r_boxplot(ax)
+
+ax.set_xlabel("")
+ax.set_ylabel("reference isoform tissue-specificity\ntau")
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), facecolor="white")
+
+#fig.savefig("../figures/Joung_DiffP_Boxplot_QCut.pdf", dpi="figure", bbox_inches="tight")
+
+fig = plt.figure(figsize=(4, 3))
+
+ax = sns.boxplot(data=to_plot, x="variable", y="max_tpm_ref", hue="value_bool", 
+                 hue_order=[False, True], fliersize=0)
+
+sns.swarmplot(data=to_plot, x="variable", y="max_tpm_ref", hue="value_bool",
+              hue_order=[False, True], ax=ax, split=True,
+              size=4, edgecolor="black", linewidth=0.5, alpha=0.5)
+
+mimic_r_boxplot(ax)
+
+ax.set_xlabel("")
+ax.set_ylabel("maximum reference expression\nlog2(tpm + 1)")
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), facecolor="white")
+
+to_plot[(to_plot["variable"] == "DN") &
+        (to_plot["value_bool"] == True)].sort_values(by="max_tpm_ref", ascending=False).head(10)
+
+to_plot[(to_plot["variable"] == "rewire") &
+        (to_plot["value_bool"] == True)].sort_values(by="max_tpm_ref", ascending=False).head(10)
