@@ -28,7 +28,7 @@ from statannotations.Annotator import Annotator
 from ccsblib import huri
 
 from data_loading import (
-    load_isoform_and_paralog_y2h_data,
+    load_full_y2h_data_including_controls,
     load_y2h_isoform_data,
     load_valid_isoform_clones,
     load_paralog_pairs_tested_in_y2h
@@ -49,7 +49,7 @@ pd.set_option("display.max_columns", 50)
 # In[2]:
 
 
-y2h = load_isoform_and_paralog_y2h_data()
+y2h = load_full_y2h_data_including_controls()
 isoforms = load_valid_isoform_clones()
 pairs = load_paralog_pairs_tested_in_y2h()
 ppi = load_y2h_isoform_data(require_at_least_one_ppi_per_isoform=True)

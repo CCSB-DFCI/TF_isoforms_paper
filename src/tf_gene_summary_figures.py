@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 
 from data_loading import (
-    load_isoform_and_paralog_y2h_data,
+    load_full_y2h_data_including_controls,
     load_y1h_pdi_data,
     load_m1h_activation_data,
     load_valid_isoform_clones,
@@ -34,7 +34,7 @@ shared_dir = Path("/Users/lukelambourne/Dropbox (Partners HealthCare)/TF_isoform
 tf_webpage_dir = shared_dir / "website"
 shared_fig_dir = tf_webpage_dir / "media"
 
-y2h = load_isoform_and_paralog_y2h_data(add_missing_data=True)
+y2h = load_full_y2h_data_including_controls(add_missing_data=True)
 y1h = load_y1h_pdi_data(add_missing_data=True)
 m1h = load_m1h_activation_data(add_missing_data=True)
 isoforms = load_valid_isoform_clones()

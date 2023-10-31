@@ -47,12 +47,12 @@ iso.loc[~iso["cds"].str.startswith("ATG"), :]
 
 
 from data_loading import (
-    load_isoform_and_paralog_y2h_data,
+    load_full_y2h_data_including_controls,
     load_y1h_pdi_data,
     load_m1h_activation_data,
 )
 
-y2h = load_isoform_and_paralog_y2h_data()
+y2h = load_full_y2h_data_including_controls()
 y1h = load_y1h_pdi_data()
 m1h = load_m1h_activation_data()
 

@@ -114,6 +114,7 @@ def load_tf_isoform_y2h_screen_results():
 def load_y2h_isoform_data(
     require_at_least_one_ppi_per_isoform=True,
     require_at_least_two_partners=False,
+    include_additional_paralog_pairs=True,
 ):
     """
 
@@ -126,14 +127,27 @@ def load_y2h_isoform_data(
         require_at_least_one_ppi_per_isoform (bool, optional): Defaults to True.
         add_missing_data (bool, optional): Defaults to False.
         filter_for_valid_clones (bool, optional): Defaults to True.
+        include_additional_paralog_pairs (bool, optional): Whether to include
+        pairs that did not come from the screens but were also tested because
+        a paralog (or non-paralog control) gene interacted with that partner.
+        Defaults to True.
 
     Returns:
         pandas.DataFrame
 
     """
-    y2h = load_isoform_and_paralog_y2h_data()
+    y2h = load_full_y2h_data_including_controls()
+    if include_additional_paralog_pairs:
+        categories = {
+            "tf_isoform_ppis",
+            "tf_paralog_ppis",
+            "paralog_with_PDI",
+            "non_paralog_control",
+        }
+    else:
+        categories = {"tf_isoform_ppis"}
     ppi = y2h.loc[
-        (y2h["category"] == "tf_isoform_ppis"),
+        y2h["category"].isin(categories),
         ["ad_clone_acc", "ad_gene_symbol", "db_gene_symbol", "Y2H_result"],
     ].copy()
     # at least one positive with an isoform per partner, for each TF gene
@@ -190,9 +204,9 @@ def load_y2h_isoform_data(
     return ppi
 
 
-def load_y2h_paralogs_additional_data():
+def _load_y2h_paralogs_additional_data():
     """Pairs tested in Y2H for the paralogs data, in addition to isoform pairs."""
-    y2h = load_isoform_and_paralog_y2h_data()
+    y2h = load_full_y2h_data_including_controls()
     pairs = load_paralog_pairs_tested_in_y2h()
     y2h_paralog = y2h.loc[
         y2h["category"].isin(
@@ -254,7 +268,7 @@ def load_y2h_paralogs_additional_data():
     return y2h_paralog
 
 
-def load_isoform_and_paralog_y2h_data(
+def load_full_y2h_data_including_controls(
     add_partner_cateogories=False,
     remove_keratin_associated_proteins=True,
 ):
@@ -304,8 +318,6 @@ def load_isoform_and_paralog_y2h_data(
 def load_paralog_pairs_tested_in_y2h(filter_for_valid_clones=True):
     """Pairs of TF gene paralogs and non-paralogs that were tested in Y2H pairwise tests.
 
-    TODO: change name, since it's paralog pairs tested in Y2H
-
     WARNING: the aa sequence identity is just whatever is first in the file.
     Need to settle on which one to use.
 
@@ -331,12 +343,12 @@ def load_paralog_pairs_tested_in_y2h(filter_for_valid_clones=True):
     aa["tf2"] = aa[["gene1", "gene2"]].max(axis=1)
     df = (
         pd.merge(df, aa, how="left", on=["tf1", "tf2"])
-        .loc[:, ["tf1", "tf2", "is_paralog_pair", "AAseq_identity%"]]
+        .loc[:, ["tf1", "tf2", "is_paralog_pair"]]
         .rename(
             columns={
                 "tf1": "gene_symbol_a",
                 "tf2": "gene_symbol_b",
-                "AAseq_identity%": "pct_aa_seq_identity",
+                "AAseq_identity%": "aa_pct_seq_identity",
             }
         )
     )
@@ -362,7 +374,7 @@ def load_ppi_partner_categories():
     signaling_genes = load_signaling_genes()
 
     df = pd.DataFrame(
-        data=load_isoform_and_paralog_y2h_data()["db_gene_symbol"].unique(),
+        data=load_full_y2h_data_including_controls()["db_gene_symbol"].unique(),
         columns=["gene_symbol_partner"],
     )
     df["category"] = "other"
@@ -420,9 +432,9 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
     """Yeast one-hybrid results for the TF isoforms.
 
     Args:
-        add_missing_data (bool, optional): include rows containing NaNs for
-            isoforms that are in the entry clone collection but were not
-            succesfully tested in Y1H. Defaults to False.
+        add_missing_data (bool, optional): include rows containing False for
+            isoforms that were tested but where there were no hits for any
+            isoform of that gene. Defaults to False.
         include_pY1H_data (bool, optional): Add data from additional experiment
             performed from the single cases in the paired yeast one-hybrid test.
             Defaults to True.
@@ -481,13 +493,28 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
     df = pd.concat([df, zeros], axis=0, sort=False).reset_index(drop=True)
 
     if add_missing_data:
-        isoforms = load_valid_isoform_clones()
-        df = pd.merge(
-            df,
-            isoforms.loc[:, ["gene_symbol", "clone_acc"]],
-            on=["gene_symbol", "clone_acc"],
-            how="outer",
+        tested = pd.read_excel(DATA_DIR / "internal/TF iso ey1h seq confirmed.xlsx")
+        tested["Coordinate"] = tested["Coordinate"].apply(
+            lambda x: x.split("-")[0].zfill(2)
+            + x.split("-")[1][0]
+            + x.split("-")[1][1:].zfill(2)
         )
+        clones = load_valid_isoform_clones()
+        if tested["Coordinate"].duplicated().any():
+            raise UserWarning("unexpected duplicates")
+        clones["Coordinate"] = clones["clone_acc"].str.slice(-5)
+        if clones["Coordinate"].duplicated().any():
+            raise UserWarning("unexpected duplicates")
+        tested = pd.merge(tested, clones, how="left", on=["Coordinate"])
+        tested = tested.loc[
+            (tested["sequence verified?"] == "yes")
+            & tested["clone_acc"].notnull()
+            & ~tested["clone_acc"].isin(df["clone_acc"].values),
+            ["gene_symbol", "clone_acc"],
+        ].copy()
+        tested.loc[:, df.columns[2:]] = False
+        df = pd.concat([df, tested])
+
     df[df.columns[2:]] = df[df.columns[2:]].astype("boolean")
     if include_pY1H_data:
         pY1H = load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment()
