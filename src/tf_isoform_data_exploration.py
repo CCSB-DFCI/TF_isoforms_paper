@@ -29,7 +29,7 @@ import ccsblib
 from ccsblib import ccsbplotlib as cplt
 
 from data_loading import (
-    load_isoform_and_paralog_y2h_data,
+    load_full_y2h_data_including_controls,
     load_y1h_pdi_data,
     load_m1h_activation_data,
     load_valid_isoform_clones,
@@ -39,7 +39,7 @@ from isoform_pairwise_metrics import pairs_of_isoforms_comparison_table
 
 get_ipython().run_line_magic("matplotlib", "inline")
 
-y2h = load_isoform_and_paralog_y2h_data()
+y2h = load_full_y2h_data_including_controls()
 y1h = load_y1h_pdi_data()
 # m1h = load_m1h_activation_data()
 isoforms = load_valid_isoform_clones()
@@ -249,7 +249,7 @@ y2h.loc[
 # In[17]:
 
 
-y2h = load_isoform_and_paralog_y2h_data()
+y2h = load_full_y2h_data_including_controls()
 # restict to TF isoform data (i.e. not paralogs etc.)
 ppi = y2h.loc[
     (y2h["category"] == "tf_isoform_ppis"),
@@ -466,7 +466,7 @@ plt.savefig("../figures/ppi_jaccard_dist.pdf")
 
 
 fig, ax = plt.subplots(1, 1)
-ax.hist(iso_pairs["aa_seq_pct_id"], range=(0, 100), bins=25)
+ax.hist(iso_pairs["aa_seq_pct_identity"], range=(0, 100), bins=25)
 ax.set_ylabel("Number of pairs of isoforms")
 ax.set_xlabel("AA sequence % identity")
 plt.savefig("../figures/aa_seq_pct_id_hist.pdf")
@@ -582,13 +582,13 @@ stats.spearmanr(iso_pairs.pdi_n_tested, iso_pairs.pdi_jaccard)
 # In[41]:
 
 
-iso_pairs.sort_values(["ppi_jaccard", "aa_seq_pct_id"], ascending=[True, False])
+iso_pairs.sort_values(["ppi_jaccard", "aa_seq_pct_identity"], ascending=[True, False])
 
 
 # In[42]:
 
 
-x = iso_pairs.loc[iso_pairs["ppi_jaccard"].notnull(), "aa_seq_pct_id"].values
+x = iso_pairs.loc[iso_pairs["ppi_jaccard"].notnull(), "aa_seq_pct_identity"].values
 y = iso_pairs.loc[iso_pairs["ppi_jaccard"].notnull(), "ppi_jaccard"].values
 fig, ax = plt.subplots(1, 1)
 ax.scatter(x, y, alpha=0.3)
@@ -601,7 +601,7 @@ plt.savefig("../figures/ppi_jaccard_vs_aa_id.pdf", bbox_inches="tight")
 # In[43]:
 
 
-x = iso_pairs.loc[iso_pairs["pdi_jaccard"].notnull(), "aa_seq_pct_id"].values
+x = iso_pairs.loc[iso_pairs["pdi_jaccard"].notnull(), "aa_seq_pct_identity"].values
 y = iso_pairs.loc[iso_pairs["pdi_jaccard"].notnull(), "pdi_jaccard"].values
 fig, ax = plt.subplots(1, 1)
 ax.scatter(x, y, alpha=0.3)
@@ -614,7 +614,9 @@ plt.savefig("../figures/pdi_jaccard_vs_aa_id.pdf", bbox_inches="tight")
 # In[44]:
 
 
-x = iso_pairs.loc[iso_pairs["activation_fold_change"].notnull(), "aa_seq_pct_id"].values
+x = iso_pairs.loc[
+    iso_pairs["activation_fold_change"].notnull(), "aa_seq_pct_identity"
+].values
 y = iso_pairs.loc[
     iso_pairs["activation_fold_change"].notnull(), "activation_fold_change"
 ].values

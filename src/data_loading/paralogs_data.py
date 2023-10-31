@@ -1,7 +1,71 @@
 from itertools import combinations
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from Bio import Align
+import tqdm
+
+from .clones_and_assays_data import (
+    load_full_y2h_data_including_controls,
+    load_y1h_pdi_data,
+    load_m1h_activation_data,
+    load_valid_isoform_clones,
+    load_paralog_pairs_tested_in_y2h,
+)
+from .load_annotated_TFs import load_annotated_TFiso1_collection
+from .utils import cache_with_pickle, DATA_DIR
+from .isoform_pairwise_metrics import (
+    _add_PPI_columns,
+    _add_PDI_columns,
+    _add_activation_columns,
+    load_seq_id_between_cloned_isoforms,
+)
+
+
+@cache_with_pickle
+def load_seq_id_between_cloned_genes():
+    """
+    Using reference isoforms. Used to define paralog pairs.
+
+    """
+    tfs = load_annotated_TFiso1_collection()
+
+    aligner = Align.PairwiseAligner()
+    aligner.mode = "global"
+
+    def pairwise_global_aa_sequence_similarity(aa_seq_a, aa_seq_b):
+        alignment = aligner.align(aa_seq_a, aa_seq_b)[0].__str__().split()[1]
+        return alignment.count("|") / len(alignment) * 100
+
+    aa_id = []
+    tfs = {k: tfs[k] for k in sorted(tfs.keys())}
+    for tf_a, tf_b in tqdm.tqdm(list(combinations(tfs.values(), 2))):
+        if "HSFY1" in (tf_a.name, tf_b.name):
+            continue  # HACK due to missing gencode isoforms
+        # NOTE: here we're using the reference isoform, which may not be cloned
+        aa_id.append(
+            (
+                tf_a.name,
+                tf_b.name,
+                "|".join(tf_a.reference_isoform.ensembl_transcript_names),
+                "|".join(tf_b.reference_isoform.ensembl_transcript_names),
+                pairwise_global_aa_sequence_similarity(
+                    tf_a.reference_isoform.aa_seq, tf_b.reference_isoform.aa_seq
+                ),
+            )
+        )
+    aa_id = pd.DataFrame(
+        aa_id,
+        columns=[
+            "gene_symbol_a",
+            "gene_symbol_b",
+            "isoform_a",
+            "isoform_b",
+            "aa_seq_pct_identity",
+        ],
+    )
+    return aa_id
 
 
 def paralog_pair_ppi_table(data, tf_gene_a, tf_gene_b):
@@ -34,299 +98,202 @@ def paralog_pair_ppi_table(data, tf_gene_a, tf_gene_b):
     return tf
 
 
-def isoforms_of_paralogs_pairs(paralog_pairs, isoforms):
-    """Given a list of paralog gene pairs and a list of isoforms per gene,
-    return all pairwise isoform combinations between paralogous genes.
-
-    Args:
-        pairs ([type]): [description]
-        isoforms (bool): [description]
-
-    Returns:
-        [type]: [description]
+def load_paralogs_vs_isoforms_comparison_table():
     """
-    pairs = pd.merge(
-        paralog_pairs.loc[:, ["gene_symbol_a", "gene_symbol_b", "is_paralog_pair"]],
-        isoforms.loc[:, ["gene", "clone_acc", "aa_seq"]],
-        how="inner",
-        left_on="gene_symbol_a",
-        right_on="gene",
-    ).rename(columns={"aa_seq": "aa_seq_a", "clone_acc": "clone_acc_a"})
-    pairs = pd.merge(
-        pairs,
-        isoforms.loc[:, ["gene", "clone_acc", "aa_seq"]],
-        how="inner",
-        left_on="gene_symbol_b",
-        right_on="gene",
-    ).rename(columns={"aa_seq": "aa_seq_b", "clone_acc": "clone_acc_b"})
-    pairs = pairs.drop(columns=["gene_x", "gene_y"])
-    return pairs
+
+    TODO:
+    - add any other columns???
+
+    """
+
+    fpath = (
+        Path(__file__).resolve().parents[2] / "output" / "TF-paralogs-vs-isoforms.tsv"
+    )
+    if not fpath.exists():
+        print("generating isoforms vs paralogs table")
+        _write_TF_iso_vs_paralogs_table(fpath)
+    return pd.read_csv(fpath, sep="\t")
 
 
-def _pairs_comparison_table(pairs, y2h, y1h, m1h):
-    if y2h is not None:
-        pairs["ppi_n_tested"] = pairs.apply(
-            ppi_metric, data=y2h, function=number_tested_partners, axis=1
-        )
-        pairs["ppi_n_shared"] = pairs.apply(
-            ppi_metric, data=y2h, function=number_shared_partners, axis=1
-        )
-        pairs["ppi_n_min"] = pairs.apply(
-            ppi_metric, data=y2h, function=number_min_partners, axis=1
-        )
-        pairs["ppi_n_min_diff"] = pairs.apply(
-            ppi_metric, data=y2h, function=min_difference, axis=1
-        )
-        pairs["ppi_jaccard"] = pairs.apply(
-            ppi_metric, data=y2h, function=jaccard_index, axis=1
-        )
-        pairs["ppi_simpson"] = pairs.apply(
-            ppi_metric, data=y2h, function=simpsons_index, axis=1
-        )
-        pairs["ppi_n_diff"] = pairs["ppi_n_tested"] - pairs["ppi_n_shared"]
-        pairs["ppi_delta_n"] = pairs.apply(
-            ppi_metric, data=y2h, function=size_b_minus_size_a, axis=1
-        )
+def _write_TF_iso_vs_paralogs_table(fpath):
+    df = pd.read_csv(DATA_DIR / "external/Ensembl_TF_paralogs.txt", sep="\t")
+    df = df.dropna()
 
-    if y1h is not None:
-        pairs["pdi_n_tested"] = pairs.apply(
-            pdi_metric, data=y1h, function=number_tested_partners, axis=1
-        )
-        pairs["pdi_n_shared"] = pairs.apply(
-            pdi_metric, data=y1h, function=number_shared_partners, axis=1
-        )
-        pairs["pdi_n_min"] = pairs.apply(
-            pdi_metric, data=y1h, function=number_min_partners, axis=1
-        )
-        pairs["pdi_n_min_diff"] = pairs.apply(
-            pdi_metric, data=y1h, function=min_difference, axis=1
-        )
-        pairs["pdi_jaccard"] = pairs.apply(
-            pdi_metric, data=y1h, function=jaccard_index, axis=1
-        )
-        pairs["pdi_simpson"] = pairs.apply(
-            pdi_metric, data=y1h, function=simpsons_index, axis=1
-        )
-        pairs["pdi_n_diff"] = pairs["pdi_n_tested"] - pairs["pdi_n_shared"]
-        pairs["pdi_delta_n"] = pairs.apply(
-            pdi_metric, data=y1h, function=size_b_minus_size_a, axis=1
-        )
-    if m1h is not None:
-        pairs["m1h_min"] = pairs.apply(m1h_min, data=m1h, axis=1)
-        pairs["m1h_max"] = pairs.apply(m1h_max, data=m1h, axis=1)
-        pairs["activation_fold_change"] = pairs.apply(fold_change_m1h, data=m1h, axis=1)
-        pairs["activation_abs_fold_change"] = pairs["activation_fold_change"].abs()
+    tfs = load_annotated_TFiso1_collection()
+    ensembl_to_hgnc = {tf.ensembl_gene_id: tf.name for tf in tfs.values()}
 
-    aa_ident = load_seq_comparison_data()
-    pairs["aa_seq_pct_id"] = pairs.apply(
-        lambda x: "_".join(sorted([x["clone_acc_a"], x["clone_acc_b"]])), axis=1
-    ).map(aa_ident)
-    # TMP DEBUG
-    # if pairs["aa_seq_pct_id"].isnull().any():
-    #    raise UserWarning("Problem with sequence similarity data")
-    pairs = pairs.dropna(subset=["aa_seq_pct_id"])  # HACK
-    pairs = pairs.set_index("pair")
-    return pairs
+    df["gene1"] = df["Gene stable ID"].map(ensembl_to_hgnc)
+    df["gene2"] = df["Human paralogue gene stable ID"].map(ensembl_to_hgnc)
+    df = df.dropna()
+    df["gene_symbol_a"] = df[["gene1", "gene2"]].min(axis=1)
+    df["gene_symbol_b"] = df[["gene1", "gene2"]].max(axis=1)
+    df = df.loc[:, ["gene_symbol_a", "gene_symbol_b"]].drop_duplicates()
+    df["is_paralog_pair"] = True
+    pairs = load_paralog_pairs_tested_in_y2h()
+    pairs["is_tested_in_Y2H"] = True
+    # NOTE: not including all pairs tested as paralogs in Y2H
+    # since they don't meet the ensembl compara definition
+    df = pd.merge(
+        df,
+        pairs.loc[pairs["is_paralog_pair"], :],
+        how="left",
+        on=["gene_symbol_a", "gene_symbol_b", "is_paralog_pair"],
+    )
+    df = pd.concat([df, pairs.loc[~pairs["is_paralog_pair"], :]])
+    df["is_tested_in_Y2H"] = df["is_tested_in_Y2H"].fillna(False)
+    # HACK
+    df = df.loc[(df["gene_symbol_a"] != "HSFY1") & (df["gene_symbol_b"] != "HSFY1"), :]
+
+    aa_id = load_seq_id_between_cloned_genes()
+    paralog_gene_pairs = pd.merge(
+        df,
+        aa_id.loc[:, ["gene_symbol_a", "gene_symbol_b", "aa_seq_pct_identity"]],
+        how="left",
+        on=["gene_symbol_a", "gene_symbol_b"],
+    )
+
+    if not (
+        paralog_gene_pairs["gene_symbol_a"] < paralog_gene_pairs["gene_symbol_b"]
+    ).all():
+        raise UserWarning("expected gene symbols to be sorted")
+
+    y2h = load_full_y2h_data_including_controls()
+    # need to include tested isoforms that showed no PDI hits
+    y1h = load_y1h_pdi_data(add_missing_data=True, include_pY1H_data=False)
+    if y1h["clone_acc"].duplicated().any():
+        raise UserWarning("unexpected duplicates")
+    y1h = y1h.set_index("clone_acc")
+    m1h = load_m1h_activation_data()
+    m1h["mean"] = m1h[["M1H_rep1", "M1H_rep2", "M1H_rep3"]].mean(axis=1)
+    m1h["abs_mean"] = m1h["mean"].abs()
+    df = _pairs_of_paralogs_and_isoforms_comparison_table(
+        paralog_pairs=paralog_gene_pairs,
+        y2h=y2h,
+        y1h=y1h,
+        m1h=m1h,
+    )
+    if df.index.duplicated().any():
+        raise UserWarning("unexpected duplicates")
+    df.to_csv(fpath, index=False, sep="\t")
 
 
-def pairs_of_paralogs_and_isoforms_comparison_table(
-    isoforms,
+def _pairs_of_paralogs_and_isoforms_comparison_table(
     paralog_pairs,
     y2h,
     y1h,
     m1h,
-    restrict_isoforms_to_those_with_paralogs=False,
 ):
     """
 
     Restricted to isoforms pairs in the paralogs dataset.
 
     Args:
-        isoforms (): [description]
         paralog_pairs ([type]): [description]
         y2h ([type]): [description]
         y1h ([type]): [description]
         m1h ([type]): [description]
+        restrict_isoforms_to_those_with_paralogs (bool):
+
 
     Returns:
         [type]: [description]
 
     """
-    pairs = isoforms_of_paralogs_pairs(paralog_pairs, isoforms)
+    if (paralog_pairs["gene_symbol_a"] == paralog_pairs["gene_symbol_b"]).any():
+        raise ValueError("Gene incorrectly paired with itself as a paralog")
+
+    tfs = load_annotated_TFiso1_collection()
+    pairs = paralog_pairs.copy()
+    pairs = pairs.loc[
+        (pairs["gene_symbol_a"] != "PCGF6") & (pairs["gene_symbol_b"] != "PCGF6"), :
+    ]  # HACK
+    pairs["clone_acc_a"] = pairs["gene_symbol_a"].apply(
+        lambda x: tfs[x].cloned_reference_isoform.clone_acc
+    )
+    pairs["clone_acc_b"] = pairs["gene_symbol_b"].apply(
+        lambda x: tfs[x].cloned_reference_isoform.clone_acc
+    )
+
     pairs["category"] = pairs["is_paralog_pair"].map(
         {True: "paralogs", False: "non-paralog-control"}
     )
-    pairs = pairs.drop(columns=["aa_seq_a", "aa_seq_b", "is_paralog_pair"])
+    pairs = pairs.drop(columns=["is_paralog_pair"])
+
     iso_pairs = []
-    for tf_gene in isoforms["gene"].unique():
-        tf_iso = isoforms.loc[isoforms["gene"] == tf_gene, "clone_acc"].values
-        for iso_a, iso_b in combinations(tf_iso, 2):
-            iso_pairs.append((tf_gene, tf_gene, iso_a, iso_b))
+    for tf in tfs.values():
+        ref_acc = tf.cloned_reference_isoform.clone_acc
+        for alt_iso in tf.cloned_isoforms:
+            if alt_iso.clone_acc == ref_acc:
+                continue
+            iso_pairs.append(
+                (
+                    tf.name,
+                    tf.name,
+                    ref_acc,
+                    alt_iso.clone_acc,
+                )
+            )
+
     iso_pairs = pd.DataFrame(
         data=iso_pairs,
         columns=["gene_symbol_a", "gene_symbol_b", "clone_acc_a", "clone_acc_b"],
     )
+
+    aa_ident = load_seq_id_between_cloned_isoforms()
+    iso_pairs = pd.merge(
+        iso_pairs,
+        aa_ident.loc[:, ["clone_acc_a", "clone_acc_b", "aa_seq_pct_identity"]],
+        how="left",
+        on=["clone_acc_a", "clone_acc_b"],
+    )
+    if iso_pairs["aa_seq_pct_identity"].isnull().any():
+        raise UserWarning("Unexpected missing sequence similarity values")
+
     iso_pairs["category"] = "isoforms"
-    if restrict_isoforms_to_those_with_paralogs:
-        iso_pairs = iso_pairs.loc[
-            iso_pairs["gene_symbol_a"].isin(pairs["gene_symbol_a"])
-            | iso_pairs["gene_symbol_a"].isin(pairs["gene_symbol_b"]),
-            :,
-        ]
     pairs = pd.concat([pairs, iso_pairs])
     pairs["pair"] = pairs.apply(
         lambda x: "_".join(sorted([x["clone_acc_a"], x["clone_acc_b"]])), axis=1
     )
+    if pairs["aa_seq_pct_identity"].isnull().any():
+        err_msg = "Problem with sequence similarity data."
+        err_msg += f"\nMissing for: "
+        err_msg += str(
+            pairs.loc[
+                pairs["aa_seq_pct_identity"].isnull(), ["clone_acc_a", "clone_acc_b"]
+            ]
+        )
+        raise UserWarning(err_msg)
+
+    family = {gene_symbol: tf.tf_family for gene_symbol, tf in tfs.items()}
+    pairs["family_a"] = pairs["gene_symbol_a"].map(family)
+    pairs["family_b"] = pairs["gene_symbol_b"].map(family)
+    is_mane_cloned = {
+        gene_symbol: tf.cloned_MANE_select_isoform for gene_symbol, tf in tfs.items()
+    }
+    pairs["is_MANE_select_isoform_cloned_a"] = pairs["gene_symbol_a"].map(
+        is_mane_cloned
+    )
+    pairs["is_MANE_select_isoform_cloned_b"] = pairs["gene_symbol_b"].map(
+        is_mane_cloned
+    )
+    pairs["is_MANE_select_isoform_cloned_both"] = (
+        pairs["is_MANE_select_isoform_cloned_a"]
+        & pairs["is_MANE_select_isoform_cloned_b"]
+    )
+
     return _pairs_comparison_table(pairs, y2h, y1h, m1h)
+
+
+def _pairs_comparison_table(pairs, y2h, y1h, m1h):
+    _add_PPI_columns(pairs, y2h, suffixes=("_a", "_b"))
+    _add_PDI_columns(pairs, y1h, suffixes=("_a", "_b"))
+    _add_activation_columns(pairs, m1h, suffixes=("_a", "_b"))
+    pairs = pairs.set_index("pair")
+    # remove non-symmetric metrics, which might make sense for
+    # ref vs alt isoforms but don't for gene a vs gene b paralogs
+    pairs = pairs.drop(columns=["activation_fold_change_log2", "PPI_delta_n"])
+    return pairs
 
 
 def tissue_expression_similarity_per_gene():
     pass
-
-
-def ppi_metric(row, data, function, suffixes=("_a", "_b")):
-    ad_a = row["clone_acc" + suffixes[0]]
-    ad_b = row["clone_acc" + suffixes[1]]
-    pair = data.loc[data["ad_clone_acc"].isin([ad_a, ad_b]), :].pivot(
-        values="Y2H_result", index="db_gene_symbol", columns="ad_clone_acc"
-    )
-    if ad_a not in pair.columns or ad_b not in pair.columns:
-        return np.nan
-    # remove any partner with AA / NC / NS / NaN in either
-    pair = pair.loc[pair.notnull().all(axis=1), :].astype(int).astype(bool)
-    # remove partners that tested negative in both
-    pair = pair.loc[pair.any(axis=1), :]
-    if pair.shape[0] > 0:
-        return function(
-            set(pair.index[pair[ad_a]].values), set(pair.index[pair[ad_b]].values)
-        )
-    else:
-        return np.nan
-
-
-def pdi_metric(row, data, function):
-    df = data.loc[
-        (data["clone_acc"] == row["clone_acc_a"])
-        | (data["clone_acc"] == row["clone_acc_b"]),
-        data.columns[2:],
-    ].copy()
-    if df.shape[0] < 2:
-        return np.nan
-    df = df.loc[:, df.any(axis=0)]
-    if df.shape[1] == 0:
-        return np.nan
-    # kaia edited these 2 lines to drop any baits with NA
-    # my version of pandas wasn't auto-filtering these out, think it got fixed in later versions
-    a = set(df.columns[df.iloc[0].fillna(False)])
-    b = set(df.columns[df.iloc[1].fillna(False)])
-    return function(a, b)
-
-
-def jaccard_index(a, b):
-    if len(a) == 0 and len(b) == 0:
-        return np.nan
-    return len(a.intersection(b)) / float(len(a.union(b)))
-
-
-def simpsons_index(a, b):
-    min_size = min(len(a), len(b))
-    if min_size == 0:
-        return np.nan
-    else:
-        return len(a.intersection(b)) / float(min_size)
-
-
-def number_tested_partners(a, b):
-    """Comes up with nan when it should be 0?"""
-    return len(a.union(b))
-
-
-def number_shared_partners(a, b):
-    return len(a.intersection(b))
-
-
-def number_min_partners(a, b):
-    return min(len(a), len(b))
-
-
-def min_difference(a, b):
-    return min(len(a.difference(b)), len(b.difference(a)))
-
-
-def size_b_minus_size_a(a, b):
-    return len(b) - len(a)
-
-
-def fold_change_m1h(row, data):
-    if (
-        row["clone_acc_a"] not in data["clone_acc"].values
-        or row["clone_acc_b"] not in data["clone_acc"].values
-    ):
-        return np.nan
-    a = (
-        data.loc[
-            data["clone_acc"] == row["clone_acc_a"],
-            [c for c in data.columns if c.startswith("M1H_rep")],
-        ]
-        .mean(axis=1)
-        .values[0]
-    )
-    b = (
-        data.loc[
-            data["clone_acc"] == row["clone_acc_b"],
-            [c for c in data.columns if c.startswith("M1H_rep")],
-        ]
-        .mean(axis=1)
-        .values[0]
-    )
-    return b - a
-
-
-def m1h_min(row, data):
-    if (
-        row["clone_acc_a"] not in data["clone_acc"].values
-        or row["clone_acc_b"] not in data["clone_acc"].values
-    ):
-        return np.nan
-    a = (
-        data.loc[
-            data["clone_acc"] == row["clone_acc_a"],
-            [c for c in data.columns if c.startswith("M1H_rep")],
-        ]
-        .mean(axis=1)
-        .values[0]
-    )
-    b = (
-        data.loc[
-            data["clone_acc"] == row["clone_acc_b"],
-            [c for c in data.columns if c.startswith("M1H_rep")],
-        ]
-        .mean(axis=1)
-        .values[0]
-    )
-    return min([a, b])
-
-
-def m1h_max(row, data):
-    if (
-        row["clone_acc_a"] not in data["clone_acc"].values
-        or row["clone_acc_b"] not in data["clone_acc"].values
-    ):
-        return np.nan
-    a = (
-        data.loc[
-            data["clone_acc"] == row["clone_acc_a"],
-            [c for c in data.columns if c.startswith("M1H_rep")],
-        ]
-        .mean(axis=1)
-        .values[0]
-    )
-    b = (
-        data.loc[
-            data["clone_acc"] == row["clone_acc_b"],
-            [c for c in data.columns if c.startswith("M1H_rep")],
-        ]
-        .mean(axis=1)
-        .values[0]
-    )
-    return max([a, b])

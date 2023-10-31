@@ -14,7 +14,7 @@ from scipy import stats
 
 from data_loading import (
     load_valid_isoform_clones,
-    load_isoform_and_paralog_y2h_data,
+    load_full_y2h_data_including_controls,
     load_y1h_pdi_data,
     load_annotated_TFiso1_collection,
     load_m1h_activation_data,
@@ -46,7 +46,7 @@ iso["category"] = "alternative"
 # TODO: remove genes with no mane select isoform
 iso.loc[iso["clone_acc"].isin(mane_select_clones), "category"] = "reference"
 iso.loc[iso["is_novel_isoform"], "category"] = "novel"
-ppi = load_isoform_and_paralog_y2h_data()
+ppi = load_full_y2h_data_including_controls()
 ppi = ppi.loc[ppi["category"] == "tf_isoform_ppis", :]
 pdi = load_y1h_pdi_data()
 m1h = load_m1h_activation_data()

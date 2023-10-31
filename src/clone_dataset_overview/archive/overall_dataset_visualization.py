@@ -6,7 +6,7 @@
 import pandas as pd
 
 from data_loading import (
-    load_isoform_and_paralog_y2h_data,
+    load_full_y2h_data_including_controls,
     load_y1h_pdi_data,
     load_valid_isoform_clones,
 )
@@ -20,7 +20,7 @@ from data_loading import (
 # table of nodes
 #    - clone to gene
 #    - dna vs isoform vs
-ppi = load_isoform_and_paralog_y2h_data()
+ppi = load_full_y2h_data_including_controls()
 ppi = ppi.loc[
     (ppi["category"] == "tf_isoform_ppis") & (ppi["score"] == "1"),
     ["ad_clone_acc", "ad_gene_symbol", "db_gene_symbol"],

@@ -18,7 +18,7 @@ import pandas as pd
 import seaborn as sns
 
 from data_loading import (
-    load_isoform_and_paralog_y2h_data,
+    load_full_y2h_data_including_controls,
     load_valid_isoform_clones,
     load_annotated_TFiso1_collection,
     load_human_tf_db,
@@ -69,7 +69,7 @@ def load_cofactors():
 
 
 tfs = load_annotated_TFiso1_collection()
-ppi = load_isoform_and_paralog_y2h_data()
+ppi = load_full_y2h_data_including_controls()
 ppi = ppi.loc[ppi["category"] == "tf_isoform_ppis", :]
 ppi["gene_level_pair"] = ppi["ad_gene_symbol"] + "_" + ppi["db_gene_symbol"]
 ppi["ad_iso_id"] = ppi["ad_clone_acc"].apply(
