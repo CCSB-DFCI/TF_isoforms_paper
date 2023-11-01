@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 
 from ccsblib import paros_connection
-from ccsblib import ccsbplotlib as cplt
+from plotting import validation_plot
 
 from data_loading import (
     load_full_y2h_data_including_controls,
@@ -261,7 +261,7 @@ sources = [
     "pos-matched-neg",
     "neg",
 ]
-cplt.validation_plot(
+validation_plot(
     data=n2h,
     selections=[n2h["source"] == s for s in sources],
     labels=sources,
@@ -292,7 +292,7 @@ samples = {
     "neg_other": (n2h["source"] == "neg") & ~n2h["non_zero_iso"],
 }
 
-cplt.validation_plot(
+validation_plot(
     data=n2h,
     selections=list(samples.values()),
     labels=list(samples.keys()),
@@ -367,7 +367,7 @@ plt.savefig("../figures/n2h_scatter.pdf", bbox_inches="tight")
 
 
 sources = n2h["source"].unique()
-cplt.validation_plot(
+validation_plot(
     data=n2h,
     selections=[n2h["source"] == s for s in sources],
     labels=sources,
