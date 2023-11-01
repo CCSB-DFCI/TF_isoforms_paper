@@ -41,8 +41,6 @@ def load_seq_id_between_cloned_genes():
     aa_id = []
     tfs = {k: tfs[k] for k in sorted(tfs.keys())}
     for tf_a, tf_b in tqdm.tqdm(list(combinations(tfs.values(), 2))):
-        if "HSFY1" in (tf_a.name, tf_b.name):
-            continue  # HACK due to missing gencode isoforms
         # NOTE: here we're using the reference isoform, which may not be cloned
         aa_id.append(
             (
@@ -141,8 +139,6 @@ def _write_TF_iso_vs_paralogs_table(fpath):
     )
     df = pd.concat([df, pairs.loc[~pairs["is_paralog_pair"], :]])
     df["is_tested_in_Y2H"] = df["is_tested_in_Y2H"].fillna(False)
-    # HACK
-    df = df.loc[(df["gene_symbol_a"] != "HSFY1") & (df["gene_symbol_b"] != "HSFY1"), :]
 
     aa_id = load_seq_id_between_cloned_genes()
     paralog_gene_pairs = pd.merge(
