@@ -312,8 +312,6 @@ def load_annotated_TFiso1_collection(
             if not clone_match:
                 uncloned_orfs[tf.name].append(gencode_isoform)
     for gene_name, isoforms in uncloned_orfs.items():
-        if gene_name == "HSFY1":
-            continue  # different strand isoforms???
         genes[gene_name].add_isoforms(isoforms)
 
     _add_MANE_and_APPRIS_annoations(
