@@ -1,8 +1,5 @@
-import os
-import sys
-from pathlib import Path
-
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib import patches
 import pandas as pd
@@ -14,7 +11,7 @@ from data_loading import paralog_pair_ppi_table
 
 COLOR_PURPLE = (155 / 255, 97 / 255, 153 / 255)
 
-## kaia's added code
+# kaia's added code
 PAPER_PRESET = {
     "style": "ticks",
     "font": "Helvetica",
@@ -439,7 +436,7 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None, xlim=None):
         ]
     )
 
-    if xlim == None:
+    if xlim is None:
         ax.set_xlim(-3, 12)
     else:
         ax.set_xlim(xlim)
@@ -452,6 +449,192 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None, xlim=None):
     for pos in ["top", "left", "right"]:
         ax.spines[pos].set_visible(False)
     ax.yaxis.set_tick_params(length=0)
+
+
+def validation_plot(
+    positives=None,
+    n_tested=None,
+    data=None,
+    selections=None,
+    result_column="result",
+    labels=None,
+    colors=None,
+    ax=None,
+    bayes_errors=True,
+    y_max=1.0,
+    draw_numbers=True,
+    xlabel_rotation=0,
+    errorbar_capsize=0.9,
+    errorbar_thickness=None,
+    bar_spacing=0.2,
+):
+    """Compare the validation rate of different cateogies.
+
+    Missing values are not used in the denominator.
+
+    See the :ref:`tutorial </validation_plots.ipynb>` for more information.
+
+    Args:
+        positives (list(int)): number tested positive in each category
+        n_tested (list(int)): number successfully tested in each category
+        data (pandas.DataFrame): results of validation experiment
+        selections (list(pandas.Series)): boolean rows index for each category
+        ax (matplotlib.axes.Axes): Axes to draw plot onto
+        bayes_errors (bool): do Bayesian error bars, if false use standard error
+                            on proportion
+        result_column (str): column containing 0/1/nan for result of test
+        labels (list(str)): name of each category
+        colors (list(str)): color for each bar
+        y_max (float): y axis upper limit
+        draw_numbers (bool): flag to print the numbers on top of the bars
+        xlabel_rotation (float): rotating the x axis labels
+        errorbar_capsize (float): as fraction of the width of the bars
+        errorbar_thickness (float): width of error bar lines
+        bar_spacing (float): must be between 0 and 1
+
+    Examples:
+        There are two ways to call the function. Either give it the raw data:
+
+
+
+        .. plot::
+            :context: close-figs
+
+            >>> from plotting import validation_plot
+            >>> validation_plot(positives=[20, 1, 19],
+            ...                 n_tested=[100, 100, 100],
+            ...                 labels=['PRS', 'RRS', 'Y2H'],
+            ...                 y_max=0.3)
+
+        Or pass it the validation results as a DataFrame and a list of the rows
+        for each category:
+
+        .. plot::
+            :context: close-figs
+
+            >>> from ccsblib import huri
+            >>> data = huri.load_validation_data()
+            >>> exp = (data['assay'] == 'MAPPIT') & (data['standard_batch'] == 'Hvs01')
+            >>> sources = ['lit_bm_2013_rand250', 'Hs01', 'RRS']
+            >>> categories = [exp & (data['source'] == cat) for cat in sources]
+            >>> validation_plot(data=data,
+            ...                 selections=categories,
+            ...                 labels=sources,
+            ...                 y_max=0.25)
+
+    """
+    signature_a = positives is not None and n_tested is not None
+    signature_b = data is not None and selections is not None
+    if signature_a == signature_b:
+        msg = """Must supply only one of both positives and n_tested or
+                 both data and selections."""
+        raise ValueError(msg)
+    if signature_b:
+        if (
+            not data.loc[data[result_column].notnull(), result_column]
+            .isin({0, 1})
+            .all()
+        ):
+            raise ValueError("Only expect 0/1/missing in result column")
+        positives = [
+            (data.loc[rows, :][result_column] == 1).sum() for rows in selections
+        ]
+        n_tested = [
+            data.loc[rows, :][result_column].notnull().sum() for rows in selections
+        ]
+    _validation_plot(
+        positives=positives,
+        n_tested=n_tested,
+        colors=colors,
+        labels=labels,
+        ax=ax,
+        bayes_errors=bayes_errors,
+        y_max=y_max,
+        draw_numbers=draw_numbers,
+        xlabel_rotation=xlabel_rotation,
+        errorbar_capsize=errorbar_capsize,
+        errorbar_thickness=errorbar_thickness,
+        bar_spacing=bar_spacing,
+    )
+
+
+def _validation_plot(
+    positives,
+    n_tested,
+    colors=None,
+    labels=None,
+    ax=None,
+    bayes_errors=True,
+    y_max=1.0,
+    draw_numbers=True,
+    xlabel_rotation=0.0,
+    errorbar_capsize=5,
+    errorbar_thickness=None,
+    bar_spacing=0.2,
+):
+    if len(positives) != len(n_tested):
+        raise ValueError("Lengths of positives and n_tested must be equal")
+    if any([p > n for p, n in zip(positives, n_tested)]):
+        raise ValueError("Number of positives must be <= number tested")
+    if bar_spacing > 1.0 or bar_spacing < 0.0:
+        msg = "bar_spacing={}\nbar_spacing must be between 0 and 1"
+        msg = msg.format(bar_spacing)
+        raise ValueError(msg)
+    bar_width = 1.0 - bar_spacing
+    if ax is None:
+        ax = plt.gca()
+    if labels is None:
+        labels = [""] * len(positives)
+    if colors is None:
+        colors = [None] * len(positives)
+    ax.set_yticks(np.arange(0.0, 1.0, 0.1), minor=False)
+    ax.set_yticks(np.arange(0.05, 1.0, 0.1), minor=True)
+    ax.set_facecolor("0.96")
+    ax.set_axisbelow(True)
+    ax.grid(color="white", axis="y", which="both", zorder=5)
+    pos = np.array(positives)
+    tested = np.array(n_tested)
+    neg = tested - pos
+    fracs = pos / tested
+    if bayes_errors:
+        intv = stats.beta.interval(0.6827, pos + 1, neg + 1)
+        errs = [fracs - intv[0], intv[1] - fracs]
+        errs[0][pos == 0] = 0.0
+        errs[1][neg == 0] = 0.0
+    else:
+        stdErrProp = np.sqrt((fracs * (1.0 - fracs)) / (pos + neg))
+        errs = [stdErrProp, stdErrProp]
+    for i in range(len(positives)):
+        ax.bar(i, fracs[i], color=colors[i], label=labels[i], width=bar_width)
+        if draw_numbers:
+            c = "white"
+            h = 0.02  # default height to draw numbers
+            if fracs[i] < h:
+                c = "black"
+            if (errs[1][i] + fracs[i]) > h and (fracs[i] - errs[0][i]) < (h + 0.04):
+                c = "black"
+                h = fracs[i] + errs[1][i] + 0.02
+            ax.text(i, h, "{}/{}".format(pos[i], pos[i] + neg[i]), color=c, ha="center")
+    bar_width_pixels = (
+        ax.transData.transform((bar_width, 0)) - ax.transData.transform((0, 0))
+    )[0]
+    # 72 comes from definition of a point as 1 / 72 inches
+    bar_width_points = (72.0 / ax.figure.dpi) * bar_width_pixels
+    ax.errorbar(
+        range(fracs.shape[0]),
+        fracs,
+        yerr=errs,
+        color="black",
+        fmt="none",
+        # I don't understand why I needed the factor of 0.5 below
+        capsize=bar_width_points * errorbar_capsize * 0.5,
+        elinewidth=errorbar_thickness,
+        capthick=errorbar_thickness,
+    )
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=xlabel_rotation)
+    ax.set_ylim((0.0, y_max))
+    ax.set_ylabel("Fraction positive")
 
 
 def validation_titration_plot(
@@ -632,7 +815,7 @@ def nice_boxplot(
         dist_a = list(df[(df[xcat] == cat_a)][ycat])
         dist_b = list(df[(df[xcat] == cat_b)][ycat])
 
-        u, p = mannwhitneyu(dist_a, dist_b, alternative="two-sided")
+        u, p = stats.mannwhitneyu(dist_a, dist_b, alternative="two-sided")
         print(p)
 
         annotate_pval(ax, xs[0], xs[1], y, 0, y - (y * d_y), p, PAPER_FONTSIZE)
@@ -696,7 +879,7 @@ def nice_violinplot(
         dist_a = list(df[(df[xcat] == cat_a)][ycat])
         dist_b = list(df[(df[xcat] == cat_b)][ycat])
 
-        u, p = mannwhitneyu(dist_a, dist_b, alternative="two-sided")
+        u, p = stats.mannwhitneyu(dist_a, dist_b, alternative="two-sided")
         print(p)
 
         annotate_pval(ax, xs[0], xs[1], y, 0, y - (y * d_y), p, PAPER_FONTSIZE)
@@ -727,3 +910,110 @@ def nice_violinplot(
     ax.set_title(title)
 
     fig.savefig(figf, dpi="figure", bbox_inches="tight")
+
+
+def checkerboard(
+    data,
+    protein_a_column=None,
+    protein_b_column=None,
+    detection_columns=None,
+    sort=True,
+    assay_labels=None,
+    positive_color="yellow",
+    negative_color="white",
+    ax=None,
+):
+    """Plot yes/no detection for benchmark PPI set with different assays
+
+    See Braun et al, Nature Methods, 2010 for examples.
+
+    Args:
+        data (pandas.DataFrame): PPI test results. No missing values.
+        protein_a/b_column (str): columns with protein names
+        detection_columns (list(str)): name of columns containing boolean results
+        sort (bool): whether to sort pairs by number of assays detected and assay order
+        assay_labels (list(str)): names of assays to print
+        positive_color (str/RGB/RGBA or list(colors)): single color or list of colors for each different assay
+        negative_color (str/RGB/RGBA): color to indicate undetected pairs
+        ax (matplotlib.axes.Axes): Axes to draw plot onto
+
+    Examples:
+        Make a checkerboard of some dummy data:
+
+        .. plot::
+            :context: close-figs
+
+            >>> import pandas as pd
+            >>> from plotting import checkerboard
+            >>> prs_results = pd.DataFrame(columns=['gene_a', 'gene_b', 'Y2H', 'MAPPIT', 'GPCA'],
+            ...                            data=[['ABC1', 'ABC2', False, False, False],
+            ...                                  ['EFG1', 'EFG2', False, False, False],
+            ...                                  ['HIJ1', 'HIJ2', True, False, False],
+            ...                                  ['KLM1', 'KLM2', False, False, False],
+            ...                                  ['NOP1', 'NOP2', True, True, True],
+            ...                                  ['QRS1', 'QRS2', True, False, True],
+            ...                                  ['TUV1', 'TUV2', False, False, True],
+            ...                                  ['XYZ1', 'XYZ2', False, False, False]])
+            >>> checkerboard(data=prs_results,
+            ...              protein_a_column='gene_a',
+            ...              protein_b_column='gene_b',
+            ...              detection_columns=['Y2H',
+            ...                                 'MAPPIT',
+            ...                                 'GPCA'])
+
+    """
+    df = data.copy()
+    if ax is None:
+        ax = plt.gca()
+    if assay_labels is None:
+        assay_labels = detection_columns
+    if protein_a_column is None:
+        protein_a_column = df.columns[0]
+    if protein_b_column is None:
+        protein_a_column = df.columns[1]
+    if detection_columns is None:
+        detection_columns = list(df.columns[df.dtypes == bool])
+    elif isinstance(detection_columns, str):
+        detection_columns = [detection_columns]
+    df["total_positives"] = df[detection_columns].sum(axis=1)
+    if sort:
+        df = df.sort_values(by=["total_positives"] + detection_columns, ascending=False)
+    if isinstance(positive_color, list) and len(positive_color) == len(
+        detection_columns
+    ):
+        results = df[detection_columns].values.T
+        for i, color in enumerate(positive_color):
+            m = np.zeros(shape=results.shape, dtype=bool)
+            m[i, :] = True
+            ax.imshow(
+                results * m,
+                cmap=matplotlib.colors.ListedColormap(
+                    [negative_color if i == 0 else (0, 0, 0, 0), color]
+                ),
+            )
+    else:
+        ax.imshow(
+            df[detection_columns].values.T,
+            cmap=matplotlib.colors.ListedColormap([negative_color, positive_color]),
+        )
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    ax.set_yticks(range(len(detection_columns)))
+    ax.set_yticklabels(assay_labels)
+    ax.yaxis.set_tick_params(length=0)
+    ax.set_xticks([])
+    len_longest_name = df[protein_a_column].str.len().max()
+    for i, (name_a, name_b) in enumerate(
+        zip(df[protein_a_column].values, df[protein_b_column].values)
+    ):
+        ax.text(
+            i,
+            -0.6,
+            name_a + " " * (len_longest_name - len(name_a) + 2) + name_b,
+            rotation=90,
+            fontfamily="monospace",
+            va="bottom",
+            ha="center",
+        )

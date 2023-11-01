@@ -26,7 +26,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 
 import ccsblib
-from ccsblib import ccsbplotlib as cplt
+from plotting import validation_plot
 
 from data_loading import (
     load_full_y2h_data_including_controls,
