@@ -428,6 +428,19 @@ def _load_old_ppi_partner_categories():
     return df
 
 
+def load_n2h_ppi_validation_data():
+    df = pd.read_csv(DATA_DIR / "internal/N2H_results.tsv", sep="\t")
+    df = df.dropna(subset=["score_pair", "score_empty-N1", "score_empty-N2"])
+    if df.duplicated().any():
+        raise UserWarning("unexpected duplicates")
+    df["NLR"] = df["score_pair"] / df[["score_empty-N1", "score_empty-N2"]].max(axis=1)
+    df["log2 NLR"] = df["NLR"].apply(np.log2)
+    df["score_pair_log10"] = df["score_pair"].apply(np.log10)
+    df["score_empty-N1_log10"] = df["score_empty-N1"].apply(np.log10)
+    df["score_empty-N2_log10"] = df["score_empty-N2"].apply(np.log10)
+    return df
+
+
 def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
     """Yeast one-hybrid results for the TF isoforms.
 
