@@ -3,9 +3,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from Bio import Align
+import tqdm
 
 from data_loading import (
-    load_seq_comparison_data,
     load_dbd_accessions,
     load_annotated_TFiso1_collection,
     load_y2h_isoform_data,
@@ -16,6 +17,52 @@ from data_loading import (
     load_human_tf_db,
     load_ppi_partner_categories,
 )
+from .utils import cache_with_pickle
+
+
+@cache_with_pickle
+def load_seq_id_between_cloned_isoforms():
+    """ """
+    tfs = load_annotated_TFiso1_collection()
+    tfs = {k: v for k, v in tfs.items() if len(v.cloned_isoforms) >= 2}
+
+    aligner = Align.PairwiseAligner()
+    aligner.mode = "global"
+
+    def pairwise_global_aa_sequence_similarity(aa_seq_a, aa_seq_b):
+        alignment = aligner.align(aa_seq_a, aa_seq_b)[0].__str__().split()[1]
+        return alignment.count("|") / len(alignment) * 100
+
+    aa_id = []
+    tfs = {k: tfs[k] for k in sorted(tfs.keys())}
+    for tf in tqdm.tqdm(list(tfs.values())):
+        for iso_a, iso_b in combinations(tf.cloned_isoforms, 2):
+            aa_id.append(
+                (
+                    tf.name,
+                    iso_a.clone_acc,
+                    iso_b.clone_acc,
+                    pairwise_global_aa_sequence_similarity(iso_a.aa_seq, iso_b.aa_seq),
+                )
+            )
+    aa_id = pd.DataFrame(
+        aa_id,
+        columns=[
+            "gene_symbol",
+            "clone_acc_a",
+            "clone_acc_b",
+            "aa_seq_pct_identity",
+        ],
+    )
+    aa_id = pd.concat(
+        [
+            aa_id,
+            aa_id.copy().rename(
+                columns={"clone_acc_a": "clone_acc_b", "clone_acc_b": "clone_acc_a"}
+            ),
+        ]
+    )
+    return aa_id
 
 
 def load_ref_vs_alt_isoforms_table():
@@ -128,16 +175,16 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
         df["is_DBD"] = df["accession"].isin(load_dbd_accessions())
         df_new = (
             df.loc[df["is_DBD"], :]
-            .groupby(["gene", "ref_iso", "alt_iso"])[["deletion", "frameshift"]]
+            .groupby(["gene_symbol", "ref_iso", "alt_iso"])[["deletion", "frameshift"]]
             .sum()
             .sum(axis=1)
             / df.loc[df["is_DBD"], :]
-            .groupby(["gene", "ref_iso", "alt_iso"])["length"]
+            .groupby(["gene_symbol", "ref_iso", "alt_iso"])["length"]
             .sum()
         ).to_frame(name="dbd_fraction")
         df_new["dbd_insertion_n_aa"] = (
             df.loc[df["is_DBD"], :]
-            .groupby(["gene", "ref_iso", "alt_iso"])["insertion"]
+            .groupby(["gene_symbol", "ref_iso", "alt_iso"])["insertion"]
             .sum()
         )
         df = df_new.reset_index()
@@ -152,15 +199,19 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
     dbd["clone_acc_alt"] = dbd["alt_iso"].map(
         {iso.name: iso.clone_acc for tf in tfs.values() for iso in tf.cloned_isoforms}
     )
-    dbd = dbd.drop(columns=["gene", "ref_iso", "alt_iso"])
+    dbd = dbd.drop(columns=["gene_symbol", "ref_iso", "alt_iso"])
     df = pd.merge(df, dbd, how="left", on=["clone_acc_ref", "clone_acc_alt"])
     df["dbd_affected"] = df["dbd_pct_lost"] > 0
 
-    aa_ident = load_seq_comparison_data()
-    df["aa_seq_pct_id"] = df.apply(
-        lambda x: "_".join(sorted([x["clone_acc_ref"], x["clone_acc_alt"]])), axis=1
-    ).map(aa_ident)
-    if df["aa_seq_pct_id"].isnull().any():
+    aa_ident = load_seq_id_between_cloned_isoforms()
+    df = pd.merge(
+        df,
+        aa_ident.loc[:, ["clone_acc_a", "clone_acc_b", "aa_seq_pct_identity"]],
+        how="left",
+        left_on=["clone_acc_ref", "clone_acc_alt"],
+        right_on=["clone_acc_a", "clone_acc_b"],
+    ).drop(columns=["clone_acc_a", "clone_acc_b"])
+    if df["aa_seq_pct_identity"].isnull().any():
         raise UserWarning("Unexpected missing sequence similarity values")
 
     y2h = load_y2h_isoform_data()
@@ -222,8 +273,7 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
                 ppi_partner_cats.loc[
                     ppi_partner_cats["category"] == "cofactor", "gene_symbol_partner"
                 ].unique()
-            )
-            & ~y2h["is_tf_tf_ppi"],
+            ),
             :,
         ],
         axis=1,
@@ -233,22 +283,8 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
         ppi=y2h.loc[
             y2h["db_gene_symbol"].isin(
                 ppi_partner_cats.loc[
-                    ppi_partner_cats["category"].isin(
-                        [
-                            "cell cycle",
-                            "protein traffiking",
-                            "protein turnover",
-                            "signaling",
-                            "cell-cell signaling",
-                        ]
-                    ),
+                    ppi_partner_cats["category"] == "signaling",
                     "gene_symbol_partner",
-                ].unique()
-            )
-            & ~y2h["is_tf_tf_ppi"]
-            & ~y2h["db_gene_symbol"].isin(
-                ppi_partner_cats.loc[
-                    ppi_partner_cats["category"] == "cofactor", "gene_symbol_partner"
                 ].unique()
             ),
             :,
@@ -261,24 +297,24 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
     df.to_csv(outpath, sep="\t", index=False)
 
 
-def _add_PPI_columns(df, y2h):
+def _add_PPI_columns(df, y2h, suffixes=("_ref", "_alt")):
     n_ppi = y2h.loc[(y2h["Y2H_result"] == True), :].groupby("ad_clone_acc").size()
-    df["n_positive_PPI_ref"] = df["clone_acc_ref"].map(n_ppi)
-    df["n_positive_PPI_alt"] = df["clone_acc_alt"].map(n_ppi)
+    df[f"n_positive_PPI{suffixes[0]}"] = df[f"clone_acc{suffixes[0]}"].map(n_ppi)
+    df[f"n_positive_PPI{suffixes[1]}"] = df[f"clone_acc{suffixes[1]}"].map(n_ppi)
     # BUG MISSING 0's here!
     df.loc[
-        df["n_positive_PPI_ref"].isnull()
-        & df["clone_acc_ref"].isin(
+        df[f"n_positive_PPI{suffixes[0]}"].isnull()
+        & df[f"clone_acc{suffixes[0]}"].isin(
             y2h.loc[(y2h["Y2H_result"] == False), "ad_clone_acc"].unique()
         ),
-        "n_positive_PPI_ref",
+        f"n_positive_PPI{suffixes[0]}",
     ] = 0
     df.loc[
-        df["n_positive_PPI_alt"].isnull()
-        & df["clone_acc_alt"].isin(
+        df[f"n_positive_PPI{suffixes[1]}"].isnull()
+        & df[f"clone_acc{suffixes[1]}"].isin(
             y2h.loc[(y2h["Y2H_result"] == False), "ad_clone_acc"].unique()
         ),
-        "n_positive_PPI_alt",
+        f"n_positive_PPI{suffixes[1]}",
     ] = 0
 
     def ppi_metric(row, data, function, suffixes=("_a", "_b")):
@@ -300,50 +336,52 @@ def _add_PPI_columns(df, y2h):
         else:
             return np.nan
 
-    df["n_PPI_successfully_tested_in_ref_and_alt"] = df.apply(
+    df[f"n_PPI_successfully_tested_in{suffixes[0]}_and{suffixes[1]}"] = df.apply(
         ppi_metric,
         data=y2h,
-        suffixes=("_ref", "_alt"),
+        suffixes=suffixes,
         function=number_tested_partners,
         axis=1,
     )
-    df["n_positive_PPI_ref_filtered"] = df.apply(
+    df[f"n_positive_PPI{suffixes[0]}_filtered"] = df.apply(
         ppi_metric,
         data=y2h,
-        suffixes=("_ref", "_alt"),
+        suffixes=suffixes,
         function=lambda a, b: len(a),
         axis=1,
     )
-    df["n_positive_PPI_alt_filtered"] = df.apply(
+    df[f"n_positive_PPI{suffixes[1]}_filtered"] = df.apply(
         ppi_metric,
         data=y2h,
-        suffixes=("_ref", "_alt"),
+        suffixes=suffixes,
         function=lambda a, b: len(b),
         axis=1,
     )
     df["n_shared_PPI"] = df.apply(
         ppi_metric,
         data=y2h,
-        suffixes=("_ref", "_alt"),
+        suffixes=suffixes,
         function=number_shared_partners,
         axis=1,
     )
     df["n_PPI_diff"] = (
-        df["n_PPI_successfully_tested_in_ref_and_alt"] - df["n_shared_PPI"]
+        df[f"n_PPI_successfully_tested_in{suffixes[0]}_and{suffixes[1]}"]
+        - df["n_shared_PPI"]
     )
     df["PPI_delta_n"] = (
-        df["n_positive_PPI_alt_filtered"] - df["n_positive_PPI_ref_filtered"]
+        df[f"n_positive_PPI{suffixes[1]}_filtered"]
+        - df[f"n_positive_PPI{suffixes[0]}_filtered"]
     )
     df["PPI_jaccard"] = df.apply(
         ppi_metric,
         data=y2h,
-        suffixes=("_ref", "_alt"),
+        suffixes=suffixes,
         function=jaccard_index,
         axis=1,
     )
 
 
-def _add_PDI_columns(df, y1h):
+def _add_PDI_columns(df, y1h, suffixes=("_ref", "_alt")):
     def pdi_metric(row, data, function, suffixes=("_a", "_b")):
         clone_acc_a = row["clone_acc" + suffixes[0]]
         clone_acc_b = row["clone_acc" + suffixes[1]]
@@ -353,37 +391,37 @@ def _add_PDI_columns(df, y1h):
         ].copy()
         if df.shape[0] < 2:
             return np.nan
-        df = df.loc[[clone_acc_a, clone_acc_b], df.any(axis=0)]
+        df = df.loc[
+            [clone_acc_a, clone_acc_b], df.any(axis=0) & ~df.isnull().any(axis=0)
+        ]
         if df.shape[1] == 0:
             return np.nan
-        # Kaia edited these 2 lines to drop any baits with NA
-        # my version of pandas wasn't auto-filtering these out, think it got fixed in later versions
-        a = set(df.columns[df.iloc[0].fillna(False)])
-        b = set(df.columns[df.iloc[1].fillna(False)])
+        a = set(df.columns[df.iloc[0]])
+        b = set(df.columns[df.iloc[1]])
         return function(a, b)
 
     n_pdi = y1h.drop(columns=["gene_symbol"]).sum(axis=1)
-    df["n_positive_PDI_ref"] = df["clone_acc_ref"].map(n_pdi)
-    df["n_positive_PDI_alt"] = df["clone_acc_alt"].map(n_pdi)
-    df["n_PDI_successfully_tested_in_ref_and_alt"] = df.apply(
+    df[f"n_positive_PDI{suffixes[0]}"] = df[f"clone_acc{suffixes[0]}"].map(n_pdi)
+    df[f"n_positive_PDI{suffixes[1]}"] = df[f"clone_acc{suffixes[1]}"].map(n_pdi)
+    df[f"n_PDI_successfully_tested_in{suffixes[0]}_and{suffixes[1]}"] = df.apply(
         pdi_metric,
         data=y1h,
-        suffixes=("_ref", "_alt"),
+        suffixes=suffixes,
         function=number_tested_partners,
         axis=1,
     )
 
-    df["n_positive_PDI_ref_filtered"] = df.apply(
+    df[f"n_positive_PDI{suffixes[0]}_filtered"] = df.apply(
         pdi_metric,
         data=y1h,
-        suffixes=("_ref", "_alt"),
+        suffixes=suffixes,
         function=lambda a, b: len(a),
         axis=1,
     )
-    df["n_positive_PDI_alt_filtered"] = df.apply(
+    df[f"n_positive_PDI{suffixes[1]}_filtered"] = df.apply(
         pdi_metric,
         data=y1h,
-        suffixes=("_ref", "_alt"),
+        suffixes=suffixes,
         function=lambda a, b: len(b),
         axis=1,
     )
@@ -391,22 +429,38 @@ def _add_PDI_columns(df, y1h):
     df["n_shared_PDI"] = df.apply(
         pdi_metric,
         data=y1h,
-        suffixes=("_ref", "_alt"),
+        suffixes=suffixes,
         function=number_shared_partners,
         axis=1,
     )
     df["PDI_jaccard"] = df.apply(
-        pdi_metric, data=y1h, suffixes=("_ref", "_alt"), function=jaccard_index, axis=1
+        pdi_metric, data=y1h, suffixes=suffixes, function=jaccard_index, axis=1
     )
 
 
-def _add_activation_columns(df, m1h):
-    df["at_least_one_isoform_in_gene_abs_activation_gte_2fold"] = df["gene_symbol"].map(
-        m1h.groupby("gene")["abs_mean"].max() >= 1
+def _add_activation_columns(df, m1h, suffixes=("_ref", "_alt")):
+    if "gene_symbol" in df.columns:
+        df["at_least_one_isoform_in_gene_abs_activation_gte_2fold"] = df[
+            "gene_symbol"
+        ].map(m1h.groupby("gene_symbol")["abs_mean"].max() >= 1)
+    else:
+        df[f"at_least_one_isoform_in_gene{suffixes[0]}_abs_activation_gte_2fold"] = df[
+            f"gene_symbol{suffixes[0]}"
+        ].map(m1h.groupby("gene_symbol")["abs_mean"].max() >= 1)
+        df[f"at_least_one_isoform_in_gene{suffixes[1]}_abs_activation_gte_2fold"] = df[
+            f"gene_symbol{suffixes[1]}"
+        ].map(m1h.groupby("gene_symbol")["abs_mean"].max() >= 1)
+
+    df[f"activation{suffixes[0]}"] = df[f"clone_acc{suffixes[0]}"].map(
+        m1h.set_index("clone_acc")["mean"]
     )
-    df["activation_ref"] = df["clone_acc_ref"].map(m1h.set_index("clone_acc")["mean"])
-    df["activation_alt"] = df["clone_acc_alt"].map(m1h.set_index("clone_acc")["mean"])
-    df["activation_fold_change_log2"] = df["activation_alt"] - df["activation_ref"]
+    df[f"activation{suffixes[1]}"] = df[f"clone_acc{suffixes[1]}"].map(
+        m1h.set_index("clone_acc")["mean"]
+    )
+    df["activation_fold_change_log2"] = (
+        df[f"activation{suffixes[1]}"] - df[f"activation{suffixes[0]}"]
+    )
+    df["activation_abs_fold_change_log2"] = df["activation_fold_change_log2"].abs()
 
 
 def tissue_expression_similarity_per_isoform():

@@ -2,6 +2,7 @@ import itertools
 import functools
 from pathlib import Path
 import re
+from itertools import combinations
 
 import numpy as np
 import pandas as pd
@@ -9,11 +10,12 @@ import tqdm
 from Bio.PDB.DSSP import make_dssp_dict
 from Bio.Data.IUPACData import protein_letters_3to1
 from Bio import SeqIO
+from Bio import Align
 
 from .utils import DATA_DIR, CACHE_DIR
 
 
-def load_seq_comparison_data():
+def _load_seq_comparison_data():
     """
     Pairwise sequence comparisons of AA.
     Needleman algorithm, global alignment.
@@ -25,7 +27,7 @@ def load_seq_comparison_data():
     )
     df["pair"] = df.apply(lambda x: "_".join(sorted([x.iso1, x.iso2])), axis=1)
     df = df[["pair", "AAseq_identity%"]]
-    df.columns = ["pair", "aa_seq_pct_id"]
+    df.columns = ["pair", "aa_seq_pct_identity"]
 
     df_b = pd.read_csv(
         DATA_DIR / "processed/paralog_non_paralog_seq_id.tsv", sep="\t"
@@ -33,15 +35,16 @@ def load_seq_comparison_data():
     df_b["pair"] = df_b.apply(
         lambda x: "_".join(sorted([x["clone_acc_a"], x["clone_acc_b"]])), axis=1
     )
-    df_b = df_b.loc[:, ["pair", "aa_seq_pct_id"]]
+    df_b = df_b.rename(columns={"aa_seq_pct_id": "aa_seq_pct_identity"})
+    df_b = df_b.loc[:, ["pair", "aa_seq_pct_identity"]]
     df = pd.concat([df, df_b])
 
     if df["pair"].duplicated().any():
         raise UserWarning("Unexpected duplicates")
     df = df.set_index("pair")
-    if (df["aa_seq_pct_id"] < 0).any() or (df["aa_seq_pct_id"] > 100).any():
+    if (df["aa_seq_pct_identity"] < 0).any() or (df["aa_seq_pct_identity"] > 100).any():
         raise UserWarning("Percent values outside 0-100")
-    return df["aa_seq_pct_id"]
+    return df["aa_seq_pct_identity"]
 
 
 """
@@ -50,11 +53,11 @@ function
 
 from Bio import Align
 
-from data_loading import load_valid_isoform_clones, load_paralog_pairs, load_isoforms_of_paralogs_pairs
+from data_loading import load_valid_isoform_clones, load_paralog_pairs_tested_in_y2h, load_isoforms_of_paralogs_pairs
 
 def calculate_aa_sequence_id():
     isoforms = load_valid_isoform_clones()
-    pairs = load_paralog_pairs()
+    pairs = load_paralog_pairs_tested_in_y2h()
     pairs = load_isoforms_of_paralogs_pairs(pairs, isoforms)
 
     aligner = Align.PairwiseAligner()

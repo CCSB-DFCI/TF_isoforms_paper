@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 
 from data_loading import (
     load_valid_isoform_clones,
-    load_isoform_and_paralog_y2h_data,
+    load_full_y2h_data_including_controls,
     load_y1h_pdi_data,
     load_m1h_activation_data,
     load_annotated_gencode_tfs,

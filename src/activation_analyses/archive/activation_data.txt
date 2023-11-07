@@ -391,7 +391,7 @@ stats.mannwhitneyu(
                , 'abs_activation_fold_change_log2'].values
                           )
 
-sns.boxplot(data=df, x='f_disorder_difference_cat', y='aa_seq_pct_id', 
+sns.boxplot(data=df, x='f_disorder_difference_cat', y='aa_seq_pct_identity', 
             order=['fully disordered',
                    'fully ordered',
                    'partially disordered'])
