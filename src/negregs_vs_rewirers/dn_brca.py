@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # In[1]:
@@ -773,4 +773,10 @@ pancan_m[pancan_m["type"]=="ratio"]["value"].median()
 
 
 pancan_m[pancan_m["type"]=="ratio"]["value"].mean()
+
+
+# In[ ]:
+
+
+
 
