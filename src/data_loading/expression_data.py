@@ -82,6 +82,7 @@ def load_gtex_remapped():
         raise UserWarning("Unexpected duplicates")
     metadata = metadata.set_index("Run")
     df = df.set_index("UID")
+    df = _correct_for_errors_in_remapping_file(df)
     df = (df + 1.0).apply(np.log2)
 
     def extract_gene_name(s):
@@ -196,6 +197,7 @@ def load_developmental_tissue_expression_remapped():
         raise UserWarning("Unexpected duplicates")
     metadata = metadata.set_index("Run")
     df = df.set_index("UID")
+    df = _correct_for_errors_in_remapping_file(df)
     df = (df + 1.0).apply(np.log2)
 
     def extract_gene_name(s):
@@ -285,3 +287,24 @@ def _convert_to_joint_clone_and_ensembl_id(s, tfs):
         )
     else:
         raise UserWarning("Failed to map ID from " + s)
+        
+def _correct_for_errors_in_remapping_file(df):
+    # FIX for mapping errors in fasta file used to remap the expression data
+    unmapped_clones = [
+        (
+            "ZIC3|3/3|09C04",
+            "ENST00000287538.10|ENSG00000156925.12|OTTHUMG00000022525.2|OTTHUMT00000058526.2|ZIC3-201|ZIC3|4001|UTR5:1-565|CDS:566-1969|UTR3:1970-4001|",
+        ),
+        (
+            "HSFY1|1/2|12F03",
+            "ENST00000307393.2|ENSG00000172468.13|OTTHUMG00000041980.2|OTTHUMT00000100036.1|HSFY1-201|HSFY1|1444|UTR5:1-117|CDS:118-1323|UTR3:1324-1444|",
+        ),
+        (
+            "HSFY1|2/2|11F06",
+            "ENST00000382856.2|ENSG00000172468.13|OTTHUMG00000041980.2|OTTHUMT00000100039.2|HSFY1-204|HSFY1|1374|UTR5:1-68|CDS:69-713|UTR3:714-1374|",
+        ),
+    ]
+    for clone_acc, ensembl_ids in unmapped_clones:
+        df.loc[clone_acc, :] += df.loc[ensembl_ids, :]
+        df = df.loc[df.index != ensembl_ids, :]
+    return df

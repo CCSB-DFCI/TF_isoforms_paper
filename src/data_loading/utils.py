@@ -13,6 +13,7 @@ def cache_with_pickle(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         cached_file = CACHE_DIR / (func.__name__ + ".pkl")
+        print(cached_file)
         # TODO: this only works if the underlying function takes kwargs
         use_cache = kwargs.get("use_cache", True)
         if cached_file.exists() and use_cache:
