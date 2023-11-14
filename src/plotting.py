@@ -606,7 +606,7 @@ def _validation_plot(
         colors = [None] * len(positives)
     ax.set_yticks(np.arange(0.0, 1.0, 0.1), minor=False)
     ax.set_yticks(np.arange(0.05, 1.0, 0.1), minor=True)
-    ax.set_facecolor("0.96")
+    #ax.set_facecolor("0.96")
     ax.set_axisbelow(True)
     ax.grid(color="white", axis="y", which="both", zorder=5)
     pos = np.array(positives)
