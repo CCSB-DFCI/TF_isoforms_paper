@@ -27,6 +27,7 @@ def load_valid_isoform_clones():
         lambda x: x.split("|")[0] + "-" + x.split("|")[1].split("/")[0]
     )
     df = df.rename(columns={"gene": "gene_symbol"})
+    df = df.loc[df["gene_symbol"] != "PCGF6", :]
     return df
 
 
