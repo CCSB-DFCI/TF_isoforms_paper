@@ -313,6 +313,18 @@ def load_full_y2h_data_including_controls(
         cofac_type = cat_info.groupby("cofactor_type")["partner"].apply(set).to_dict()
         for subtype, members in cofac_type.items():
             df["is_cofactor_subtype_" + subtype] = df["db_gene_symbol"].isin(members)
+            
+    non_control_cats = {
+        "tf_isoform_ppis",
+        "tf_paralog_ppis",
+        "paralog_with_PDI",
+        "non_paralog_control",
+    }
+    valid_clones = set(load_valid_isoform_clones()["clone_acc"].values)
+    removed_rows = df["category"].isin(non_control_cats) & ~df["ad_clone_acc"].isin(
+        valid_clones
+    )
+    df = df.loc[~removed_rows, :]
     return df
 
 
