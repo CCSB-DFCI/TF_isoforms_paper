@@ -3,7 +3,7 @@
 
 # # Fig3: eY1H/PDI analyses
 
-# In[2]:
+# In[1]:
 
 
 import numpy as np
@@ -16,11 +16,14 @@ import sys
 # import utils
 sys.path.append("../")
 
-from data_loading import load_annotated_TFiso1_collection, load_y1h_pdi_data
+from data_loading import (load_annotated_TFiso1_collection, 
+                          load_y1h_pdi_data, 
+                          load_dbd_accessions,
+                          load_valid_isoform_clones)
 from plotting import y1h_pdi_per_tf_gene_plot, m1h_activation_per_tf_gene_plot
 
 
-# In[3]:
+# In[2]:
 
 
 PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
@@ -33,14 +36,14 @@ PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper",
 PAPER_FONTSIZE = 7
 
 
-# In[4]:
+# In[3]:
 
 
 sns.set(**PAPER_PRESET)
 fontsize = PAPER_FONTSIZE
 
 
-# In[5]:
+# In[4]:
 
 
 np.random.seed(2023)
@@ -48,13 +51,13 @@ np.random.seed(2023)
 
 # ## 1. load PDI data
 
-# In[6]:
+# In[5]:
 
 
 tfs = load_annotated_TFiso1_collection()
 
 
-# In[7]:
+# In[6]:
 
 
 def disordered_fraction_of_different_regions(gene, ref_iso_name, alt_iso_name):
@@ -79,7 +82,7 @@ def disordered_fraction_of_different_regions(gene, ref_iso_name, alt_iso_name):
 disordered_fraction_of_different_regions(tfs['CREB1'], 'CREB1-2', 'CREB1-1')
 
 
-# In[31]:
+# In[7]:
 
 
 # TODO move to isolib
@@ -141,14 +144,14 @@ def n_aa_to_all_features(self, ref_iso_name):
     return results
 
 
-# In[33]:
+# In[8]:
 
 
 dist = pd.concat([n_aa_to_all_features(g, g.cloned_reference_isoform.name) for g in tfs.values()])
 dist['is_DBD'] = dist['accession'].isin(load_dbd_accessions())
 
 
-# In[46]:
+# In[9]:
 
 
 y1h = load_y1h_pdi_data()
@@ -159,22 +162,23 @@ n_pdi = (y1h.drop(columns='gene_symbol')
 n_pdi.index = n_pdi.index.map(lambda x: x.split('|')[0] + '-' + x.split('|')[1].split('/')[0])
 
 
-# In[36]:
+# In[10]:
 
 
 df = pd.concat([g.aa_feature_disruption(g.cloned_reference_isoform.name) for g in tfs.values()])
 df['is_DBD'] = df['accession'].isin(load_dbd_accessions())
 df['is_DBD_flank'] = (df['accession'].str.endswith('_flank_N') |
                       df['accession'].str.endswith('_flank_C'))
+len(df)
 
 
-# In[40]:
+# In[11]:
 
 
 dist
 
 
-# In[41]:
+# In[12]:
 
 
 df_new = (df.loc[df['is_DBD'], :]
@@ -193,9 +197,10 @@ df_new['dbd_n_aa_to_change'] = (dist.loc[dist['is_DBD'], :]
                                   .groupby(['gene', 'ref_iso', 'alt_iso'])
                                   ['n_aa_change_to_domain']
                                   .min())
+len(df_new)
 
 
-# In[43]:
+# In[13]:
 
 
 # flank affected
@@ -205,9 +210,10 @@ df_new['dbd_flank_affected'] = (df.loc[df['is_DBD_flank'], :]
         .sum(axis=1) > 0)
 df = df_new.reset_index()
 df['dbd_pct_lost'] = df['dbd_fraction'] * 100.
+len(df)
 
 
-# In[44]:
+# In[14]:
 
 
 def dbd_affected_categories(pct_lost):
@@ -224,15 +230,17 @@ df['dbd_affected'] = df['dbd_pct_lost'].apply(dbd_affected_categories)
 df['dbd_or_flank_affected'] = df['dbd_affected']
 df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') &
        df['dbd_flank_affected'], 'dbd_or_flank_affected'] = 'DBD flank affected'
+len(df)
 
 
-# In[45]:
+# In[15]:
 
 
 isoforms = load_valid_isoform_clones()
+len(isoforms)
 
 
-# In[48]:
+# In[16]:
 
 
 # map each isoform to change in PDI vs reference
@@ -258,15 +266,16 @@ if (((df['dbd_fraction'] > 0) | (df['dbd_insertion_n_aa'] > 0)) & (df['dbd_n_aa_
     raise UserWarning('something wrong with calculations')
 if ((df['dbd_fraction'] == 0) & (df['dbd_insertion_n_aa'] == 0) & (df['dbd_n_aa_to_change'] == 0)).any():
     raise UserWarning('something wrong with calculations')
+len(df)
 
 
-# In[49]:
+# In[17]:
 
 
 df.loc[df['dbd_insertion_n_aa'] > 0 ]
 
 
-# In[51]:
+# In[18]:
 
 
 # count
@@ -279,25 +288,25 @@ tfs_no_dbd = {k: v for k, v in tfs.items()
               and len(v.cloned_reference_isoform.aa_seq_features) > 0}
 
 
-# In[52]:
+# In[19]:
 
 
 df['delta_pdi_trunc'] = df['delta_pdi'].clip(upper=1)
 
 
-# In[53]:
+# In[20]:
 
 
 df['dbd_or_flank_affected'].value_counts().index.values
 
 
-# In[54]:
+# In[21]:
 
 
 df['tf_family_merged'] = df['tf_family'].map(lambda x: x if x in ['C2H2 ZF', 'bHLH', 'Homeodomain', 'Nuclear receptor'] else 'other')
 
 
-# In[57]:
+# In[22]:
 
 
 # TODO: move to data_loading.py
@@ -311,25 +320,25 @@ for c in n_aa.columns:
     df[f'abs_delta_{c}'] = df[f'delta_{c}'].abs()
 
 
-# In[58]:
+# In[23]:
 
 
 df['f_disorder_delta_aa'] = df['abs_delta_n_aa_disordered'] / (df['abs_delta_n_aa_disordered'] + df['abs_delta_n_aa_ordered'])
 
 
-# In[59]:
+# In[24]:
 
 
 df['pdi_affected'] = (df['delta_pdi'] != 0)
 
 
-# In[61]:
+# In[25]:
 
 
 df['dbd_or_flank_affected'].value_counts()
 
 
-# In[63]:
+# In[26]:
 
 
 # check for family enrichment of DBD unaffected PDI changes
@@ -337,14 +346,14 @@ df.loc[(df['dbd_or_flank_affected'] == 'Full DBD in\nalternative isoform') &
 (df['delta_pdi'] != 0), 'tf_family'].value_counts()
 
 
-# In[65]:
+# In[27]:
 
 
 df.loc[(df['dbd_or_flank_affected'] == 'Full DBD in\nalternative isoform') &
 (df['delta_pdi'] != 0), 'gene_symbol'].value_counts()
 
 
-# In[67]:
+# In[28]:
 
 
 # 15 aa flanks
@@ -353,26 +362,26 @@ df.loc[(df['dbd_or_flank_affected'] == 'Full DBD in\nalternative isoform') &
        (df['delta_pdi'] != 0), 'gene_symbol'].unique())
 
 
-# In[68]:
+# In[29]:
 
 
 (df['dbd_pct_lost'] > 0).sum()
 
 
-# In[70]:
+# In[30]:
 
 
 # full DBD in alternative isoform, fraction in disordered
 df['f_disorder_difference'] = df.apply(lambda x: disordered_fraction_of_different_regions(tfs[x['gene_symbol']], x['ref_iso'], x['alt_iso']), axis=1)
 
 
-# In[71]:
+# In[31]:
 
 
 df.dbd_or_flank_affected.value_counts()
 
 
-# In[72]:
+# In[32]:
 
 
 # color map
@@ -392,7 +401,7 @@ df["color"] = df.apply(re_color, axis=1, palette=palette)
 df.sample(5)
 
 
-# In[75]:
+# In[33]:
 
 
 # try distance from DBD
@@ -400,16 +409,16 @@ df.sample(5)
 # check y variable now that we use reference isoform
 # horizontal line across whole
 
-gs_kw = dict(width_ratios=[0.7, 1, 0.35, 1.5])
+gs_kw = dict(width_ratios=[0.5, 1.2, 0.35, 1.6])
 fig, axs = plt.subplots(nrows=1, 
                         ncols=4,
                         sharey=True,
                         gridspec_kw=gs_kw)
-fig.set_size_inches(w=7.5, h=2)
+fig.set_size_inches(w=8.5, h=1.5)
 point_size = 6
 
 axs[0].set_title('Full loss of DBD',
-fontsize=10)
+fontsize=fontsize)
 sns.swarmplot(data=df,
               y='delta_pdi_trunc', 
               x='dbd_or_flank_affected',
@@ -427,7 +436,7 @@ sns.swarmplot(data=df,
 axs[0].get_legend().remove()
 
 axs[1].set_title('Partial loss of DBD',
-fontsize=10)
+fontsize=fontsize)
 axs[1].scatter(df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'dbd_pct_lost'].values,
                df.loc[(df['dbd_pct_lost'] > 0) & (df['dbd_pct_lost'] < 100), 'delta_pdi_trunc'].values,
            alpha=1,
@@ -446,18 +455,18 @@ axs[1].set_xticks(range(10, 91, 10), minor=True)
 # annotate zic3
 axs[1].annotate("ZIC3-1", xy=(df.loc[(df["alt_iso"] == "ZIC3-1"), 'dbd_pct_lost'].values, 
                               df.loc[(df["alt_iso"] == "ZIC3-1"), 'delta_pdi_trunc'].values),
-                xytext=(-10, 0), textcoords='offset points', arrowprops = dict(arrowstyle="-"),
+                xytext=(-10, 0), textcoords='offset points', arrowprops = dict(arrowstyle="-", color="black"),
                 ha="right", va="top", fontsize=7,
                 bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
 axs[1].annotate("ZIC3-3", xy=(df.loc[(df["alt_iso"] == "ZIC3-3"), 'dbd_pct_lost'].values, 
                               df.loc[(df["alt_iso"] == "ZIC3-3"), 'delta_pdi_trunc'].values),
-                xytext=(-10, -5), textcoords='offset points', arrowprops = dict(arrowstyle="-"),
+                xytext=(-10, -5), textcoords='offset points', arrowprops = dict(arrowstyle="-", color="black"),
                 ha="right", va="top", fontsize=7,
                 bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
 
 
 axs[2].set_title('Insertion\nwithin DBD',
-fontsize=10)
+fontsize=fontsize)
 axs[2].scatter(df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0), 'dbd_insertion_n_aa'].values,
                df.loc[(df['dbd_pct_lost'] == 0) & (df['dbd_insertion_n_aa'] > 0), 'delta_pdi_trunc'].values,
            alpha=1,
@@ -474,51 +483,54 @@ axs[2].set_xticks(range(1, 6), minor=True)
 # annotate hey1
 axs[2].annotate("HEY1-1", xy=(df.loc[(df["alt_iso"] == "HEY1-1"), 'dbd_insertion_n_aa'].values, 
                               df.loc[(df["alt_iso"] == "HEY1-1"), 'delta_pdi_trunc'].values),
-                xytext=(-3, 15), textcoords='offset points', arrowprops = dict(arrowstyle="-"),
+                xytext=(-3, 15), textcoords='offset points', arrowprops = dict(arrowstyle="-", color="black"),
                 ha="center", va="bottom", fontsize=7,
                 bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
 
-axs[3].set_title('Full DBD in\nalternative isoform', fontsize=10)
-axs[3].scatter(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'dbd_n_aa_to_change'].values,
-               df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'delta_pdi_trunc'].values,
+axs[3].set_title('Full DBD in\nalternative isoform', fontsize=fontsize)
+axs[3].scatter(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') &
+                      (df['dbd_insertion_n_aa'] == 0), 'dbd_n_aa_to_change'].values,
+               df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') &
+                      (df['dbd_insertion_n_aa'] == 0), 'delta_pdi_trunc'].values,
            alpha=1,
            s=point_size**2,
-            c=df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform'), 'color'].values,
+            c=df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') &
+                     (df['dbd_insertion_n_aa'] == 0), 'color'].values,
                linewidth=1,
                edgecolor="black",
            clip_on=False,
                zorder=10)
 
-axs[3].set_xlabel('Distance of alternative\nsequence from DBD\n(number of AA)')
+axs[3].set_xlabel('Distance of alternative sequence from DBD\n(number of AA)')
 
 # annotate tbx5 and creb1
 axs[3].annotate("TBX5-2", xy=(df.loc[(df["alt_iso"] == "TBX5-2"), 'dbd_n_aa_to_change'].values, 
                               df.loc[(df["alt_iso"] == "TBX5-2"), 'delta_pdi_trunc'].values),
-                xytext=(12, -7), textcoords='offset points', arrowprops = dict(arrowstyle="-"),
+                xytext=(12, -9), textcoords='offset points', arrowprops = dict(arrowstyle="-", color="black"),
                 ha="right", va="top", fontsize=7,
                 bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
 axs[3].annotate("TBX5-3", xy=(df.loc[(df["alt_iso"] == "TBX5-3"), 'dbd_n_aa_to_change'].values, 
                               df.loc[(df["alt_iso"] == "TBX5-3"), 'delta_pdi_trunc'].values),
-                xytext=(-2, 30), textcoords='offset points', arrowprops = dict(arrowstyle="-"),
+                xytext=(-2, 30), textcoords='offset points', arrowprops = dict(arrowstyle="-", color="black"),
                 ha="left", va="center", fontsize=7,
                 bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
 axs[3].annotate("CREB1-1", xy=(df.loc[(df["alt_iso"] == "CREB1-1"), 'dbd_n_aa_to_change'].values, 
-                              df.loc[(df["alt_iso"] == "CREB1-1"), 'delta_pdi_trunc'].values),
+                               df.loc[(df["alt_iso"] == "CREB1-1"), 'delta_pdi_trunc'].values),
                 xytext=(25, 9), textcoords='offset points', arrowprops = dict(arrowstyle="-", 
-                                                                              connectionstyle="arc3,rad=0.2"),
+                                                                              connectionstyle="arc3,rad=0.2", 
+                                                                              color="black"),
                 ha="left", va="center", fontsize=7,
                 bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'))
 
 # add colorbar
 # mirror figure
-gs_kw = dict(width_ratios=[0.7, 1, 0.35, 1.5])
 fig2, axs2 = plt.subplots(nrows=1, 
                         ncols=4,
                         sharey=True,
                         gridspec_kw=gs_kw)
-fig2.set_size_inches(w=7.5, h=2)
+fig2.set_size_inches(w=8.5, h=1.5)
 map1 = axs2[3].imshow(np.stack([t, t]), cmap="flare")
-fig.colorbar(map1, ax=axs[3], aspect=40, label="% alt. iso. seq. diff.\nin disordered regions")
+fig.colorbar(map1, ax=axs[3], aspect=20, label="% alt. iso. seq. diff.\nin disordered regions")
 
 
 
@@ -545,74 +557,54 @@ axs[0].set_ylabel('Change in number of PDI\nin alternative isoform')
 fig.savefig('../../figures/fig3/DBD_or_flank_change_vs_PDI_composite_alt_with_distance_colored_annotated.pdf', bbox_inches='tight')
 
 
-# In[76]:
+# In[34]:
 
 
-df.dbd_affected.value_counts()
+len(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['dbd_insertion_n_aa'] == 0)])
 
 
-# In[77]:
+# In[35]:
 
 
-# check low values
-gs_kw = dict(width_ratios=[2.5, 0.5])
-fig, axarr = plt.subplots(1, 2, tight_layout=True, gridspec_kw=gs_kw, sharey=True)
-fig.set_size_inches(h=2, w=4.5)
-
-ax = axarr[0]
-sns.swarmplot(data=df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['delta_pdi_trunc'] != 0), :],
-              y='f_disorder_difference',
-              color=sns.color_palette("Set2")[0],
-               linewidth=1,
-               edgecolor="black",
-              ax=ax,
-              clip_on=False
-              )
-ax.set_xlabel('difference\nin DNA binding')
-ax.set_ylabel('Fraction of alternative\nseq. in disordered regions', fontsize=9)
-ax.set_xticks([])
-for loc in ['top', 'bottom', 'right']:
-    ax.spines[loc].set_visible(False)
-ax.set_yticks(np.linspace(0, 1, 11))
-ax.set_yticks(np.linspace(0, 1, 21), minor=True)
-ax.set_ylim(-0.01, 1)
-ax.axhline(y=0, linestyle="dashed", linewidth=1, color="black", zorder=1)
-ax.axhline(y=1, linestyle="dashed", linewidth=1, color="black", zorder=1)
-ax.set_yticklabels(['{:.0%}'.format(y) for y in ax.get_yticks()])
-
-ax = axarr[1]
-sns.swarmplot(data=df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['delta_pdi_trunc'] == 0), :],
-              y='f_disorder_difference',
-              color=sns.color_palette("Set2")[0],
-               linewidth=1,
-               edgecolor="black",
-              ax=ax,
-              clip_on=False
-              )
-ax.set_xlabel('no difference\nin DNA binding')
-ax.set_xticks([])
-for loc in ['top', 'bottom', 'right', 'left']:
-    ax.spines[loc].set_visible(False)
-ax.spines['left'].set_visible(False)
-ax.yaxis.set_tick_params(which='both', length=0, zorder=1)
-ax.set_ylabel('')
-ax.axhline(y=0, linestyle="dashed", linewidth=1, color="black", zorder=1)
-ax.axhline(y=1, linestyle="dashed", linewidth=1, color="black", zorder=1)
-
-fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-fig.suptitle('             Full DBD in alternative isoform\n', fontsize=10)
-fig.savefig('../../figures/fig3/disordered-pct-alt-sequence_alt-isoforms-full-DBD-diff-PDI_dotplot.pdf',
-            bbox_inches='tight')
+len(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['dbd_insertion_n_aa'] == 0) &
+           (df['delta_pdi_trunc'] == 0)])
 
 
-# In[78]:
+# In[36]:
+
+
+len(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['dbd_insertion_n_aa'] == 0) &
+           (df['delta_pdi_trunc'] < 0)])
+
+
+# In[37]:
+
+
+len(df)
+
+
+# In[38]:
+
+
+df[df['delta_pdi_trunc'] > 0]
+
+
+# In[39]:
+
+
+tf = tfs["RXRG"]
+fig, ax = plt.subplots(1, 1, figsize=(4, 4))
+y1h_pdi_per_tf_gene_plot(tf.name, ax=ax, data=y1h)
+
+
+# In[40]:
 
 
 x = list(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['delta_pdi_trunc'] != 0), 'f_disorder_difference'])
 y = list(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['delta_pdi_trunc'] == 0), 'f_disorder_difference'])
 
 
-# In[79]:
+# In[41]:
 
 
 stats.mannwhitneyu(x, y)
@@ -620,58 +612,85 @@ stats.mannwhitneyu(x, y)
 
 # ## exon diagrams
 
-# In[34]:
+# In[42]:
 
 
 fig, ax = plt.subplots(figsize=(4, 2))
 
 tfs["HEY1"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=ax)
-fig.savefig("../figures/HEY1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+fig.savefig("../../figures/fig3/HEY1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[35]:
+# In[43]:
 
 
-fig, ax = plt.subplots(figsize=(7, 0.75))
+fig, ax = plt.subplots(figsize=(4, 0.75))
 
 tfs["HEY1"].exon_diagram(ax=ax)
-fig.savefig("../figures/HEY1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+fig.savefig("../../figures/fig3/HEY1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[36]:
+# In[44]:
+
+
+fig, ax = plt.subplots(figsize=(3, 0.5))
+
+y1h_pdi_per_tf_gene_plot("HEY1", ax=ax, data=y1h, iso_order=["HEY1-2", "HEY1-1"])
+fig.savefig("../../figures/fig3/HEY1_y1h_plot.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[45]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1.5))
 
 tfs["CREB1"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
-fig.savefig("../figures/CREB1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+fig.savefig("../../figures/fig3/CREB1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[37]:
+# In[46]:
 
 
-fig, ax = plt.subplots(figsize=(4, 1))
+fig, ax = plt.subplots(figsize=(3, 0.5))
+
+y1h_pdi_per_tf_gene_plot("CREB1", ax=ax, data=y1h, iso_order=["CREB1-2", "CREB1-1"])
+fig.savefig("../../figures/fig3/CREB1_y1h_plot.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[47]:
+
+
+fig, ax = plt.subplots(figsize=(4, 0.5))
 
 tfs["CREB1"].exon_diagram(ax=ax)
-fig.savefig("../figures/CREB1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+fig.savefig("../../figures/fig3/CREB1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[38]:
+# In[48]:
 
 
-fig, ax = plt.subplots(figsize=(4, 1.5))
+fig, ax = plt.subplots(figsize=(4, 0.75))
 
 tfs["TBX5"].exon_diagram(ax=ax)
-fig.savefig("../figures/TBX5_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+fig.savefig("../../figures/fig3/TBX5_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[39]:
+# In[49]:
 
 
 fig, ax = plt.subplots(figsize=(4, 2))
 
 tfs["TBX5"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
-fig.savefig("../figures/TBX5_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+fig.savefig("../../figures/fig3/TBX5_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[50]:
+
+
+fig, ax = plt.subplots(figsize=(3, 1))
+
+y1h_pdi_per_tf_gene_plot("TBX5", ax=ax, data=y1h)
+fig.savefig("../../figures/fig3/TBX5_y1h_plot.pdf", bbox_inches="tight", dpi="figure")
 
 
 # In[ ]:
