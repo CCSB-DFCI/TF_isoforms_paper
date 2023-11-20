@@ -300,9 +300,7 @@ def y2h_ppi_per_paralog_pair_plot(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return
-    if iso_order is None:
-        tf = tf
-    else:
+    if iso_order is not None:
         tf = tf.loc[iso_order, :]
     binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels(
