@@ -34,15 +34,15 @@ PAPER_PRESET = {
 PAPER_FONTSIZE = 7
 
 
-def violinplot_reflected(*args, **kwargs):
+def violinplot_reflected(*args, lb=0, ub=1, **kwargs):
     """
     monkeypatch from https://github.com/mwaskom/seaborn/issues/525
     """
     fit_kde_func = sns.categorical._ViolinPlotter.fit_kde
 
     def reflected_once_kde(self, x, bw):
-        lb = 0
-        ub = 1
+        # lb = 0
+        # ub = 1
 
         kde, bw_used = fit_kde_func(self, x, bw)
 
@@ -51,7 +51,7 @@ def violinplot_reflected(*args, **kwargs):
         def truncated_kde_evaluate(x):
             val = np.where((x >= lb) & (x <= ub), kde_evaluate(x), 0)
             val += np.where((x >= lb) & (x <= ub), kde_evaluate(lb - x), 0)
-            val += np.where((x > lb) & (x <= ub), kde_evaluate(ub - (x - ub)), 0)
+            val += np.where((x >= lb) & (x <= ub), kde_evaluate(ub - (x - ub)), 0)
             return val
 
         kde.evaluate = truncated_kde_evaluate
