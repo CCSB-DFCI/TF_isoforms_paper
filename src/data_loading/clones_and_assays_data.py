@@ -14,10 +14,9 @@ from .protein_data import load_human_tf_db, load_cofactors, load_signaling_genes
 def load_valid_isoform_clones():
     """
 
-    TODO: this is including PCGF6 which has an insertion relative
-    to the reference geneome, so that it's not consistent with the
-    load_annotated_TFiso1 set. Check the PCGF6 sequences and probably
-    remove from here.
+    We remove PCGF6 which has a 6nt insertion relative
+    to the reference geneome, from the cell line
+    that the ORFs were cloned from.
 
     """
     df = pd.read_csv(
@@ -27,6 +26,7 @@ def load_valid_isoform_clones():
         lambda x: x.split("|")[0] + "-" + x.split("|")[1].split("/")[0]
     )
     df = df.rename(columns={"gene": "gene_symbol"})
+    df = df.loc[df["gene_symbol"] != "PCGF6", :]
     return df
 
 
@@ -269,7 +269,7 @@ def _load_y2h_paralogs_additional_data():
 
 
 def load_full_y2h_data_including_controls(
-    add_partner_cateogories=False,
+    add_partner_categories=False,
     remove_keratin_associated_proteins=True,
 ):
     """
@@ -302,7 +302,7 @@ def load_full_y2h_data_including_controls(
             :,
         ]
 
-    if add_partner_cateogories:
+    if add_partner_categories:
         cat_info = load_ppi_partner_categories()
         cats = cat_info.groupby("category")["partner"].apply(set).to_dict()
         for cat, members in cats.items():
@@ -312,6 +312,19 @@ def load_full_y2h_data_including_controls(
         cofac_type = cat_info.groupby("cofactor_type")["partner"].apply(set).to_dict()
         for subtype, members in cofac_type.items():
             df["is_cofactor_subtype_" + subtype] = df["db_gene_symbol"].isin(members)
+
+    non_control_cats = {
+        "tf_isoform_ppis",
+        "tf_paralog_ppis",
+        "paralog_with_PDI",
+        "non_paralog_control",
+    }
+    valid_clones = set(load_valid_isoform_clones()["clone_acc"].values)
+    removed_rows = df["category"].isin(non_control_cats) & ~df["ad_clone_acc"].isin(
+        valid_clones
+    )
+    df = df.loc[~removed_rows, :]
+
     return df
 
 
@@ -522,6 +535,7 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
         tested = tested.loc[
             (tested["sequence verified?"] == "yes")
             & tested["clone_acc"].notnull()
+            & ~tested["gene"].isin(df["gene_symbol"].values)
             & ~tested["clone_acc"].isin(df["clone_acc"].values),
             ["gene_symbol", "clone_acc"],
         ].copy()
