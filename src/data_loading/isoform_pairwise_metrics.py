@@ -3,7 +3,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from Bio import Align
+from Bio import pairwise2
+from Bio.SubsMat.MatrixInfo import blosum62
 import tqdm
 
 from data_loading import (
@@ -26,11 +27,11 @@ def load_seq_id_between_cloned_isoforms():
     tfs = load_annotated_TFiso1_collection()
     tfs = {k: v for k, v in tfs.items() if len(v.cloned_isoforms) >= 2}
 
-    aligner = Align.PairwiseAligner()
-    aligner.mode = "global"
-
     def pairwise_global_aa_sequence_similarity(aa_seq_a, aa_seq_b):
-        alignment = aligner.align(aa_seq_a, aa_seq_b)[0].__str__().split()[1]
+        alignment = pairwise2.align.globalds(
+            aa_seq_a, aa_seq_b, blosum62, -10, -0.5, penalize_end_gaps=False
+        )
+        alignment = pairwise2.format_alignment(*alignment[0]).split("\n")[1]
         return alignment.count("|") / len(alignment) * 100
 
     aa_id = []
