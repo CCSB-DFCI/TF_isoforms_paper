@@ -22,6 +22,7 @@ from .isoform_pairwise_metrics import (
     _add_activation_columns,
     load_seq_id_between_cloned_isoforms,
 )
+from .protein_data import load_tf_families
 
 
 @cache_with_pickle
@@ -118,7 +119,7 @@ def load_ensembl_compara_paralog_pairs_for_cloned_tfs():
     df = pd.read_csv(DATA_DIR / "external/Ensembl_TF_paralogs.txt", sep="\t")
     df = df.dropna()
 
-    tfs = load_annotated_TFiso1_collection()
+    tfs = load_annotated_TFiso1_collection(include_single_isoform_genes=True)
     ensembl_to_hgnc = {tf.ensembl_gene_id: tf.name for tf in tfs.values()}
 
     df["gene1"] = df["Gene stable ID"].map(ensembl_to_hgnc)
@@ -131,7 +132,7 @@ def load_ensembl_compara_paralog_pairs_for_cloned_tfs():
 
 
 def load_all_within_family_gene_pairs_for_cloned_tfs():
-    tfs = load_annotated_TFiso1_collection()
+    tfs = load_annotated_TFiso1_collection(include_single_isoform_genes=True)
     df = pd.DataFrame(
         [(tf.name, tf.tf_family) for tf in tfs.values()],
         columns=["gene_symbol", "family"],
@@ -153,16 +154,85 @@ def load_all_within_family_gene_pairs_for_cloned_tfs():
     return df
 
 
+def load_all_different_family_gene_pairs_for_cloned_tfs():
+    """
+    TODO: delete this, since we didn't end up using it...
+    """
+    clones = load_valid_isoform_clones(include_single_isoform_genes=True)
+    cloned_genes = (
+        clones.sort_values("gene_symbol")["gene_symbol"].drop_duplicates().values
+    )
+    df = pd.DataFrame(
+        combinations(cloned_genes, 2), columns=["gene_symbol_a", "gene_symbol_b"]
+    )
+    within = load_all_within_family_gene_pairs_for_cloned_tfs()
+    df = df.loc[
+        ~(df["gene_symbol_a"] + "_" + df["gene_symbol_b"]).isin(
+            within["gene_symbol_a"] + "_" + within["gene_symbol_b"]
+        ),
+        :,
+    ]
+
+    if df.isnull().any().any():
+        raise UserWarning("unexpected missing values")
+    if df.duplicated().any():
+        raise UserWarning("unexpected duplicates")
+    if (df["gene_symbol_a"] == df["gene_symbol_b"]).any():
+        raise UserWarning("should be different genes")
+    return df
+
+
+def load_non_paralog_control():
+    df = load_ensembl_compara_paralog_pairs_for_cloned_tfs()
+    fam = load_tf_families()
+    df["families_a"] = df["gene_symbol_a"].map(fam).apply(lambda x: set(x.split("; ")))
+    df["families_b"] = df["gene_symbol_b"].map(fam).apply(lambda x: set(x.split("; ")))
+    np.random.seed(3489734)
+    genes_a = list(
+        df[["gene_symbol_a", "families_a"]].itertuples(name=None, index=False)
+    )
+    genes_b = list(
+        df[["gene_symbol_b", "families_b"]].itertuples(name=None, index=False)
+    )
+    rnd_rows = []
+    while len(rnd_rows) < df.shape[0]:
+        to_add = []
+        np.random.shuffle(genes_b)
+        for (gene_a, families_a), (gene_b, families_b) in zip(genes_a, genes_b):
+            if len(families_a.intersection(families_b)) == 0:
+                to_add.append((gene_a, gene_b, families_a, families_b))
+        for gene_a, gene_b, families_a, families_b in to_add:
+            # NOTE: this just removes the first occurance
+            genes_a.remove((gene_a, families_a))
+            genes_b.remove((gene_b, families_b))
+        rnd_rows += to_add
+        if len(to_add) == 0:
+            break
+    rnd_rows = pd.DataFrame(data=rnd_rows, columns=df.columns)
+    a = rnd_rows[["gene_symbol_a", "gene_symbol_b"]].min(axis=1)
+    b = rnd_rows[["gene_symbol_a", "gene_symbol_b"]].max(axis=1)
+    rnd_rows["gene_symbol_a"] = a
+    rnd_rows["gene_symbol_b"] = b
+    if (rnd_rows["families_a"] == rnd_rows["families_b"]).any():
+        raise UserWarning("something went wrong")
+    if (rnd_rows["gene_symbol_a"] == rnd_rows["gene_symbol_b"]).any():
+        raise UserWarning("something went wrong")
+    return rnd_rows.loc[:, ["gene_symbol_a", "gene_symbol_b"]]
+
+
 def _write_TF_iso_vs_paralogs_table(fpath):
     df = load_ensembl_compara_paralog_pairs_for_cloned_tfs()
     df["is_paralog_pair"] = True
+    ctrl = load_non_paralog_control()
+    ctrl["is_paralog_pair"] = False
+    df = pd.concat([df, ctrl])
     pairs = load_paralog_pairs_tested_in_y2h()
     pairs["is_tested_in_Y2H"] = True
     # NOTE: not including all pairs tested as paralogs in Y2H
     # since they don't meet the ensembl compara definition
     df = pd.merge(
         df,
-        pairs.loc[pairs["is_paralog_pair"], :],
+        pairs,  # .loc[pairs["is_paralog_pair"], :],
         how="left",
         on=["gene_symbol_a", "gene_symbol_b", "is_paralog_pair"],
     )
@@ -185,6 +255,8 @@ def _write_TF_iso_vs_paralogs_table(fpath):
         paralog_gene_pairs["gene_symbol_a"] < paralog_gene_pairs["gene_symbol_b"]
     ).all():
         raise UserWarning("expected gene symbols to be sorted")
+    if paralog_gene_pairs.isnull().any().any():
+        raise UserWarning("unexpected missing values")
 
     y2h = load_full_y2h_data_including_controls()
     # need to include tested isoforms that showed no PDI hits
@@ -231,11 +303,8 @@ def _pairs_of_paralogs_and_isoforms_comparison_table(
     if (paralog_pairs["gene_symbol_a"] == paralog_pairs["gene_symbol_b"]).any():
         raise ValueError("Gene incorrectly paired with itself as a paralog")
 
-    tfs = load_annotated_TFiso1_collection()
+    tfs = load_annotated_TFiso1_collection(include_single_isoform_genes=True)
     pairs = paralog_pairs.copy()
-    pairs = pairs.loc[
-        (pairs["gene_symbol_a"] != "PCGF6") & (pairs["gene_symbol_b"] != "PCGF6"), :
-    ]  # HACK
     pairs["clone_acc_a"] = pairs["gene_symbol_a"].apply(
         lambda x: tfs[x].cloned_reference_isoform.clone_acc
     )

@@ -206,6 +206,7 @@ def load_annotated_gencode_tfs(
 
 @cache_with_pickle
 def load_annotated_TFiso1_collection(
+    include_single_isoform_genes=False,
     path_TFiso1_gtf=DATA_DIR / "internal/c_6k_unique_acc_aligns.gtf",
     path_TFiso1_fa=DATA_DIR / "internal/j2_6k_unique_isoacc_and_nt_seqs.fa",
     path_gencode_aa_seq=DATA_DIR / "external/gencode.v30.pc_translations.fa",
@@ -221,7 +222,9 @@ def load_annotated_TFiso1_collection(
     algn = pyranges.read_gtf(path_TFiso1_gtf).df
     algn = algn.loc[algn["Start"] < algn["End"], :]  # filter out problematic rows
     nt_seq = {r.name: r for r in SeqIO.parse(path_TFiso1_fa, format="fasta")}
-    clones = load_valid_isoform_clones()
+    clones = load_valid_isoform_clones(
+        include_single_isoform_genes=include_single_isoform_genes
+    )
     algn = algn.loc[algn["transcript_id"].isin(clones["clone_acc"].unique()), :]
     nt_seq = {k: v for k, v in nt_seq.items() if k in clones["clone_acc"].unique()}
     tf_db = load_human_tf_db()
@@ -237,10 +240,6 @@ def load_annotated_TFiso1_collection(
     tf_family = load_tf_families()
     genes = {}
     for gene_name in algn["gene_id"].unique():
-        if (
-            gene_name == "PCGF6"
-        ):  # has a 6nt insertion that doesn't map to reference genome
-            continue
         orf_ids = algn.loc[algn["gene_id"] == gene_name, "transcript_id"].unique()
         missing = [orf for orf in orf_ids if orf not in nt_seq]
         if missing:
