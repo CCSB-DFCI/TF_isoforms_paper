@@ -31,7 +31,7 @@ def load_valid_isoform_clones(include_single_isoform_genes=False):
     df = df.rename(columns={"gene": "gene_symbol"})
     df = df.loc[df["gene_symbol"] != "PCGF6", :]
     if not include_single_isoform_genes:
-        df = df.loc[df.groupby("gene_symbol").transform("size") >= 2, :]
+        df = df.loc[df["gene_symbol"].map(df.groupby("gene_symbol").size()) >= 2, :]
     return df
 
 
@@ -548,7 +548,17 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
             & ~tested["clone_acc"].isin(df["clone_acc"].values),
             ["gene_symbol", "clone_acc"],
         ].copy()
-        tested.loc[:, df.columns[2:]] = False
+        tested = pd.concat(
+            [
+                tested,
+                pd.DataFrame(
+                    columns=df.columns[2:],
+                    index=tested.index,
+                    data=[[False] * len(df.columns[2:])] * tested.shape[0],
+                ),
+            ],
+            axis=1,
+        )
         df = pd.concat([df, tested])
 
     df[df.columns[2:]] = df[df.columns[2:]].astype("boolean")

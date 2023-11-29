@@ -224,7 +224,7 @@ def y2h_ppi_per_tf_gene_plot(
     iso_order=None,
 ):
     tf = data.loc[
-        (data["category"] == "tf_isoform_ppis") & (data["ad_gene_symbol"] == gene_name),
+        (data["ad_gene_symbol"] == gene_name),
         ["ad_clone_acc", "db_gene_symbol", "Y2H_result"],
     ].copy()
     tf["ad_clone_acc"] = tf["ad_clone_acc"].apply(isoform_display_name)
@@ -365,7 +365,9 @@ def y1h_pdi_per_tf_gene_plot(
     )
 
 
-def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None, xlim=None, iso_order=None):
+def m1h_activation_per_tf_gene_plot(
+    tf_gene_name, data, ax=None, xlim=None, iso_order=None
+):
     if ax is None:
         ax = plt.gca()
     rep_columns = [c for c in data.columns if c.startswith("M1H_rep")]
@@ -391,7 +393,7 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None, xlim=None, iso_
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return
-    
+
     clones = [
         isoform_display_name(acc)
         for acc in data.loc[data["gene_symbol"] == tf_gene_name, "clone_acc"].values
@@ -399,17 +401,21 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None, xlim=None, iso_
     ]
     values = data.loc[data["gene_symbol"] == tf_gene_name, rep_columns].values.flatten()
     n_reps = len(rep_columns)
-    
+
     if iso_order is None:
-        y=clones[::n_reps]
-        width=data.loc[data["gene_symbol"] == tf_gene_name, rep_columns].mean(axis=1).values
+        y = clones[::n_reps]
+        width = (
+            data.loc[data["gene_symbol"] == tf_gene_name, rep_columns]
+            .mean(axis=1)
+            .values
+        )
     else:
-        y=iso_order
-        width=[]
+        y = iso_order
+        width = []
         for iso in iso_order:
-            idxs = [i for i, x in enumerate(clones) if x==iso]
+            idxs = [i for i, x in enumerate(clones) if x == iso]
             width.append(np.mean(values[idxs]))
-    
+
     ax.barh(
         y=y,
         width=width,
@@ -424,10 +430,10 @@ def m1h_activation_per_tf_gene_plot(tf_gene_name, data, ax=None, xlim=None, iso_
     df["clone"] = clones
     df["value"] = values
     if iso_order is None:
-        order=y
+        order = y
     else:
-        order=iso_order
-    
+        order = iso_order
+
     sns.stripplot(
         data=df,
         x="value",
@@ -604,7 +610,7 @@ def _validation_plot(
         colors = [None] * len(positives)
     ax.set_yticks(np.arange(0.0, 1.0, 0.1), minor=False)
     ax.set_yticks(np.arange(0.05, 1.0, 0.1), minor=True)
-    #ax.set_facecolor("0.96")
+    # ax.set_facecolor("0.96")
     ax.set_axisbelow(True)
     ax.grid(color="white", axis="y", which="both", zorder=5)
     pos = np.array(positives)
@@ -793,7 +799,7 @@ def nice_boxplot(
     ylabel,
     log_scale,
     ylim,
-    title
+    title,
 ):
     fig = plt.figure(figsize=(2, 2.5))
 
@@ -833,7 +839,7 @@ def nice_boxplot(
         u, p = stats.mannwhitneyu(dist_a, dist_b, alternative="two-sided")
         print(p)
 
-        annotate_pval(ax, xs[0], xs[1], y, 0, y - (y * d_y), p, PAPER_FONTSIZE-1)
+        annotate_pval(ax, xs[0], xs[1], y, 0, y - (y * d_y), p, PAPER_FONTSIZE - 1)
     return fig, ax
 
 
