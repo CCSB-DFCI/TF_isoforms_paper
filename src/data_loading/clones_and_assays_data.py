@@ -31,7 +31,8 @@ def load_valid_isoform_clones(include_single_isoform_genes=False):
     df = df.rename(columns={"gene": "gene_symbol"})
     df = df.loc[df["gene_symbol"] != "PCGF6", :]
     if not include_single_isoform_genes:
-        df = df.loc[df.groupby("gene_symbol").transform("size") >= 2, :]
+        #df = df.loc[df.groupby("gene_symbol").transform("size") >= 2, :]
+        df = df.loc[df["gene_symbol"].map(df.groupby("gene_symbol").size()) >= 2, :]
     return df
 
 
