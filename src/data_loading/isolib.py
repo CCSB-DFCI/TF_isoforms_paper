@@ -14,6 +14,15 @@ import seaborn as sns
 from Bio.Seq import Seq
 from Bio import Align
 
+# moving this function as it is useful in other areas of the code
+def _coords_transform_aa_seq_to_alignment(i, alignment):
+    if i > len(alignment.replace("I", "")):
+        raise ValueError("position is not in isoform AA sequence")
+    aa_seq_indices = [
+        "" if c == "I" else len(alignment[:j].replace("I", ""))
+        for j, c in enumerate(alignment)
+    ]
+    return aa_seq_indices.index(i)
 
 class GenomicFeature:
     """A contigous region on the genome

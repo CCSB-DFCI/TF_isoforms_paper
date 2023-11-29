@@ -14,19 +14,24 @@ import sys
 # import utils
 sys.path.append("../")
 
-from data_loading import (load_isoform_and_paralog_y2h_data,
+from data_loading import (load_full_y2h_data_including_controls,
                           load_annotated_gencode_tfs,
                           load_y1h_pdi_data,
                           load_m1h_activation_data,
                           load_valid_isoform_clones,
-                          load_seq_comparison_data,
+                          #load_seq_comparison_data,
                           load_gtex_gencode,
                           load_developmental_tissue_expression_gencode,
                           load_tf_families,
                           load_pfam_clans,
                           load_DNA_binding_domains)
 
-np.random.seed(2023)
+# to load alignment function from isolib
+from data_loading.isolib import _coords_transform_aa_seq_to_alignment
+
+from plotting import mimic_r_boxplot
+
+np.random.seed(112233)
 
 PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
                 "rc": {"font.size":7,"axes.titlesize":7,
@@ -151,17 +156,17 @@ def annotate(data, **kws):
     n = len(data)
     mean = data.n_isoforms.mean()
     ax = plt.gca()
-    ax.text(0.98, 0.98, "n=%s genes\nmean=%s isoforms/gene" % (n, np.round(mean, 2)), transform=ax.transAxes,
-            ha="right", va="top")
+    ax.text(0.98, 0.98, "n=%s genes\nmean=%s isos/gene" % (n, np.round(mean, 2)), transform=ax.transAxes,
+            ha="right", va="top", fontsize=fontsize-1)
     ax.axvline(x=mean, linestyle="dashed", color="black", linewidth=0.75)
 
-g = sns.FacetGrid(gn, row="family_updated", sharex=True, sharey=False, height=1, aspect=2,
-                  row_order=["C2H2 ZF", "Homeodomain", "bHLH", "bZIP", "Forkhead", "Nuclear receptor",
-                             "HMG/Sox", "Ets", "Unknown", "Other"])
+g = sns.FacetGrid(gn, col="family_updated", sharex=True, sharey=False, height=1, aspect=1.6,
+                  col_order=["C2H2 ZF", "Homeodomain", "bHLH", "bZIP", "Forkhead", "Nuclear receptor",
+                             "HMG/Sox", "Ets", "Unknown", "Other"], col_wrap=5)
 g.map_dataframe(sns.histplot, "n_isoforms", binwidth=1)
 g.map_dataframe(annotate)
 g.set_axis_labels("# unique isoforms", "# genes")
-g.set_titles(row_template="{row_name}")
+g.set_titles(col_template="{col_name}")
 g.savefig("../../figures/fig1/GENCODE_iso_counts_per_family.pdf", bbox_inches="tight", dpi="figure")
 
 # conditions (body sites): gtex
@@ -170,6 +175,24 @@ len(metadata_gtex['body_site'].value_counts())
 # samples per body site: gtex
 metadata_gtex['body_site'].value_counts()
 
+list(metadata_gtex['body_site'].value_counts().index)
+
+fig = plt.figure(figsize=(6.5, 2))
+
+ax = sns.countplot(data=metadata_gtex, x="body_site", order=list(metadata_gtex['body_site'].value_counts().index))
+ax.set_xlabel("")
+ax.set_ylabel("# samples")
+
+_ = ax.set_xticklabels(list(metadata_gtex['body_site'].value_counts().index), rotation=45, ha="right", va="top")
+
+for pos in ['top', 'right']:
+    ax.spines[pos].set_visible(False)
+    
+fig.savefig("../../figures/fig1/gtex-metadata.pdf", dpi="figure", bbox_inches="tight")
+
+gtex_bs = pd.DataFrame(metadata_gtex['body_site'].value_counts()).reset_index()
+gtex_bs.head()
+
 # conditions (body sites): dev
 metadata_dev['body_site'] = metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']
 len(metadata_dev['body_site'].value_counts())
@@ -177,11 +200,61 @@ len(metadata_dev['body_site'].value_counts())
 # samples per body site: dev
 metadata_dev['body_site'].value_counts()
 
+fig = plt.figure(figsize=(8.5, 2))
+
+ax = sns.countplot(data=metadata_dev, x="body_site", order=list(metadata_dev['body_site'].value_counts().index))
+ax.set_xlabel("")
+ax.set_ylabel("# samples")
+
+_ = ax.set_xticklabels(list(metadata_dev['body_site'].value_counts().index), rotation=45, ha="right", va="top",
+                       fontsize=4)
+
+for pos in ['top', 'right']:
+    ax.spines[pos].set_visible(False)
+    
+fig.savefig("../../figures/fig1/dev-metadata.pdf", dpi="figure", bbox_inches="tight")
+
+dev_bs = pd.DataFrame(metadata_dev['body_site'].value_counts()).reset_index()
+dev_bs.head()
+
+fig, ax = plt.subplots(1, 1, figsize=(1, 1.5))
+
+ax.bar(x=0, height=len(gtex_bs), color=sns.color_palette("Set2")[1])
+ax.bar(x=1, height=len(dev_bs), color=sns.color_palette("Set2")[1])
+
+ax.set_xticks([0, 1])
+ax.set_xticklabels(["GTEx", "Cardoso-Moreira"], ha="right", va="top", rotation=30)
+ax.set_ylabel("# of body sites\n(staged tissues)")
+
+for pos in ['top', 'right']:
+    ax.spines[pos].set_visible(False)
+    
+fig.savefig("../../figures/fig1/gtex-v-dev_body-sites.pdf", dpi="figure", bbox_inches="tight")
+
+gtex_bs["src"] = "GTEx"
+dev_bs["src"] = "Cardoso-Moreira"
+bs = gtex_bs.append(dev_bs)
+
+fig = plt.figure(figsize=(1, 1.5))
+
+ax = sns.stripplot(data=bs, x="src", y="body_site", jitter=True, color=sns.color_palette("Set2")[1],
+                   linewidth=0.5, edgecolor="black", s=3)
+
+ax.set_xticklabels(["GTEx", "Cardoso-Moreira"], ha="right", va="top", rotation=30)
+ax.set_ylabel("# of samples per body site")
+ax.set_xlabel("")
+
+for pos in ['top', 'right']:
+    ax.spines[pos].set_visible(False)
+    
+fig.savefig("../../figures/fig1/gtex-v-dev_n-samples.pdf", dpi="figure", bbox_inches="tight")
+
 # loop through gtex tissues
 # pick number of samples according to dev dataset
 # loop again
 # make fake metadata file
 n_samples_dev = df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).value_counts().values
+print(n_samples_dev)
 np.random.shuffle(n_samples_dev)
 gtex_tissues = metadata_gtex['body_site'].value_counts().index.values
 
@@ -220,10 +293,31 @@ df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage
 tmp = metadata_dev.groupby(["organism_part", "dev_stage"])["BioSample"].agg("count").reset_index()
 tmp.sort_values(by="BioSample")
 
-# write this file so we can load it in the DN section later
+# write this file so we can load it in later figures
 metadata_gtex_dummy.to_csv("../../data/processed/metadata_gtex_dummy.csv")
 
 means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean()
+
+fig = plt.figure(figsize=(8.5, 2))
+
+ax = sns.countplot(data=metadata_gtex_dummy, x="body_site", 
+                   order=list(metadata_gtex_dummy['body_site'].value_counts().index))
+ax.set_xlabel("")
+ax.set_ylabel("# samples")
+
+_ = ax.set_xticklabels(list(metadata_gtex_dummy['body_site'].value_counts().index), rotation=45, ha="right", va="top",
+                       fontsize=4)
+
+for pos in ['top', 'right']:
+    ax.spines[pos].set_visible(False)
+    
+fig.savefig("../../figures/fig1/gtex-dummy-metadata.pdf", dpi="figure", bbox_inches="tight")
+
+means_gtex_downsample
+
+fig, ax = plt.subplots(1, 1, figsize=(2, 1.5))
+
+
 
 # plot number of isoforms above 1 TPM
 
@@ -364,7 +458,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex"
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex", "min_gtex"]], left_on="alt", 
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
-fig = plt.figure(figsize=(2, 1.5))
+fig = plt.figure(figsize=(1.75, 1.5))
 
 ax = sns.histplot(data=ref_alt_map_nonan, x="max_gtex_ref", y="max_gtex_alt",
                   bins=30, cbar=True, cbar_kws={"label": "# isoform pairs",
@@ -383,8 +477,8 @@ ax.set_xticks([np.log2(x + 1) for x in ticks])
 ax.set_xticklabels(ticklabels)
 ax.set_yticks([np.log2(y + 1) for y in ticks])
 ax.set_yticklabels(ticklabels)
-ax.tick_params(axis='x', labelsize=fontsize-2)
-ax.tick_params(axis='y', labelsize=fontsize-2)
+ax.tick_params(axis='x', labelsize=7)
+ax.tick_params(axis='y', labelsize=7)
 
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "5", "10", "15", "20", "25", "30+"])
@@ -422,7 +516,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep",
                                                                       "min_gtex_downsample"]], 
                                             left_on="alt", right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
-fig = plt.figure(figsize=(2, 1.5))
+fig = plt.figure(figsize=(1.7, 1.5))
 
 ax = sns.histplot(data=ref_alt_map_nonan, x="max_gtex_downsample_ref", y="max_gtex_downsample_alt",
                   bins=30, cbar=True, cbar_kws={"label": "# isoform pairs",
@@ -441,8 +535,8 @@ ax.set_xticks([np.log2(x + 1) for x in ticks])
 ax.set_xticklabels(ticklabels)
 ax.set_yticks([np.log2(y + 1) for y in ticks])
 ax.set_yticklabels(ticklabels)
-ax.tick_params(axis='x', labelsize=fontsize-2)
-ax.tick_params(axis='y', labelsize=fontsize-2)
+ax.tick_params(axis='x', labelsize=6)
+ax.tick_params(axis='y', labelsize=6)
 
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "5", "10", "15", "20", "25", "30+"])
@@ -478,7 +572,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", "min_dev"]], left_on="alt", 
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
-fig = plt.figure(figsize=(2, 1.5))
+fig = plt.figure(figsize=(1.7, 1.5))
 
 ax = sns.histplot(data=ref_alt_map_nonan, x="max_dev_ref", y="max_dev_alt",
                   bins=30, cbar=True, cbar_kws={"label": "# isoform pairs",
@@ -497,8 +591,8 @@ ax.set_xticks([np.log2(x + 1) for x in ticks])
 ax.set_xticklabels(ticklabels)
 ax.set_yticks([np.log2(y + 1) for y in ticks])
 ax.set_yticklabels(ticklabels)
-ax.tick_params(axis='x', labelsize=fontsize-2)
-ax.tick_params(axis='y', labelsize=fontsize-2)
+ax.tick_params(axis='x', labelsize=6)
+ax.tick_params(axis='y', labelsize=6)
 
 cbar = ax.collections[0].colorbar
 cbar.set_ticklabels(["0", "5", "10", "15", "20", "25", "30+"])
@@ -547,52 +641,6 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gte
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gtex", "min_ratio_gtex"]], left_on="alt", 
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
-fig = plt.figure(figsize=(2, 1.5))
-
-df = ref_alt_map_nonan[["ref", "min_ratio_gtex_ref", "max_ratio_gtex_ref"]].drop_duplicates()
-df = df[(~pd.isnull(df["min_ratio_gtex_ref"])) & (~pd.isnull(df["max_ratio_gtex_ref"]))]
-
-ax = sns.histplot(data=df, x="min_ratio_gtex_ref", y="max_ratio_gtex_ref",
-                  bins=30, cbar=True, cmap="rocket_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
-                                                                                   "ticks": [0, 20, 40, 60,
-                                                                                             80, 100, 120]})
-cbar = ax.collections[0].colorbar
-cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
-ax.set_xlim((-2, 102))
-ax.set_ylim((-2, 102))
-ax.set_xticks([0, 20, 40, 60, 80, 100])
-ax.set_yticks([0, 20, 40, 60, 80, 100])
-ax.set_xlabel("max isoform fraction")
-ax.set_ylabel("min isoform fraction")
-ax.set_title("n=%s ref isoforms" % len(df))
-
-fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-gtex.pdf',
-            bbox_inches='tight')
-
-fig = plt.figure(figsize=(2, 1.5))
-
-df = ref_alt_map_nonan[["alt", "min_ratio_gtex_alt", "max_ratio_gtex_alt"]].drop_duplicates()
-df = df[(~pd.isnull(df["min_ratio_gtex_alt"])) & (~pd.isnull(df["max_ratio_gtex_alt"]))]
-
-ax = sns.histplot(data=ref_alt_map_nonan, x="min_ratio_gtex_alt", y="max_ratio_gtex_alt",
-                  bins=30, cbar=True, cmap="rocket_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
-                                                                                   "ticks": [0, 20, 40, 60,
-                                                                                             80, 100, 120]})
-cbar = ax.collections[0].colorbar
-cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
-ax.set_xlim((-2, 102))
-ax.set_ylim((-2, 102))
-ax.set_xticks([0, 20, 40, 60, 80, 100])
-ax.set_yticks([0, 20, 40, 60, 80, 100])
-ax.set_xlabel("min isoform fraction")
-ax.set_ylabel("max isoform fraction")
-ax.set_title("n=%s alt isoforms" % len(df))
-fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-gtex.pdf',
-            bbox_inches='tight')
-
-MIN_THRESH = 10
-MAX_THRESH = 90
-
 # percentage of alternative isoform
 # plot distribution of fraction of gene expression for ref and alt
 
@@ -625,68 +673,6 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "ma
                                                                   "min_ratio_gtex_downsample"]], left_on="alt", 
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
-fig = plt.figure(figsize=(2, 1.5))
-
-df = ref_alt_map_nonan[["ref", "min_ratio_gtex_downsample_ref", "max_ratio_gtex_downsample_ref"]].drop_duplicates()
-df = df[(~pd.isnull(df["min_ratio_gtex_downsample_ref"])) & (~pd.isnull(df["max_ratio_gtex_downsample_ref"]))]
-
-n_switches = df[(df["min_ratio_gtex_downsample_ref"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_ref"] > MAX_THRESH)]
-n_off = df[(df["min_ratio_gtex_downsample_ref"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_ref"] < MIN_THRESH)]
-print(len(n_switches))
-p_switches_ref_gtex_ds = len(n_switches)/len(df)
-p_off_ref_gtex_ds = len(n_off)/len(df)
-
-ax = sns.histplot(data=df, x="min_ratio_gtex_downsample_ref", y="max_ratio_gtex_downsample_ref",
-                  bins=30, cbar=True, cmap="mako_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
-                                                                                   "ticks": [0, 20, 40, 60,
-                                                                                             80, 100, 120]})
-cbar = ax.collections[0].colorbar
-cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
-ax.set_xlim((-2, 102))
-ax.set_ylim((-2, 102))
-ax.set_xticks([0, 20, 40, 60, 80, 100])
-ax.set_yticks([0, 20, 40, 60, 80, 100])
-ax.set_xlabel("min isoform fraction")
-ax.set_ylabel("max isoform fraction")
-ax.set_title("n=%s ref isoforms" % len(df))
-fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-gtex-downsample.pdf',
-            bbox_inches='tight')
-
-fig = plt.figure(figsize=(2, 1.5))
-
-df = ref_alt_map_nonan[["alt", "min_ratio_gtex_downsample_alt", "max_ratio_gtex_downsample_alt"]].drop_duplicates()
-df = df[(~pd.isnull(df["min_ratio_gtex_downsample_alt"])) & (~pd.isnull(df["max_ratio_gtex_downsample_alt"]))]
-
-n_switches = df[(df["min_ratio_gtex_downsample_alt"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_alt"] > MAX_THRESH)]
-n_off = df[(df["min_ratio_gtex_downsample_alt"] < MIN_THRESH) & (df["max_ratio_gtex_downsample_alt"] < MIN_THRESH)]
-print(len(n_switches))
-p_switches_alt_gtex_ds = len(n_switches)/len(df)
-p_off_alt_gtex_ds = len(n_off)/len(df)
-
-ax = sns.histplot(data=ref_alt_map_nonan, x="min_ratio_gtex_downsample_alt", y="max_ratio_gtex_downsample_alt",
-                  bins=30, cbar=True, cmap="mako_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
-                                                                                   "ticks": [0, 20, 40, 60,
-                                                                                             80, 100, 120]})
-cbar = ax.collections[0].colorbar
-cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
-ax.set_xlim((-2, 102))
-ax.set_ylim((-2, 102))
-ax.set_xticks([0, 20, 40, 60, 80, 100])
-ax.set_yticks([0, 20, 40, 60, 80, 100])
-ax.set_xlabel("min isoform fraction")
-ax.set_ylabel("max isoform fraction")
-ax.set_title("n=%s alt isoforms" % len(df))
-
-# add lines to distinguish events
-ax.plot([MIN_THRESH, 0], [MIN_THRESH, MIN_THRESH], linestyle="dotted", color="black")
-ax.plot([MIN_THRESH, MIN_THRESH], [0, MIN_THRESH], linestyle="dotted", color="black")
-ax.plot([0, MIN_THRESH], [MAX_THRESH, MAX_THRESH], linestyle="dotted", color="black")
-ax.plot([MIN_THRESH, MIN_THRESH], [MAX_THRESH, 100], linestyle="dotted", color="black")
-ax.text(MIN_THRESH, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
-ax.text(MIN_THRESH, MAX_THRESH+5, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
-
-fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-gtex-downsample.pdf',
-            bbox_inches='tight')
 
 # percentage of alternative isoform
 # plot distribution of fraction of gene expression for ref and alt
@@ -721,46 +707,39 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev"
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev", "min_ratio_dev"]], left_on="alt", 
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="left")
 
-fig = plt.figure(figsize=(2, 1.5))
+print(len(ref_alt_map_nonan))
+df = ref_alt_map_nonan[["gene", "ref", "alt", "min_ratio_dev_alt", "max_ratio_dev_alt",
+                        "min_ratio_gtex_downsample_alt", "max_ratio_gtex_downsample_alt"]].drop_duplicates()
+print(len(df))
 
-df = ref_alt_map_nonan[["ref", "min_ratio_dev_ref", "max_ratio_dev_ref"]].drop_duplicates()
-df = df[(~pd.isnull(df["min_ratio_dev_ref"])) & (~pd.isnull(df["max_ratio_dev_ref"]))]
+df["perc_change_dev_alt"] = df["max_ratio_dev_alt"] - df["min_ratio_dev_alt"]
+df["perc_change_gtex_downsample_alt"] = df["max_ratio_gtex_downsample_alt"] - df["min_ratio_gtex_downsample_alt"]
 
-n_switches = df[(df["min_ratio_dev_ref"] < MIN_THRESH) & (df["max_ratio_dev_ref"] > MAX_THRESH)]
-n_off = df[(df["min_ratio_dev_ref"] < MIN_THRESH) & (df["max_ratio_dev_ref"] < MIN_THRESH)]
-print(len(n_switches))
-p_switches_ref_dev = len(n_switches)/len(df)
-p_off_ref_dev = len(n_off)/len(df)
+LOW_THRESH = 10
+PERC_CHANGE_THRESH = 70
 
-ax = sns.histplot(data=ref_alt_map_nonan, x="min_ratio_dev_ref", y="max_ratio_dev_ref",
-                  bins=30, cbar=True, cmap="mako_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
-                                                                                   "ticks": [0, 20, 40, 60,
-                                                                                             80, 100, 120]})
-cbar = ax.collections[0].colorbar
-cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
-ax.set_xlim((-2, 102))
-ax.set_ylim((-2, 102))
-ax.set_xticks([0, 20, 40, 60, 80, 100])
-ax.set_yticks([0, 20, 40, 60, 80, 100])
-ax.set_xlabel("min isoform fraction")
-ax.set_ylabel("max isoform fraction")
-ax.set_title("n=%s ref isoforms" % len(df))
+def categorize_switch(row, min_col, max_col, perc_change_col, LOW_THRESH=LOW_THRESH, PERC_CHANGE_THRESH=PERC_CHANGE_THRESH):
+    if row[min_col] < LOW_THRESH and row[max_col] < LOW_THRESH:
+        return "low"
+    elif row[perc_change_col] > PERC_CHANGE_THRESH:
+        return "switch"
+    else:
+        return "shift"
 
-fig.savefig('../../figures/fig1/expression-ratio-scatter-ref-dev.pdf',
-            bbox_inches='tight')
+df["cat_dev_alt"] = df.apply(categorize_switch, min_col="min_ratio_dev_alt", max_col="max_ratio_dev_alt", 
+                             perc_change_col="perc_change_dev_alt", axis=1)
+df["cat_gtex_downsample_alt"] = df.apply(categorize_switch, min_col="min_ratio_gtex_downsample_alt", 
+                                         max_col="max_ratio_gtex_downsample_alt", 
+                                         perc_change_col="perc_change_gtex_downsample_alt", 
+                                         axis=1)
 
-fig = plt.figure(figsize=(2, 1.5))
+df.cat_dev_alt.value_counts()
 
-df = ref_alt_map_nonan[["alt", "min_ratio_dev_alt", "max_ratio_dev_alt"]].drop_duplicates()
-df = df[(~pd.isnull(df["min_ratio_dev_alt"])) & (~pd.isnull(df["max_ratio_dev_alt"]))]
+df.cat_gtex_downsample_alt.value_counts()
 
-n_switches = df[(df["min_ratio_dev_alt"] < MIN_THRESH) & (df["max_ratio_dev_alt"] > MAX_THRESH)]
-n_off = df[(df["min_ratio_dev_alt"] < MIN_THRESH) & (df["max_ratio_dev_alt"] < MIN_THRESH)]
-print(len(n_switches))
-p_switches_alt_dev = len(n_switches)/len(df)
-p_off_alt_dev = len(n_off)/len(df)
+fig = plt.figure(figsize=(1.7, 1.5))
 
-ax = sns.histplot(data=ref_alt_map_nonan, x="min_ratio_dev_alt", y="max_ratio_dev_alt",
+ax = sns.histplot(data=df, x="min_ratio_dev_alt", y="max_ratio_dev_alt",
                   bins=30, cbar=True, cmap="mako_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
                                                                                    "ticks": [0, 20, 40, 60,
                                                                                              80, 100, 120]})
@@ -775,52 +754,97 @@ ax.set_ylabel("max isoform fraction")
 ax.set_title("n=%s alt isoforms" % len(df))
 
 # add lines to distinguish events
-ax.plot([MIN_THRESH, 0], [MIN_THRESH, MIN_THRESH], linestyle="dotted", color="black")
-ax.plot([MIN_THRESH, MIN_THRESH], [0, MIN_THRESH], linestyle="dotted", color="black")
-ax.plot([0, MIN_THRESH], [MAX_THRESH, MAX_THRESH], linestyle="dotted", color="black")
-ax.plot([MIN_THRESH, MIN_THRESH], [MAX_THRESH, 100], linestyle="dotted", color="black")
-ax.text(MIN_THRESH, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
-ax.text(MIN_THRESH, MAX_THRESH+5, " switch", ha="left", va="center", fontstyle="italic", color=sns.color_palette("mako")[1])
-
+ax.plot([LOW_THRESH, 0], [LOW_THRESH, LOW_THRESH], linestyle="dotted", color="black")
+ax.plot([LOW_THRESH, LOW_THRESH], [0, LOW_THRESH], linestyle="dotted", color="black")
+ax.text(LOW_THRESH, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
+ax.plot([0, 100-PERC_CHANGE_THRESH], [PERC_CHANGE_THRESH, 100], linestyle="dotted", color="black")
+ax.text(0, PERC_CHANGE_THRESH, "switch\n", ha="left", va="bottom", rotation=45, fontstyle="italic", color="black")
 fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-dev.pdf',
             bbox_inches='tight')
 
-bar = pd.DataFrame.from_dict({"gtex_ds_ref": {"switch": p_switches_ref_gtex_ds*100, "low": p_off_ref_gtex_ds*100},
-                              "gtex_ds_alt": {"switch": p_switches_alt_gtex_ds*100, "low": p_off_alt_gtex_ds*100},
-                              "dev_ref": {"switch": p_switches_ref_dev*100, "low": p_off_ref_dev*100},
-                              "dev_alt": {"switch": p_switches_alt_dev*100, "low": p_off_alt_dev*100}}, 
-                             orient="index").reset_index()
-bar["shift"] = 100-(bar["switch"]+bar["low"])
-bar = bar[["index", "low", "switch", "shift"]]
-bar
+fig = plt.figure(figsize=(1.7, 1.5))
 
-palette = {"low": "lightgrey",
-           "switch": sns.color_palette("mako")[1],
-           "shift": sns.color_palette("mako")[5]}
-palette
+ax = sns.histplot(data=df, x="min_ratio_gtex_downsample_alt", y="max_ratio_gtex_downsample_alt",
+                  bins=30, cbar=True, cmap="mako_r", vmin=0, vmax=120, cbar_kws={"label": "# isoform pairs",
+                                                                                   "ticks": [0, 20, 40, 60,
+                                                                                             80, 100, 120]})
+cbar = ax.collections[0].colorbar
+cbar.set_ticklabels(["0", "20", "40", "60", "80", "100", "120+"])
+ax.set_xlim((-2, 102))
+ax.set_ylim((-2, 102))
+ax.set_xticks([0, 20, 40, 60, 80, 100])
+ax.set_yticks([0, 20, 40, 60, 80, 100])
+ax.set_xlabel("min isoform fraction")
+ax.set_ylabel("max isoform fraction")
+ax.set_title("n=%s alt isoforms" % len(df))
 
-gtex_bar = bar[bar["index"].str.contains("gtex")]
-ax = gtex_bar.plot.bar(x="index", stacked=True, color=palette.values(), figsize=(1, 1))
-ax.set_ylabel("% of isoforms")
-ax.set_xlabel("")
-#ax.set_title("GTEx")
-
-plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
-ax.set_xticklabels(["ref", "alt"], ha="right", va="top", rotation=30)
-
-plt.savefig('../../figures/fig1/expression-switch-bar-gtex.pdf',
+# add lines to distinguish events
+ax.plot([LOW_THRESH, 0], [LOW_THRESH, LOW_THRESH], linestyle="dotted", color="black")
+ax.plot([LOW_THRESH, LOW_THRESH], [0, LOW_THRESH], linestyle="dotted", color="black")
+ax.text(LOW_THRESH, 5, " low", ha="left", va="center", fontstyle="italic", color="slategrey")
+ax.plot([0, 100-PERC_CHANGE_THRESH], [PERC_CHANGE_THRESH, 100], linestyle="dotted", color="black")
+ax.text(0, PERC_CHANGE_THRESH, "switch\n", ha="left", va="bottom", rotation=45, fontstyle="italic", color="black")
+fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-gtex-downsample.pdf',
             bbox_inches='tight')
 
-dev_bar = bar[bar["index"].str.contains("dev")]
-ax = dev_bar.plot.bar(x="index", stacked=True, color=palette.values(), figsize=(1, 1))
+fig = plt.figure(figsize=(1.5, 1.5))
+
+dev_df = df[df["cat_dev_alt"] != "low"].drop_duplicates()
+gtex_df = df[df["cat_gtex_downsample_alt"] != "low"].drop_duplicates()
+ax = sns.kdeplot(x=dev_df["perc_change_dev_alt"], cumulative=False, cut=0,
+                 color=sns.color_palette("Set2")[1], label="Dev (n=%s)" % (len(dev_df)))
+sns.kdeplot(x=gtex_df["perc_change_gtex_downsample_alt"], cut=0, 
+            cumulative=False, color=sns.color_palette("Set2")[2], label="GTEx (n=%s)" % len(gtex_df), ax=ax)
+ax.axvline(x=PERC_CHANGE_THRESH, color="black", linestyle="dashed", linewidth=1)
+ax.text(PERC_CHANGE_THRESH, 0.016, "  switch", ha="left", va="top", fontsize=7)
+ax.text(PERC_CHANGE_THRESH, 0.016, "shift  ", ha="right", va="top", fontsize=7)
+
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+
+ax.set_xlabel("maximum % change across conditions")
+ax.set_ylabel("density")
+ax.set_title("Expressed alternative isoforms")
+
+_ = ax.set_xticks([0, 20, 40, 60, 80, 100])
+
+for spine in ['right', 'top']:
+    ax.spines[spine].set_visible(False)
+
+fig.savefig('../../figures/fig1/perc-change-dist-gtex-v-dev.pdf',
+            bbox_inches='tight')
+
+barp = pd.DataFrame(df.cat_dev_alt.value_counts())
+barp["cat_dev_alt_p"] = barp["cat_dev_alt"]/barp["cat_dev_alt"].sum(axis=0)*100
+
+barp = barp.join(pd.DataFrame(df.cat_gtex_downsample_alt.value_counts()))
+barp["cat_gtex_downsample_alt_p"] = barp["cat_gtex_downsample_alt"]/barp["cat_gtex_downsample_alt"].sum(axis=0)*100
+barp = barp[["cat_dev_alt_p", "cat_gtex_downsample_alt_p"]].T.reset_index()
+barp
+
+palette = {"low": "lightgrey",
+           "shift": sns.color_palette("mako")[1],
+           "switch": sns.color_palette("mako")[5]}
+
+ax = barp.plot.bar(x="index", stacked=True, color=list(palette.values())[::-1], figsize=(1.2, 1.5))
 ax.set_ylabel("% of isoforms")
 ax.set_xlabel("")
-#ax.set_title("dev")
 
-plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
-ax.set_xticklabels(["ref", "alt"], ha="right", va="top", rotation=30)
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+ax.set_xticklabels(["Dev.", "GTEx"], ha="right", va="top", rotation=30)
 
-plt.savefig('../../figures/fig1/expression-switch-bar-dev.pdf',
+for i, row in barp.iterrows():
+    p_shift = row['shift']
+    ax.text(i, 0, '{:.0f}%'.format(p_shift), ha="center", va="bottom", fontsize=7)
+    p_switch = row['switch']
+    ax.text(i, p_shift, '{:.0f}%'.format(p_switch), ha="center", va="bottom", fontsize=7, color="white")
+    p_low = row['low']
+    ax.text(i, p_shift+p_switch, '{:.0f}%'.format(p_low), ha="center", va="bottom", fontsize=7)
+    
+for spine in ['right', 'top']:
+    ax.spines[spine].set_visible(False)
+
+plt.savefig('../../figures/fig1/expression-switch-bar-dev_vs_gtex.pdf',
             bbox_inches='tight')
 
 tmp = ref_alt_map_nonan
@@ -859,8 +883,13 @@ def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim,
     axes[0].set_ylim(ylim)
     axes[1].set_ylabel('percent')
     axes[1].set_yticklabels(['{:.0%}'.format(t) for t in axes[1].get_yticks()])
-    axes[1].legend(loc='lower left', bbox_to_anchor=(1, 0))
+    axes[1].legend(loc='lower left', bbox_to_anchor=(1, 0), frameon=False)
     axes[0].axhline(y=1, color='black', linewidth=0.5, linestyle="dashed")
+    
+    for spine in ['right', 'top']:
+        axes[0].spines[spine].set_visible(False)
+        axes[1].spines[spine].set_visible(False)
+    
     plt.subplots_adjust(hspace=0.25)
     plt.savefig('../../figures/fig1/expression_' + gene_name + '_' + fig_suffix + '.pdf',
                 bbox_inches='tight')
@@ -875,10 +904,10 @@ ovary_cols = [x for x in means_gtex.columns if "Ovary" in x]
 developmental_tissue_expression_plot("HEY2", "Spectral", (0.5, 1.75), (0, 6), means_gtex, heart_cols + ovary_cols, 
                                      "means_gtex_heart_ovary")
 
-ss_alt_gtex = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_gtex_downsample_alt"] > MIN_THRESH)].gene.unique())
+ss_alt_gtex = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_gtex_downsample_alt"] > LOW_THRESH)].gene.unique())
 ss_alt_gtex
 
-ss_alt_dev = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_dev_alt"] > MIN_THRESH)].gene.unique())
+ss_alt_dev = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_dev_alt"] > LOW_THRESH)].gene.unique())
 ss_alt_dev
 
 tot_genes = len(ref_alt_map_nonan.gene.unique())
@@ -887,241 +916,6 @@ tot_genes
 ss_alt_gtex/tot_genes
 
 ss_alt_dev/tot_genes
-
-# loop through ref/alt pairs above and calculate total num AAs inserted/deleted/frameshifted
-tot_ins = []
-tot_perc_ins = []
-tot_dd = []
-tot_perc_dd = []
-tot_f = []
-tot_perc_f = []
-
-tot_ins_dom = []
-tot_perc_ins_dom = []
-tot_dd_dom = []
-tot_perc_dd_dom = []
-tot_f_dom = []
-tot_perc_f_dom = []
-
-tot_ins_eff = []
-tot_perc_ins_eff = []
-tot_dd_eff = []
-tot_perc_dd_eff = []
-tot_f_eff = []
-tot_perc_f_eff = []
-
-for i, row in ref_alt_map_nonan.iterrows():
-    ref = row.ref.split("|")[0]
-    alt = row.alt.split("|")[0]
-    gene = ref[:-4]
-    
-    # manual fixes
-    if gene == "AC092072.1":
-        gene = "ZNF223"
-    if gene == "AC008554.1":
-        gene = "ZNF737"
-    if gene == "AC073611.1":
-        gene = "SP7"
-    if gene == "AC118549.1":
-        gene = "ZZZ3"
-    if gene == "ZUP1":
-        gene = "ZUFSP"
-    if gene == "AC139768.1":
-        gene = "POU6F1"
-    if gene == "PHF19":
-        gene = "PHF19 "
-    #print("gene: %s | ref: %s | alt: %s" % (gene, ref, alt))
-    
-    pp_str = tfs[gene].pairwise_changes_relative_to_reference(ref, alt)
-    aa_ftr = tfs[gene].aa_feature_disruption(ref)
-    if len(aa_ftr) == 0:
-        ins_dom = 0
-        perc_ins_dom = 0
-        dd_dom = 0
-        perc_dd_dom = 0
-        f_dom = 0
-        perc_f_dom = 0
-        
-        ins_eff = 0
-        perc_ins_eff = 0
-        dd_eff = 0
-        perc_dd_eff = 0
-        f_eff = 0
-        perc_f_eff = 0
-    else:
-        aa_ftr_alt = aa_ftr[aa_ftr["alt_iso"] == alt]
-        
-        # separate pfam and effector domains
-        pfam = aa_ftr_alt[aa_ftr_alt["category"] == "Pfam_domain"]
-        eff = aa_ftr_alt[aa_ftr_alt["category"] == "effector_domain"]
-        
-        if len(pfam) > 0:
-            pfam_grp = pfam.groupby("alt_iso")[["deletion", "insertion", "frameshift"]].agg("sum").reset_index()
-        
-            ins_dom = pfam_grp.insertion.iloc[0]
-            perc_ins_dom = ins_dom/len(pp_str)*100
-            dd_dom = pfam_grp.deletion.iloc[0]
-            perc_dd_dom = dd_dom/len(pp_str)*100
-            f_dom = pfam_grp.frameshift.iloc[0]
-            perc_f_dom = f_dom/len(pp_str)*100
-        else:
-            ins_dom = 0
-            perc_ins_dom = 0
-            dd_dom = 0
-            perc_dd_dom = 0
-            f_dom = 0
-            perc_f_dom = 0
-            
-        if len(eff) > 0:
-            eff_grp = eff.groupby("alt_iso")[["deletion", "insertion", "frameshift"]].agg("sum").reset_index()
-        
-            ins_eff = eff_grp.insertion.iloc[0]
-            perc_ins_eff = ins_eff/len(pp_str)*100
-            dd_eff = eff_grp.deletion.iloc[0]
-            perc_dd_eff = dd_eff/len(pp_str)*100
-            f_eff = eff_grp.frameshift.iloc[0]
-            perc_f_eff = f_eff/len(pp_str)*100
-        else:
-            ins_eff = 0
-            perc_ins_eff = 0
-            dd_eff = 0
-            perc_dd_eff = 0
-            f_eff = 0
-            perc_f_eff = 0
-        
-        
-    
-    
-    ins = pp_str.count("I")
-    perc_ins = ins/len(pp_str)*100
-    dd = pp_str.count("D")
-    perc_dd = dd/len(pp_str)*100
-    f = pp_str.count("F")
-    f += pp_str.count("f")
-    perc_f = f/len(pp_str)*100
-    
-    tot_ins.append(ins)
-    tot_perc_ins.append(perc_ins)
-    tot_dd.append(dd)
-    tot_perc_dd.append(perc_dd)
-    tot_f.append(f)
-    tot_perc_f.append(perc_f)
-    
-    tot_ins_dom.append(ins_dom)
-    tot_perc_ins_dom.append(perc_ins_dom)
-    tot_dd_dom.append(dd_dom)
-    tot_perc_dd_dom.append(perc_dd_dom)
-    tot_f_dom.append(f_dom)
-    tot_perc_f_dom.append(perc_f_dom)
-    
-    tot_ins_eff.append(ins_eff)
-    tot_perc_ins_eff.append(perc_ins_eff)
-    tot_dd_eff.append(dd_eff)
-    tot_perc_dd_eff.append(perc_dd_eff)
-    tot_f_eff.append(f_eff)
-    tot_perc_f_eff.append(perc_f_eff)
-
-ref_alt_map_nonan["n_ins"] = tot_ins
-ref_alt_map_nonan["perc_ins"] = tot_perc_ins
-ref_alt_map_nonan["n_dd"] = tot_dd
-ref_alt_map_nonan["perc_dd"] = tot_perc_dd
-ref_alt_map_nonan["n_f"] = tot_f
-ref_alt_map_nonan["perc_f"] = tot_perc_f
-
-ref_alt_map_nonan["n_ins_dom"] = tot_ins_dom
-ref_alt_map_nonan["perc_ins_dom"] = tot_perc_ins_dom
-ref_alt_map_nonan["n_dd_dom"] = tot_dd_dom
-ref_alt_map_nonan["perc_dd_dom"] = tot_perc_dd_dom
-ref_alt_map_nonan["n_f_dom"] = tot_f_dom
-ref_alt_map_nonan["perc_f_dom"] = tot_perc_f_dom
-
-ref_alt_map_nonan["n_ins_eff"] = tot_ins_eff
-ref_alt_map_nonan["perc_ins_eff"] = tot_perc_ins_eff
-ref_alt_map_nonan["n_dd_eff"] = tot_dd_eff
-ref_alt_map_nonan["perc_dd_eff"] = tot_perc_dd_eff
-ref_alt_map_nonan["n_f_eff"] = tot_f_eff
-ref_alt_map_nonan["perc_f_eff"] = tot_perc_f_eff
-
-ref_alt_map_nonan.sample(5)
-
-def mimic_r_boxplot(ax):
-    for i, patch in enumerate(ax.artists):
-        r, g, b, a = patch.get_facecolor()
-        col = (r, g, b, 1)
-        patch.set_facecolor((r, g, b, .5))
-        patch.set_edgecolor((r, g, b, 1))
-
-        # Each box has 6 associated Line2D objects (to make the whiskers, fliers, etc.)
-        # Loop over them here, and use the same colour as above
-        line_order = ["lower", "upper", "whisker_1", "whisker_2", "med", "fliers"]
-        for j in range(i*6,i*6+6):
-            elem = line_order[j%6]
-            line = ax.lines[j]
-            if "whisker" in elem:
-                line.set_visible(False)
-            line.set_color(col)
-            line.set_mfc(col)
-            line.set_mec(col)
-            if "fliers" in elem:
-                line.set_alpha(0.5)
-
-def comp_cat(row):
-    if "dom" in row.variable:
-        return "pfam"
-    elif "eff" in row.variable:
-        return "effector"
-    else:
-        return "total"
-
-to_plot = pd.melt(ref_alt_map_nonan, id_vars=["ref", "gene", "alt"], value_vars=["n_ins", "perc_ins",
-                                                                                 "n_dd", "perc_dd",
-                                                                                 "n_f", "perc_f",
-                                                                                 "n_ins_dom", "perc_ins_dom",
-                                                                                 "n_dd_dom", "perc_dd_dom",
-                                                                                 "n_f_dom", "perc_f_dom",
-                                                                                 "n_ins_eff", "perc_ins_eff",
-                                                                                 "n_dd_eff", "perc_dd_eff",
-                                                                                 "n_f_eff", "perc_f_eff"])
-to_plot["n_or_perc"] = to_plot["variable"].str.split("_", expand=True)[0]
-to_plot["type"] = to_plot["variable"].str.split("_", expand=True)[1]
-to_plot["dom_cat"] = to_plot.apply(comp_cat, axis=1)
-to_plot.sample(5)
-
-fig = plt.figure(figsize=(2.3, 1.25))
-ax = sns.boxplot(data=to_plot[to_plot["n_or_perc"] == "perc"], 
-                 x="type", y="value", hue="dom_cat", order=["dd", "ins", "f"],
-                 palette=sns.color_palette("Set2"), fliersize=5, notch=True,
-                 flierprops={"marker": "."})
-mimic_r_boxplot(ax)
-
-
-ax.set_xlabel("")
-ax.set_xticklabels(["deletions", "insertions", "frameshift"], rotation=30, ha="right", va="top")
-ax.set_ylabel("% AA affected")
-ax.set_title("alt v. ref TF isoforms")
-handles, labels = ax.get_legend_handles_labels()
-labels = ["all", "Pfam", "effector"]
-ax.legend(handles, labels, loc=2, bbox_to_anchor=(1.01, 1))
-fig.savefig('../../figures/fig1/domain-overall-boxplot.pdf',
-            bbox_inches='tight')
-
-to_plot[to_plot["n_or_perc"] == "perc"].groupby(["type", "dom_cat"]).agg("median")
-
-len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f_dom"] > 0])
-
-len(ref_alt_map_nonan[ref_alt_map_nonan["perc_ins"] >= 10])
-
-len(ref_alt_map_nonan[ref_alt_map_nonan["perc_f"] >= 10])
-
-len(ref_alt_map_nonan)
-
-214/2305
-
-len(ref_alt_map_nonan[(ref_alt_map_nonan["perc_dd_eff"] > 0) |
-                      (ref_alt_map_nonan["perc_ins_eff"] > 0) |
-                      (ref_alt_map_nonan["perc_f_eff"] > 0)])
-
-684/2305
 
 clans = load_pfam_clans()
 dbd = load_DNA_binding_domains()
@@ -1139,6 +933,163 @@ ref_isos['TBX5']
 # now every comparison is alt vs annotated reference isoform
 df = pd.concat([g.aa_feature_disruption(ref_isos[g.name]) for g in tfs.values() if g.has_MANE_select_isoform])
 df.head()
+
+# NES/NLS are annotated as UniProt motif
+df.category.value_counts()
+
+# loop through ref/alt pairs and calculate the % change in aas by domain type and mut type (del/ins/fs)
+
+dom_types = ["Pfam_domain", "effector_domain", "UniProt motif"]
+dom_names = ["Pfam", "effector", "NLS/NES"]
+
+
+df_pairs = df[["gene_symbol", "ref_iso", "alt_iso"]].drop_duplicates()
+
+dom_df = pd.DataFrame()
+for i, row in df_pairs.iterrows():
+    dom_sub = df[(df["gene_symbol"] == row.gene_symbol) &
+                 (df["ref_iso"] == row.ref_iso) &
+                 (df["alt_iso"] == row.alt_iso)]
+    
+    pp_str = tfs[row.gene_symbol].pairwise_changes_relative_to_reference(row.ref_iso, row.alt_iso)
+    
+    dom_dict_ = {}
+    for dom_type, dom_name in zip(dom_types, dom_names):
+        
+        dom_sub_t = dom_sub[dom_sub["category"] == dom_type]
+        
+        nucs = []
+        for j, row_j in dom_sub_t.iterrows():
+            
+            # correctly re-aligns domain coordinates if there are any insertions
+            algned_start = _coords_transform_aa_seq_to_alignment(row_j.start_in_ref_iso, pp_str)
+            algned_end = _coords_transform_aa_seq_to_alignment(row_j.end_in_ref_iso - 1, pp_str) + 1
+            nuc_range = list(range(algned_start, algned_end))
+            nucs.append(nuc_range)
+        nucs = [item for sublist in nucs for item in sublist]
+        nucs = sorted(set(nucs))
+        
+        pp_str_nucs = ''.join([pp_str[nuc] for nuc in nucs])
+        
+        if len(nucs) > 0:
+            n_ins = pp_str_nucs.count("I")
+            n_dd = pp_str_nucs.count("D")
+            n_fs = pp_str_nucs.count("F") + pp_str_nucs.count("f")
+            #print("dom: %s | ins: %s | dd: %s | fs: %s" % (dom_type, n_ins, n_dd, n_fs))
+
+            # calculate percentage as compared to the domain length
+            p_ins = n_ins/len(nucs)*100
+            p_dd = n_dd/len(nucs)*100
+            p_fs = n_fs/len(nucs)*100
+        else:
+            p_ins = np.nan
+            p_dd = np.nan
+            p_fs = np.nan
+        
+        dom_dict_[dom_name] = {"p_ins": p_ins, "p_dd": p_dd, "p_fs": p_fs}
+        
+    # also calculate total number of ins/dd/fs
+    n_ins = pp_str.count("I")
+    n_dd = pp_str.count("D")
+    n_fs = pp_str.count("F") + pp_str.count("f")
+    
+    # calculate percentage as compared to total aa seq len
+    p_ins = n_ins/len(pp_str)*100
+    p_dd = n_dd/len(pp_str)*100
+    p_fs = n_fs/len(pp_str)*100
+        
+    dom_dict_["total"] = {"p_ins": p_ins, "p_dd": p_dd, "p_fs": p_fs}
+    
+    dom_df_ = pd.DataFrame.from_dict(dom_dict_, orient="index").reset_index()
+    dom_df_["ref_iso"] = row.ref_iso
+    dom_df_["alt_iso"] = row.alt_iso
+    
+    dom_df = dom_df.append(dom_df_)
+
+# first plot overall changes
+dom_tot_df = dom_df[dom_df["index"] == "total"]
+dom_tot_df = pd.melt(dom_tot_df, id_vars=["ref_iso", "alt_iso", "index"])
+dom_tot_df.head()
+
+fig = plt.figure(figsize=(1, 1))
+ax = sns.boxplot(data=dom_tot_df, 
+                 x="variable", y="value", order=["p_dd", "p_ins", "p_fs"],
+                 color="slategrey", fliersize=5, notch=True,
+                 flierprops={"marker": "."})
+mimic_r_boxplot(ax)
+
+
+ax.set_xlabel("")
+ax.set_xticklabels(["deletions", "insertions", "frameshift"], rotation=30, ha="right", va="top")
+ax.set_ylabel("% ref. iso. AA affected")
+ax.set_title("alternative isoforms")
+# handles, labels = ax.get_legend_handles_labels()
+# labels = ["all", "Pfam", "effector"]
+# ax.legend(handles, labels, loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+
+for spine in ['right', 'top']:
+    ax.spines[spine].set_visible(False)
+
+fig.savefig('../../figures/fig1/seq-change-overall-boxplot.pdf',
+            bbox_inches='tight')
+
+dom_tot_df.groupby(["variable"]).agg("median")
+
+print("# alt isos that show >10% deletions")
+len(dom_tot_df[(dom_tot_df["variable"] == "p_dd") & (dom_tot_df["value"] >= 10)].alt_iso.unique())
+
+print("# alt isos that show >10% insertions")
+len(dom_tot_df[(dom_tot_df["variable"] == "p_ins") & (dom_tot_df["value"] >= 10)].alt_iso.unique())
+
+print("# alt isos that show >10% frameshifts")
+len(dom_tot_df[(dom_tot_df["variable"] == "p_fs") & (dom_tot_df["value"] >= 10)].alt_iso.unique())
+
+len(dom_tot_df.alt_iso.unique())
+
+for mut_type, mut_name in zip(["p_dd", "p_ins", "p_fs"], ["deletions", "insertions", "frameshifts"]):
+    
+    dom_mut_df = pd.melt(dom_df, id_vars=["ref_iso", "alt_iso", "index"])
+    dom_mut_df = dom_mut_df[dom_mut_df["variable"] == mut_type]
+    
+
+    fig = plt.figure(figsize=(1, 1))
+    ax = sns.boxplot(data=dom_mut_df, 
+                     x="index", y="value", order=["Pfam", "effector", "NLS/NES"],
+                     color="slategrey", fliersize=5, notch=True,
+                     flierprops={"marker": "."})
+    mimic_r_boxplot(ax)
+
+
+    ax.set_xlabel("")
+    ax.set_xticklabels(["Pfam", "effector", "NLS/NES"], rotation=30, ha="right", va="top")
+    ax.set_ylabel("% domain AA affected")
+    ax.set_title(mut_name)
+
+    for spine in ['right', 'top']:
+        ax.spines[spine].set_visible(False)
+
+    fig.savefig('../../figures/fig1/seq-change-domain-%s-boxplot.pdf' % mut_name,
+                bbox_inches='tight')
+
+dom_df["p_sum"] = dom_df[["p_ins", "p_dd", "p_fs"]].sum(axis=1, skipna=False)
+dom_grp = dom_df[dom_df["p_sum"] > 0].groupby(["index"])["alt_iso"].agg("count")
+dom_tot = dom_df[~pd.isnull(dom_df["p_sum"])].groupby(["index"])["alt_iso"].agg("count")
+dom_grp
+
+dom_tot
+
+dom_grp/dom_tot
+
+dom_any = dom_df[(dom_df["index"] != "total") & (dom_df["p_sum"] > 0)]
+len(dom_any.alt_iso.unique())
+
+len(dom_any.alt_iso.unique())/len(dom_df.alt_iso.unique())
+
+dom_df[(dom_df["p_sum"] == 0) & (dom_df["index"] == "total")]
+
+tfs["MYC"].pairwise_changes_relative_to_reference("MYC-207", "MYC-206")
+
+tfs["MYC"].exon_diagram()
 
 len(df.gene_symbol.unique())
 
@@ -1167,6 +1118,7 @@ def is_DBD(domain):
 n_aa_dbd = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if is_DBD(dom)]
 n_aa_pfam = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if not is_DBD(dom) and dom.category == 'Pfam_domain']
 n_aa_effector = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if not is_DBD(dom) and dom.category == 'effector_domain']
+n_aa_nls = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if not is_DBD(dom) and dom.category == 'UniProt motif']
 
 df.loc[df['accession'].str.startswith('C2H2_ZF_array'), 'accession'] = 'C2H2_ZF_array'
 doms = (df.loc[(df['category'] == 'Pfam_domain') | 
@@ -1186,10 +1138,10 @@ for c in [c for c in df.columns if c.startswith('is_affected_')]:
 doms = doms.sort_values('n_alt_iso', ascending=False)
 
 %%time
-df_null = pd.concat([g.null_fraction_per_aa_feature(g.isoforms[0].name) for g in tfs.values()])
-df = pd.merge(df, df_null, how='left', on=['gene_symbol', 'ref_iso', 'alt_iso', 'length'])
+# again, explicitly compare ref v alt
+df_null = pd.concat([g.null_fraction_per_aa_feature(ref_isos[g.name]) for g in tfs.values() if g.has_MANE_select_isoform])
 
-df.head()
+df = pd.merge(df, df_null, how='left', on=['gene_symbol', 'ref_iso', 'alt_iso', 'length'])
 
 def prob_or(probabilities):
     return 1 - (np.prod(1 - probabilities))
@@ -1261,8 +1213,9 @@ df['category_a'] = np.nan
 df.loc[df['is_DBD'], 'category_a'] = 'DBD'
 df.loc[(df['category'] == 'Pfam_domain') & ~df['is_DBD'], 'category_a'] = 'Other Pfam domain'
 df.loc[(df['category'] == 'effector_domain'), 'category_a'] = 'Effector domain'
+df.loc[(df['category'] == 'UniProt motif'), 'category_a'] = 'NLS/NES'
 
-# split pfam into dbd and 
+# split by domain type
 doms = df.groupby('category_a')['alt_iso'].nunique().to_frame(name='n_alt_iso')
 for c in [c for c in df.columns if c.startswith('is_affected_')]:
     doms['n_' + c] = (df.groupby(['category_a', 'alt_iso'])
@@ -1294,12 +1247,10 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 
 data = doms.copy()
 
-df.columns
-
 for level in dom_affected_levels:
         fig, ax = plt.subplots(1, 1)
-        fig.set_size_inches(1.75, 1.2)
-        # removing C2H2-ZF clan becuase we look at the ZF arrays instead
+        fig.set_size_inches(1.2, 0.7)
+
         ax.barh(data.index, 
                 data[f'f_is_{level}'].values * 100,
                 label='Observed values',
@@ -1312,7 +1263,7 @@ for level in dom_affected_levels:
                                 capsize=3,
                                 color='black',
                                 label='Null distribution: 99% CI')
-        ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.55))
+        ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.55), frameon=False)
         ax.set_xlim(0, 100)
         ax.set_ylim(ax.get_ylim()[::-1])
         ax.yaxis.set_tick_params(length=0)
@@ -1320,10 +1271,128 @@ for level in dom_affected_levels:
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
         ax.xaxis.tick_top()
-        ax.set_yticklabels(["DBD", "Other\nPfam domain", "Effector\ndomain"])
+        ax.set_yticklabels(["DBD", "Other Pfam domain", "Effector domain", "NLS/NES"])
         ax.set_xlabel(f'Fraction of alt. isoforms\nwith {level_desc[level]}')
         ax.xaxis.set_label_position('top')
         ax.set_xticks(range(0, 101, 20))
         ax.set_xticks(range(0, 101, 10), minor=True)
         plt.savefig(f'../../figures/fig1/domain_categories_{level}.resized.pdf'.format(level),
                 bbox_inches='tight')
+
+print("total # ref. isoforms w/ annotated NLS/NES: %s" % (len(df[df["category"] == "UniProt motif"].ref_iso.unique())))
+print("total # ref. isoforms w/ annotated NLS: %s" % (len(df[(df["category"] == "UniProt motif") &
+                                                             (df["accession"].str.contains("NLS"))].ref_iso.unique())))
+print("total # ref. isoforms w/ annotated NES: %s" % (len(df[(df["category"] == "UniProt motif") &
+                                                             (df["accession"].str.contains("NES"))].ref_iso.unique())))
+
+doms = (df.loc[(df['category'] == 'Pfam_domain') | 
+              (df['category'] == 'ZF_array'), :]
+              .groupby('accession')
+              ['alt_iso']
+              .nunique()
+              .to_frame(name='n_alt_iso'))
+for c in [c for c in df.columns if c.startswith('is_affected_')]:
+    doms['n_' + c] = (df.loc[(df['category'] == 'Pfam_domain') |
+                        (df['category'] == 'ZF_array'), :]
+                        .groupby(['accession', 'alt_iso'])
+                        [c]
+                        .any()
+                        .sum(level='accession'))
+    doms['f_' + c] = doms['n_' + c] / doms['n_alt_iso']
+doms = doms.sort_values('n_alt_iso', ascending=False)
+
+
+for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
+    null_p = (df.loc[(df['category'] == 'Pfam_domain') |
+                    (df['category'] == 'ZF_array'), :]
+                .groupby(['accession', 'alt_iso'])
+                [null_col]
+                .apply(prob_or))
+    doms[null_col + '_99CI_low'] = null_p.groupby('accession').apply(null_quantile, 0.01)
+    doms[null_col + '_99CI_high'] = null_p.groupby('accession').apply(null_quantile, 0.99)
+    doms[null_col + '_center'] = null_p.groupby('accession').apply(null_quantile, 0.5)
+
+doms['is_DBD'] = doms.index.isin(dbd['pfam'].values) | (doms.index == 'C2H2_ZF_array')
+# Use the custom DBD names
+doms.loc[doms['is_DBD'], 'domain_name'] = doms[doms['is_DBD']].index.map(dbd.set_index('pfam')['dbd'])
+doms.loc[~doms['is_DBD'], 'domain_name'] = doms[~doms['is_DBD']].index.map(pfam.set_index('pfam_accession')['name'])
+doms.loc[doms.index == 'C2H2_ZF_array', 'domain_name'] = ['C2H2 ZF array']
+doms.head()
+
+cutoff = 30
+
+for level in dom_affected_levels:
+
+    fig, ax = plt.subplots(1, 1)
+    fig.set_size_inches(1.2, 1.5)
+    data = doms.loc[~doms['is_DBD'] &
+                    (doms['n_alt_iso'] >= cutoff) &
+                     ~(doms.index.map(clans) == 'CL0361'), :].copy()
+    ax.barh(data.index, 
+            data[f'f_is_{level}'].values * 100,
+            label='Observed values',
+            color=sns.color_palette("Set2")[0])
+    ax.errorbar(y=data.index,
+                x=data[f'null_fraction_{level}_center'].values * 100,
+                xerr=[(data[f'null_fraction_{level}_center'] - data[f'null_fraction_{level}_99CI_low']).values * 100,
+                      (data[f'null_fraction_{level}_99CI_high'] - data[f'null_fraction_{level}_center']).values * 100],
+                fmt='none',
+                capsize=3,
+                color='black',
+                label='Null distribution: 99% CI')
+    ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.25), frameon=False)
+    ax.set_yticklabels(data['domain_name'].values)
+    ax.set_xlim(0, 100)
+    ax.set_ylim(ax.get_ylim()[::-1])
+    ax.yaxis.set_tick_params(length=0)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.xaxis.tick_top()
+    ax.set_xlabel(f'Fraction of alt. isoforms\nwith {level_desc[level]}')
+    ax.xaxis.set_label_position('top')
+    ax.set_xticks(range(0, 101, 20))
+    ax.set_xticks(range(0, 101, 10), minor=True)
+    plt.savefig(f'../../figures/fig1/other_domain_{level}.resized.pdf'.format(level),
+                bbox_inches='tight')
+
+alt_isos = {}
+for tf in tfs.values():
+    if tf.has_MANE_select_isoform:
+        alts = []
+        for orf in tf.isoforms:
+            if not orf.is_MANE_select_transcript:
+                alts.append(orf.name)
+    alt_isos[tf.name] = alts
+alt_isos["TBX5"]
+
+df = pd.DataFrame([g.splicing_categories(ref_isos[g.name], alt_iso) for g in tfs.values() if g.has_MANE_select_isoform for alt_iso in alt_isos[g.name]])
+df[df["gene_symbol"] == "TBX5"]
+
+df_m = pd.melt(df, id_vars=["gene_symbol", "reference isoform", "alternative isoform"])
+df_m.head()
+
+df_m_t = df_m[df_m["value"] == True]
+df_m_t.groupby("variable")["alternative isoform"].agg("count")
+
+fig = plt.figure(figsize=(2, 1.5))
+
+
+ax = sns.countplot(data=df_m_t, x="variable", color=sns.color_palette()[0])
+
+ax.set_xlabel("")
+xticklabels = ax.get_xticklabels()
+_ = ax.set_xticklabels(xticklabels, rotation=30, va="top", ha="right")
+
+ax.spines['right'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.spines['top'].set_visible(False)
+
+ax.set_ylabel("# of alternative isos")
+ax.set_title("Splicing categories\n(compared to ref.)")
+
+fig.savefig("../../figures/fig1/splicing_categories.pdf", dpi="figure", bbox_inches="tight")
+
+
+
+
