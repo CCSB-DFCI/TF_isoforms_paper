@@ -1331,7 +1331,9 @@ class Gene(GenomicFeature):
                     ax.text(
                         x=x_max + 0.5 + (ax.get_xlim()[1] - ax.get_xlim()[0]) * 0.05,
                         y=ax.get_ylim()[1] - i * 0.5,
-                        s=d.name + " – " + d.description,
+                        s=d.name + " – " + d.description
+                        if d.description is not None
+                        else d.name,
                         va="top",
                         ha="left",
                         fontsize=7,
@@ -1340,7 +1342,12 @@ class Gene(GenomicFeature):
                             url=url, color="w", alpha=0.01
                         ),  # if you set alpha to 0 then you're not able to click the link
                     )
-                    i += len(d.description.splitlines()) + 1
+                    increment = (
+                        len(d.description.splitlines()) + 1
+                        if d.description is not None
+                        else 2
+                    )
+                    i += increment
             ax.set_ylim(0, 1)
             ax.set_xlim(0.5 + min(offsets), x_max + 0.5)
 

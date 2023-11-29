@@ -287,7 +287,8 @@ def _convert_to_joint_clone_and_ensembl_id(s, tfs):
         )
     else:
         raise UserWarning("Failed to map ID from " + s)
-        
+
+
 def _correct_for_errors_in_remapping_file(df):
     # FIX for mapping errors in fasta file used to remap the expression data
     unmapped_clones = [

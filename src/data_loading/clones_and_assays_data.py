@@ -11,13 +11,15 @@ from .utils import DATA_DIR
 from .protein_data import load_human_tf_db, load_cofactors, load_signaling_genes
 
 
-def load_valid_isoform_clones():
+def load_valid_isoform_clones(include_single_isoform_genes=False):
     """
 
-    TODO: this is including PCGF6 which has an insertion relative
-    to the reference geneome, so that it's not consistent with the
-    load_annotated_TFiso1 set. Check the PCGF6 sequences and probably
-    remove from here.
+    include_single_isoform_genes (bool): some clones in the collection used to
+        boost numbers for the paralogs analysis.
+
+    We remove PCGF6 which has a 6nt insertion relative
+    to the reference geneome, from the cell line
+    that the ORFs were cloned from.
 
     """
     df = pd.read_csv(
@@ -28,6 +30,8 @@ def load_valid_isoform_clones():
     )
     df = df.rename(columns={"gene": "gene_symbol"})
     df = df.loc[df["gene_symbol"] != "PCGF6", :]
+    if not include_single_isoform_genes:
+        df = df.loc[df.groupby("gene_symbol").transform("size") >= 2, :]
     return df
 
 
@@ -270,7 +274,7 @@ def _load_y2h_paralogs_additional_data():
 
 
 def load_full_y2h_data_including_controls(
-    add_partner_cateogories=False,
+    add_partner_categories=False,
     remove_keratin_associated_proteins=True,
 ):
     """
@@ -289,7 +293,7 @@ def load_full_y2h_data_including_controls(
         na_values=[""],
         keep_default_na=False,
     )
-    valid_clones = load_valid_isoform_clones()
+    valid_clones = load_valid_isoform_clones(include_single_isoform_genes=True)
     df["ad_clone_acc"] = df["ad_clone_name"].map(
         valid_clones.set_index("clone_name")["clone_acc"]
     )
@@ -303,7 +307,7 @@ def load_full_y2h_data_including_controls(
             :,
         ]
 
-    if add_partner_cateogories:
+    if add_partner_categories:
         cat_info = load_ppi_partner_categories()
         cats = cat_info.groupby("category")["partner"].apply(set).to_dict()
         for cat, members in cats.items():
@@ -313,18 +317,18 @@ def load_full_y2h_data_including_controls(
         cofac_type = cat_info.groupby("cofactor_type")["partner"].apply(set).to_dict()
         for subtype, members in cofac_type.items():
             df["is_cofactor_subtype_" + subtype] = df["db_gene_symbol"].isin(members)
-            
+
     non_control_cats = {
         "tf_isoform_ppis",
         "tf_paralog_ppis",
         "paralog_with_PDI",
         "non_paralog_control",
     }
-    valid_clones = set(load_valid_isoform_clones()["clone_acc"].values)
     removed_rows = df["category"].isin(non_control_cats) & ~df["ad_clone_acc"].isin(
-        valid_clones
+        set(valid_clones["clone_acc"].values)
     )
     df = df.loc[~removed_rows, :]
+
     return df
 
 
@@ -367,12 +371,18 @@ def load_paralog_pairs_tested_in_y2h(filter_for_valid_clones=True):
     )
     df = df.drop_duplicates()
     if filter_for_valid_clones:
-        valid_clones = load_valid_isoform_clones()
+        valid_clones = load_valid_isoform_clones(include_single_isoform_genes=True)
         df = df.loc[
             df["gene_symbol_a"].isin(valid_clones["gene_symbol"])
             & df["gene_symbol_b"].isin(valid_clones["gene_symbol"]),
             :,
         ]
+
+    # This was included as a non-paralog control but they are in the same family
+    df = df.loc[
+        ~((df["gene_symbol_a"] == "ZBTB48") & (df["gene_symbol_b"] == "ZIC3")), :
+    ]
+
     if (df["gene_symbol_a"] == df["gene_symbol_b"]).any():
         raise ValueError("Same gene twice, should be two different genes")
     return df
@@ -494,7 +504,7 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
         df.loc[(df["isoform ID"] == row["isoform ID"]), row["Bait"]] = False
     for _i, row in df_long.loc[df_long["Binary"].isnull(), :].iterrows():
         df.loc[(df["isoform ID"] == row["isoform ID"]), row["Bait"]] = np.nan
-    clones = load_valid_isoform_clones()
+    clones = load_valid_isoform_clones(include_single_isoform_genes=True)
     if clones["clone_name"].duplicated().any():
         raise UserWarning("unexpected duplicates")
     clone_acc = clones.set_index("clone_name")["clone_acc"]
@@ -525,7 +535,6 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
             + x.split("-")[1][0]
             + x.split("-")[1][1:].zfill(2)
         )
-        clones = load_valid_isoform_clones()
         if tested["Coordinate"].duplicated().any():
             raise UserWarning("unexpected duplicates")
         clones["Coordinate"] = clones["clone_acc"].str.slice(-5)
@@ -535,6 +544,7 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
         tested = tested.loc[
             (tested["sequence verified?"] == "yes")
             & tested["clone_acc"].notnull()
+            & ~tested["gene"].isin(df["gene_symbol"].values)
             & ~tested["clone_acc"].isin(df["clone_acc"].values),
             ["gene_symbol", "clone_acc"],
         ].copy()
@@ -596,7 +606,9 @@ def load_Y1H_DNA_bait_sequences():
 
 
 def load_additional_PDI_data_from_unpaired_cases_in_paired_Y1H_experiment():
-    clones = load_valid_isoform_clones().set_index("clone_name")["clone_acc"]
+    clones = load_valid_isoform_clones(include_single_isoform_genes=True).set_index(
+        "clone_name"
+    )["clone_acc"]
 
     tested_genes = ["MAX", "PPARG", "RARG", "RXRG", "STAT1", "STAT3"]
     df = pd.concat(
@@ -660,7 +672,7 @@ def load_m1h_activation_data(add_missing_data=False):
         if column.startswith("M1H_rep"):
             df[column] = np.log2(df[column])
     if add_missing_data:
-        isoforms = load_valid_isoform_clones()
+        isoforms = load_valid_isoform_clones(include_single_isoform_genes=True)
         df = pd.merge(df, isoforms, on=["gene_symbol", "clone_acc"], how="outer")
     df = df.sort_values(["gene_symbol", "clone_acc"])
     return df

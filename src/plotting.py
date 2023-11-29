@@ -35,15 +35,15 @@ PAPER_PRESET = {
 PAPER_FONTSIZE = 7
 
 
-def violinplot_reflected(*args, **kwargs):
+def violinplot_reflected(*args, lb=0, ub=1, **kwargs):
     """
     monkeypatch from https://github.com/mwaskom/seaborn/issues/525
     """
     fit_kde_func = sns.categorical._ViolinPlotter.fit_kde
 
     def reflected_once_kde(self, x, bw):
-        lb = 0
-        ub = 1
+        # lb = 0
+        # ub = 1
 
         kde, bw_used = fit_kde_func(self, x, bw)
 
@@ -52,7 +52,7 @@ def violinplot_reflected(*args, **kwargs):
         def truncated_kde_evaluate(x):
             val = np.where((x >= lb) & (x <= ub), kde_evaluate(x), 0)
             val += np.where((x >= lb) & (x <= ub), kde_evaluate(lb - x), 0)
-            val += np.where((x > lb) & (x <= ub), kde_evaluate(ub - (x - ub)), 0)
+            val += np.where((x >= lb) & (x <= ub), kde_evaluate(ub - (x - ub)), 0)
             return val
 
         kde.evaluate = truncated_kde_evaluate
@@ -301,9 +301,7 @@ def y2h_ppi_per_paralog_pair_plot(
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         return
-    if iso_order is None:
-        tf = tf
-    else:
+    if iso_order is not None:
         tf = tf.loc[iso_order, :]
     binary_profile_matrix(tf, ax=ax, column_label_rotation=90)
     ax.set_yticklabels(
