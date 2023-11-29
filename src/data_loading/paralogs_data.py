@@ -31,7 +31,7 @@ def load_seq_id_between_cloned_genes():
     Using reference isoforms. Used to define paralog pairs.
 
     """
-    tfs = load_annotated_TFiso1_collection()
+    tfs = load_annotated_TFiso1_collection(include_single_isoform_genes=True)
 
     def pairwise_global_aa_sequence_similarity(aa_seq_a, aa_seq_b):
         alignment = pairwise2.align.globalds(
