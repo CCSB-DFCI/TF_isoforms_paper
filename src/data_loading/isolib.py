@@ -14,6 +14,7 @@ import seaborn as sns
 from Bio.Seq import Seq
 from Bio import Align
 
+
 # moving this function as it is useful in other areas of the code
 def _coords_transform_aa_seq_to_alignment(i, alignment):
     if i > len(alignment.replace("I", "")):
@@ -23,6 +24,7 @@ def _coords_transform_aa_seq_to_alignment(i, alignment):
         for j, c in enumerate(alignment)
     ]
     return aa_seq_indices.index(i)
+
 
 class GenomicFeature:
     """A contigous region on the genome
@@ -167,9 +169,11 @@ class Gene(GenomicFeature):
         self.number_of_isoforms = len(isoforms)
         self.name = name
 
-        self.isoforms = list(sorted(isoforms, key=lambda x: int(x.name.split("-")[-1])))
+        self._isoforms = list(
+            sorted(isoforms, key=lambda x: int(x.name.split("-")[-1]))
+        )
 
-        self._iso_dict = {iso.name: iso for iso in self.isoforms}
+        self._iso_dict = {iso.name: iso for iso in self._isoforms}
         self._pairwise_changes = {}
         self.pathogenic_coding_SNPs = []
         GenomicFeature.__init__(
@@ -211,12 +215,20 @@ class Gene(GenomicFeature):
         return [iso for iso in self.isoforms if hasattr(iso, "clone_acc")]
 
     @property
+    def _cloned_isoforms(self):
+        return [iso for iso in self._isoforms if hasattr(iso, "clone_acc")]
+
+    @property
     def GENCODE_isoforms(self):
         return [iso for iso in self.isoforms if iso.ensembl_transcript_ids is not None]
 
     @property
+    def _GENCODE_isoforms(self):
+        return [iso for iso in self._isoforms if iso.ensembl_transcript_ids is not None]
+
+    @property
     def MANE_select_isoform(self):
-        for iso in self.isoforms:
+        for iso in self._isoforms:
             if not hasattr(iso, "is_MANE_select_transcript"):
                 return None
             if iso.is_MANE_select_transcript:
@@ -227,14 +239,14 @@ class Gene(GenomicFeature):
 
     @property
     def has_MANE_select_isoform(self):
-        if not hasattr(self.isoforms[0], "is_MANE_select_transcript"):
+        if not hasattr(self._isoforms[0], "is_MANE_select_transcript"):
             return False
-        return any(iso.is_MANE_select_transcript for iso in self.isoforms)
+        return any(iso.is_MANE_select_transcript for iso in self._isoforms)
 
     @property
     def APPRIS_isoforms(self):
         appris_isos = {}
-        for iso in self.isoforms:
+        for iso in self._isoforms:
             if hasattr(iso, "APPRIS_annotation"):
                 if iso.APPRIS_annotation is not None:
                     appris_isos[iso.APPRIS_annotation] = iso
@@ -251,10 +263,14 @@ class Gene(GenomicFeature):
             return self.MANE_select_isoform
         elif len(self.APPRIS_isoforms) > 0:
             return list(self.APPRIS_isoforms.values())[0]
-        else:
+        elif len(self._GENCODE_isoforms) > 0:
             return list(
-                sorted(self.GENCODE_isoforms, key=lambda x: len(x.aa_seq), reverse=True)
+                sorted(
+                    self._GENCODE_isoforms, key=lambda x: len(x.aa_seq), reverse=True
+                )
             )[0]
+        else:
+            return self._isoforms[0]
 
     @property
     def alternative_isoforms(self):
@@ -275,16 +291,20 @@ class Gene(GenomicFeature):
                 return self.MANE_select_isoform
         if len(self.cloned_APPRIS_isoforms) > 0:
             return list(self.cloned_APPRIS_isoforms.values())[0]
-        if any(not iso.is_novel_isoform() for iso in self.cloned_isoforms):
+        if any(not iso.is_novel_isoform() for iso in self._cloned_isoforms):
             return list(
                 sorted(
-                    [iso for iso in self.cloned_isoforms if not iso.is_novel_isoform()],
+                    [
+                        iso
+                        for iso in self._cloned_isoforms
+                        if not iso.is_novel_isoform()
+                    ],
                     key=lambda x: len(x.aa_seq),
                     reverse=True,
                 )
             )[0]
         return list(
-            sorted(self.cloned_isoforms, key=lambda x: len(x.aa_seq), reverse=True)
+            sorted(self._cloned_isoforms, key=lambda x: len(x.aa_seq), reverse=True)
         )[0]
 
     @property
@@ -292,6 +312,42 @@ class Gene(GenomicFeature):
         if self.has_MANE_select_isoform:
             return hasattr(self.MANE_select_isoform, "clone_acc")
         return None
+
+    @property
+    def isoforms(self):
+        return self._order_isoforms_for_display()
+
+    def _order_isoforms_for_display(self):
+        order = []
+        if len(self._cloned_isoforms) > 0:
+            order.append(self.cloned_reference_isoform)
+        for iso in sorted(
+            self._cloned_isoforms, key=lambda x: len(x.aa_seq), reverse=True
+        ):
+            if iso.name == self.cloned_reference_isoform.name:
+                continue
+            if iso.is_novel_isoform():
+                continue
+            order.append(iso)
+        for iso in sorted(
+            self._cloned_isoforms, key=lambda x: len(x.aa_seq), reverse=True
+        ):
+            if iso.name == self.cloned_reference_isoform.name:
+                continue
+            if not iso.is_novel_isoform():
+                continue
+            order.append(iso)
+        if not hasattr(self.reference_isoform, "clone_acc"):
+            order.append(self.reference_isoform)
+        for iso in sorted(self._isoforms, key=lambda x: len(x.aa_seq), reverse=True):
+            if hasattr(iso, "clone_acc"):
+                continue
+            if iso.name == self.reference_isoform.name:
+                continue
+            order.append(iso)
+        if len(order) != len(self._isoforms):
+            raise UserWarning("bug in code" + str(self))
+        return order
 
     def alternative_start(self, isoform_a, isoform_b):
         def _start_pos(iso):
@@ -848,6 +904,7 @@ class Gene(GenomicFeature):
         ax=None,
         intron_nt_space=30,
         height=0.5,
+        show_uncloned_isoforms=True,
         show_domains=False,
         show_matched_transcripts=True,
         show_mane_and_appris_annotations=True,
@@ -859,9 +916,10 @@ class Gene(GenomicFeature):
         if ax is None:
             ax = plt.gca()
 
+        isoforms = self.isoforms if show_uncloned_isoforms else self.cloned_isoforms
         merged_exon_bounds = [(exon.start, exon.end) for exon in self.exons]
         diff_exon_ends = {}
-        for iso in self.isoforms:
+        for iso in isoforms:
             for exon in iso.exons:
                 merged_start, merged_end = merged_exon_bounds[
                     exon.exon_number_on_gene - 1
@@ -895,7 +953,7 @@ class Gene(GenomicFeature):
         exon_colors = self._get_exon_colors()
         xmin = _map_position(merged_exon_bounds[0][0])
         xmax = _map_position(merged_exon_bounds[-1][1] - 1)
-        for i, iso in enumerate(self.isoforms):
+        for i, iso in enumerate(isoforms):
             for exon in iso.exons:
                 x_start = _map_position(exon.start)
                 x_stop = _map_position(exon.end - 1)
@@ -946,7 +1004,7 @@ class Gene(GenomicFeature):
                 if i != 0:  # TODO: make this an option argument?
                     break
                 ax_x_range = abs(xmax - xmin)
-                ax_y_range = len(self.isoforms) + 1
+                ax_y_range = len(isoforms) + 1
                 # the 0.3 below is just tuned by hand
                 y_height = (ax_x_range * 0.3) / ax_y_range
                 ax.annotate(
@@ -972,17 +1030,17 @@ class Gene(GenomicFeature):
                     ha="center",
                     fontsize=domain_font_size,
                 )
-        ax.set_yticks([y + height / 2 for y in range(len(self.isoforms))])
-        ax.set_yticklabels([iso.name for iso in self.isoforms])
+        ax.set_yticks([y + height / 2 for y in range(len(isoforms))])
+        ax.set_yticklabels([iso.name for iso in isoforms])
         ax.yaxis.set_tick_params(length=0)
         if show_matched_transcripts:
             ax.set_yticklabels(
                 [
                     iso.clone_name if hasattr(iso, "clone_name") else ""
-                    for iso in self.isoforms
+                    for iso in isoforms
                 ]
             )
-            for iso, y_pos in zip(self.isoforms, ax.get_yticks()):
+            for iso, y_pos in zip(isoforms, ax.get_yticks()):
                 if hasattr(iso, "clone_acc") and iso.is_novel_isoform():
                     text = "     " + "Novel isoform"
                 else:
@@ -1009,9 +1067,9 @@ class Gene(GenomicFeature):
         x_pad = intron_nt_space * 3
         # intron dotted lines
         plt.hlines(
-            y=[i + height / 2 for i in range(len(self.isoforms))],
-            xmin=[_map_position(iso.start) for iso in self.isoforms],
-            xmax=[_map_position(iso.end - 1) for iso in self.isoforms],
+            y=[i + height / 2 for i in range(len(isoforms))],
+            xmin=[_map_position(iso.start) for iso in isoforms],
+            xmax=[_map_position(iso.end - 1) for iso in isoforms],
             color="black",
             ls="dotted",
             lw=1.5,
@@ -1088,7 +1146,7 @@ class Gene(GenomicFeature):
             ax.set_xlim(xmax + x_pad, xmin - x_pad)
         else:
             ax.set_xlim(xmin - intron_nt_space * 3, xmax + intron_nt_space * 3)
-        ax.set_ylim(len(self.isoforms), height - 1)
+        ax.set_ylim(len(isoforms), height - 1)
         for spine in ax.spines.values():
             spine.set_visible(False)
 

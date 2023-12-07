@@ -120,6 +120,7 @@ def load_y2h_isoform_data(
     require_at_least_one_ppi_per_isoform=True,
     require_at_least_two_partners=False,
     include_additional_paralog_pairs=True,
+    add_missing_data=False,
 ):
     """
 
@@ -131,7 +132,6 @@ def load_y2h_isoform_data(
     Args:
         require_at_least_one_ppi_per_isoform (bool, optional): Defaults to True.
         add_missing_data (bool, optional): Defaults to False.
-        filter_for_valid_clones (bool, optional): Defaults to True.
         include_additional_paralog_pairs (bool, optional): Whether to include
         pairs that did not come from the screens but were also tested because
         a paralog (or non-paralog control) gene interacted with that partner.
@@ -206,6 +206,29 @@ def load_y2h_isoform_data(
             ),
             :,
         ]
+    if add_missing_data:
+        missing_data_rows = []
+        clones = load_valid_isoform_clones(include_single_isoform_genes=True)
+        for _i, row in clones.loc[
+            clones["gene_symbol"].isin(ppi["ad_gene_symbol"].unique())
+            & ~clones["clone_acc"].isin(ppi["ad_clone_acc"].unique()),
+            :,
+        ].iterrows():
+            partners = ppi.loc[
+                ppi["ad_gene_symbol"] == row["gene_symbol"], "db_gene_symbol"
+            ].unique()
+            for partner in partners:
+                missing_data_rows.append(
+                    (
+                        row["clone_acc"],
+                        row["gene_symbol"],
+                        partner,
+                        np.nan,
+                    )
+                )
+        ppi = pd.concat(
+            [ppi, pd.DataFrame(data=missing_data_rows, columns=ppi.columns)], axis=0
+        )
     return ppi
 
 
@@ -560,6 +583,19 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
             axis=1,
         )
         df = pd.concat([df, tested])
+
+        # add missing values
+        clones = load_valid_isoform_clones()
+        df = pd.concat(
+            [
+                df,
+                clones.loc[
+                    ~clones["clone_acc"].isin(df["clone_acc"].values),
+                    ["gene_symbol", "clone_acc"],
+                ],
+            ],
+            axis=0,
+        )
 
     df[df.columns[2:]] = df[df.columns[2:]].astype("boolean")
     if include_pY1H_data:

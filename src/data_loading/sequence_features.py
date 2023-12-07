@@ -150,7 +150,7 @@ def read_hmmer3_domtab(filepath):
 
 def _load_pfam_domains(fpath, cutoff_seq=0.01, cutoff_dom=0.01):
     pfam = read_hmmer3_domtab(fpath)
-    pfam["pfam_ac"] = pfam["target accession"].str.replace(r"\..*", "")
+    pfam["pfam_ac"] = pfam["target accession"].str.replace(r"\..*", "", regex=True)
     pfam = pfam.loc[(pfam["E-value"] < cutoff_seq) & (pfam["c-Evalue"] < cutoff_dom), :]
     pfam = _remove_overlapping_domains(pfam)
     return pfam

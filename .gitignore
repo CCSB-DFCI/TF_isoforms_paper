@@ -5,6 +5,8 @@ misc
 tmp*
 cache
 output
+website/media
+website/pages
 
 # ignore gloria's auxiliary analysis folder for now
 analysis2

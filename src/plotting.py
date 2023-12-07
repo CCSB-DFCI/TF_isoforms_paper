@@ -245,7 +245,7 @@ def y2h_ppi_per_tf_gene_plot(
             fontweight="bold",
             color="grey",
         )
-        return
+        return False
     if iso_order is None:
         tf = tf
     else:
@@ -257,6 +257,7 @@ def y2h_ppi_per_tf_gene_plot(
             for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
+    return True
 
 
 def y2h_ppi_per_paralog_pair_plot(
@@ -345,7 +346,7 @@ def y1h_pdi_per_tf_gene_plot(
         )
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
-        return
+        return False
     if iso_order is None:
         tf = tf
     else:
@@ -363,6 +364,7 @@ def y1h_pdi_per_tf_gene_plot(
             for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
+    return True
 
 
 def m1h_activation_per_tf_gene_plot(
@@ -392,7 +394,7 @@ def m1h_activation_per_tf_gene_plot(
         )
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
-        return
+        return False
 
     clones = [
         isoform_display_name(acc)
@@ -470,6 +472,7 @@ def m1h_activation_per_tf_gene_plot(
     for pos in ["top", "left", "right"]:
         ax.spines[pos].set_visible(False)
     ax.yaxis.set_tick_params(length=0)
+    return True
 
 
 def validation_plot(
