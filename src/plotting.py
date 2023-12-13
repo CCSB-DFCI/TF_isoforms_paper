@@ -35,16 +35,16 @@ PAPER_PRESET = {
 PAPER_FONTSIZE = 7
 
 
-def violinplot_reflected(*args, lb=0, ub=1, **kwargs):
+def violinplot_reflected(*args, lb=0, ub=1, bw_const=0.1, **kwargs):
     """
     monkeypatch from https://github.com/mwaskom/seaborn/issues/525
+
+    Also use a constant bandwidth
+
     """
     fit_kde_func = sns.categorical._ViolinPlotter.fit_kde
 
     def reflected_once_kde(self, x, bw):
-        # lb = 0
-        # ub = 1
-
         kde, bw_used = fit_kde_func(self, x, bw)
 
         kde_evaluate = kde.evaluate
@@ -58,8 +58,13 @@ def violinplot_reflected(*args, lb=0, ub=1, **kwargs):
         kde.evaluate = truncated_kde_evaluate
         return kde, bw_used
 
+    def constant_bw(kde):
+        """Have to scale by STD because the returned value is multiplied
+        separately by the STD of each group."""
+        return bw_const / np.std(kde.dataset)
+
     sns.categorical._ViolinPlotter.fit_kde = reflected_once_kde
-    retval = sns.violinplot(*args, **kwargs)
+    retval = sns.violinplot(*args, bw=constant_bw, **kwargs)
     sns.categorical._ViolinPlotter.fit_kde = fit_kde_func  # change back
     return retval
 
