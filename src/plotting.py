@@ -762,23 +762,27 @@ def mimic_r_boxplot(ax):
                 line.set_alpha(0.5)
 
 
-def annotate_pval(ax, x1, x2, y, h, text_y, val, fontsize):
+def annotate_pval(ax, x1, x2, y, h, text_y, val, fontsize, text=None):
     from decimal import Decimal
 
     ax.plot([x1, x1, x2, x2], [y, y + h, y + h, y], lw=1, c="black", linewidth=0.5)
     if val < 0.0001:
-        text = "{:.2e}".format(Decimal(val))
+        s = "{:.2e}".format(Decimal(val))
         # text = "**"
     elif val < 0.05:
-        text = "%.4f" % val
+        s = "%.4f" % val
         # text = "*"
     else:
-        text = "%.2f" % val
+        s = "%.2f" % val
         # text = "n.s."
+        
+    if text is not None:
+        s = text
+        
     ax.text(
         (x1 + x2) * 0.5,
         text_y,
-        text,
+        s,
         ha="center",
         va="bottom",
         color="black",
