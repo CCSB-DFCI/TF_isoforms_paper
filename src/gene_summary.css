@@ -1,3 +1,7 @@
+body {
+    min-height: 100vh;
+}
+
 h1 {
     text-align: center;
 }
@@ -64,4 +68,12 @@ video::-webkit-media-controls-panel {
     width: 500px;
     height: 500px;
     position: relative;
+}
+
+#gene-name-title {
+    text-align: center;
+}
+
+#home-link {
+    text-align: left;
 }

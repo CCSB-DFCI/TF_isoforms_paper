@@ -35,16 +35,16 @@ PAPER_PRESET = {
 PAPER_FONTSIZE = 7
 
 
-def violinplot_reflected(*args, lb=0, ub=1, **kwargs):
+def violinplot_reflected(*args, lb=0, ub=1, bw_const=0.1, **kwargs):
     """
     monkeypatch from https://github.com/mwaskom/seaborn/issues/525
+
+    Also use a constant bandwidth
+
     """
     fit_kde_func = sns.categorical._ViolinPlotter.fit_kde
 
     def reflected_once_kde(self, x, bw):
-        # lb = 0
-        # ub = 1
-
         kde, bw_used = fit_kde_func(self, x, bw)
 
         kde_evaluate = kde.evaluate
@@ -58,8 +58,13 @@ def violinplot_reflected(*args, lb=0, ub=1, **kwargs):
         kde.evaluate = truncated_kde_evaluate
         return kde, bw_used
 
+    def constant_bw(kde):
+        """Have to scale by STD because the returned value is multiplied
+        separately by the STD of each group."""
+        return bw_const / np.std(kde.dataset)
+
     sns.categorical._ViolinPlotter.fit_kde = reflected_once_kde
-    retval = sns.violinplot(*args, **kwargs)
+    retval = sns.violinplot(*args, bw=constant_bw, **kwargs)
     sns.categorical._ViolinPlotter.fit_kde = fit_kde_func  # change back
     return retval
 
@@ -245,7 +250,7 @@ def y2h_ppi_per_tf_gene_plot(
             fontweight="bold",
             color="grey",
         )
-        return
+        return False
     if iso_order is None:
         tf = tf
     else:
@@ -257,6 +262,7 @@ def y2h_ppi_per_tf_gene_plot(
             for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
+    return True
 
 
 def y2h_ppi_per_paralog_pair_plot(
@@ -345,7 +351,7 @@ def y1h_pdi_per_tf_gene_plot(
         )
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
-        return
+        return False
     if iso_order is None:
         tf = tf
     else:
@@ -363,6 +369,7 @@ def y1h_pdi_per_tf_gene_plot(
             for name, all_na in tf.isnull().all(axis=1).items()
         ]
     )
+    return True
 
 
 def m1h_activation_per_tf_gene_plot(
@@ -392,7 +399,7 @@ def m1h_activation_per_tf_gene_plot(
         )
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
-        return
+        return False
 
     clones = [
         isoform_display_name(acc)
@@ -470,6 +477,7 @@ def m1h_activation_per_tf_gene_plot(
     for pos in ["top", "left", "right"]:
         ax.spines[pos].set_visible(False)
     ax.yaxis.set_tick_params(length=0)
+    return True
 
 
 def validation_plot(

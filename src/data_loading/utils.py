@@ -19,6 +19,10 @@ def _get_default_args(func):
 
 
 def cache_with_pickle(func):
+    """
+    BUG: if you pass a keyword argument by position, this will crash
+    """
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs_passed):
         kwargs = _get_default_args(func)
