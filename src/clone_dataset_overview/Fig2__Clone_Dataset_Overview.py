@@ -1143,7 +1143,7 @@ fig.savefig('../../figures/fig2/at-least-some-assay-result_ref-vs-alt-vs-novel_a
 # ## kaia to update the rest of this code when N2H data is moved over
 # source notebook is n2h_validation.ipynb
 
-# In[87]:
+# In[117]:
 
 
 df = load_n2h_ppi_validation_data()
@@ -1151,7 +1151,7 @@ print(len(df))
 df.head()
 
 
-# In[88]:
+# In[118]:
 
 
 # TODO: remove this once everything finalized 
@@ -1186,13 +1186,13 @@ df = df.loc[~((df['source'] == 'isoform negatives') &
 print(len(df))
 
 
-# In[89]:
+# In[119]:
 
 
 df['source'].value_counts()
 
 
-# In[90]:
+# In[120]:
 
 
 COLOR_LIT = (60 / 255, 134 / 255, 184 / 255)
@@ -1208,7 +1208,7 @@ colors = {'vignettes': 'yellow',
           'RRS - hRRS-v2': 'tab:red'}
 
 
-# In[91]:
+# In[121]:
 
 
 sources = ['PRS - hPRS-v2', 
@@ -1221,13 +1221,13 @@ sources = ['PRS - hPRS-v2',
            'isoform negatives']
 
 
-# In[92]:
+# In[128]:
 
 
 # bar chart
 df['result'] = df['NLR'] > df.loc[df['source'] == 'RRS - hRRS-v2', 'NLR'].max()
 
-fig, ax = plt.subplots(1, 1, figsize=(2.5, 1.5))
+fig, ax = plt.subplots(1, 1, figsize=(4.2, 1.5))
 validation_plot(data=df,
                 selections=[df['source'] == x for x in sources],
                 labels=[str(x) for x in sources],
@@ -1248,19 +1248,19 @@ fig.savefig('../../figures/fig2/N2H_barplot.pdf', dpi="figure", bbox_inches='tig
 
 # ## 8. make validation figures for Y1H (luciferase)
 
-# In[93]:
+# In[96]:
 
 
 df = load_PDI_luciferase_validation_experiment()
 
 
-# In[94]:
+# In[97]:
 
 
 df['Set'].value_counts()
 
 
-# In[95]:
+# In[98]:
 
 
 print('In PDI validation experiment, tested:')
@@ -1270,7 +1270,7 @@ print(df['Bait'].nunique(), 'different baits')
 print(df.shape[0], 'total PDIs')
 
 
-# In[96]:
+# In[99]:
 
 
 # update the interaction calls if needed
@@ -1288,21 +1288,21 @@ for i, row in df.iterrows():
     new_calls.append(updated_y1h_call)
 
 
-# In[97]:
+# In[100]:
 
 
 df["updated_y1h_call"] = new_calls
 df.updated_y1h_call.value_counts(dropna=False)
 
 
-# In[98]:
+# In[101]:
 
 
 # remove any updated calls that became NaN
 df_nn = df[~pd.isnull(df['updated_y1h_call'])]
 
 
-# In[99]:
+# In[102]:
 
 
 print('In PDI validation experiment, tested (updated w new calls):')
@@ -1312,21 +1312,21 @@ print(df_nn['Bait'].nunique(), 'different baits')
 print(df_nn.shape[0], 'total PDIs')
 
 
-# In[100]:
+# In[103]:
 
 
 print('Isoforms per gene:')
 df_nn.groupby(['gene_symbol'])['clone_acc'].nunique().value_counts().sort_index()
 
 
-# In[101]:
+# In[104]:
 
 
 print('Baits per isoform:')
 df_nn.groupby(['clone_acc'])['Bait'].nunique().value_counts().sort_index()
 
 
-# In[102]:
+# In[105]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1345,19 +1345,19 @@ fig.savefig('../../figures/fig2/PDI-luciferase_validation_point-plot.pdf',
             bbox_inches='tight')
 
 
-# In[103]:
+# In[106]:
 
 
 df.updated_y1h_call.value_counts()
 
 
-# In[104]:
+# In[107]:
 
 
 df.Y1H_positive.value_counts()
 
 
-# In[105]:
+# In[108]:
 
 
 # titration plot of positive vs negative
@@ -1375,7 +1375,7 @@ fig.savefig('../../figures/fig2/PDI-luciferase_validation_titration-plot.pdf',
             bbox_inches='tight')
 
 
-# In[106]:
+# In[109]:
 
 
 def p_value(row):
@@ -1393,19 +1393,19 @@ def p_value(row):
 df['p-value'] = df.apply(p_value, axis=1)
 
 
-# In[107]:
+# In[110]:
 
 
 df['positive'] = (df['p-value'] < 0.05) & (df['Log2(FC)'] >= 1)
 
 
-# In[108]:
+# In[111]:
 
 
 df.groupby('Interaction?')['positive'].mean()
 
 
-# In[109]:
+# In[112]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1432,13 +1432,13 @@ fig.savefig('../../figures/fig2/Luciferase_barplot.pdf', bbox_inches='tight', dp
 
 # ## 9. make reproducibility figure for M1H
 
-# In[110]:
+# In[113]:
 
 
 c = m1h[["M1H_rep1", "M1H_rep2", "M1H_rep3"]].corr(method="spearman")
 
 
-fig = plt.figure(figsize=(2, 1.5))
+fig = plt.figure(figsize=(1.5, 1.5))
 g = sns.heatmap(c, cmap="mako_r", vmin=0.98, vmax=1, annot=True, cbar_kws={"label": "spearman correlation"})
 g.set_yticklabels(["Rep 1", "Rep 2", "Rep 3"])
 g.set_xticklabels(["Rep 1", "Rep 2", "Rep 3"], rotation=90, ha="center", va="top")
@@ -1449,7 +1449,7 @@ fig.savefig("../../figures/fig2/M1H_heatmap.pdf", bbox_inches="tight", dpi="figu
 
 # ## 9. make tables needed for cytoscape network fig
 
-# In[111]:
+# In[114]:
 
 
 # # table of edges
@@ -1486,7 +1486,7 @@ fig.savefig("../../figures/fig2/M1H_heatmap.pdf", bbox_inches="tight", dpi="figu
 
 # ## 10. make example expression plot for ZNF414
 
-# In[112]:
+# In[115]:
 
 
 def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, fig_suffix):
@@ -1530,7 +1530,7 @@ def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, 
                 bbox_inches='tight')
 
 
-# In[113]:
+# In[116]:
 
 
 notestis_cols = [x for x in means_dev.columns if "testis" not in x]

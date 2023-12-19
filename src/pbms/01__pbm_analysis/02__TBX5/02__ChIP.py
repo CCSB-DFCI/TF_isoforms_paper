@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # In[1]:
@@ -42,13 +42,13 @@ mpl.rcParams['figure.autolayout'] = False
 
 
 PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
-                "rc": {"font.size":10,"axes.titlesize":10,
-                       "axes.labelsize":10, 'axes.linewidth':0.5,
-                       "legend.fontsize":10, "xtick.labelsize":10,
-                       "ytick.labelsize":10, "xtick.major.size": 3.0,
+                "rc": {"font.size":7,"axes.titlesize":7,
+                       "axes.labelsize":7, 'axes.linewidth':0.5,
+                       "legend.fontsize":6, "xtick.labelsize":6,
+                       "ytick.labelsize":6, "xtick.major.size": 3.0,
                        "ytick.major.size": 3.0, "axes.edgecolor": "black",
                        "xtick.major.pad": 3.0, "ytick.major.pad": 3.0}}
-PAPER_FONTSIZE = 10
+PAPER_FONTSIZE = 7
 
 sns.set(**PAPER_PRESET)
 fontsize = PAPER_FONTSIZE
@@ -278,18 +278,18 @@ h_av = moving_average(h, 8)
 # In[25]:
 
 
-fig = plt.figure(figsize=(3, 2))
+fig = plt.figure(figsize=(2, 1.5))
 
 plt.plot(m_av, color="black", label=motif)
 plt.plot(sm_av, color="blue", label=sp_motif)
-plt.plot(h_av, color="grey", label="TAATTA")
+plt.plot(h_av, color="grey", label="TAATTA", linestyle="dashed")
 
 plt.xlabel("nucleotide position in peak")
 plt.ylabel("k-mer density")
 plt.title("significant TBX5 ChIP-seq peaks")
 #plt.ylim((-0.5, 22))
 
-plt.legend(loc=2)
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
 
 
 # ## 5. include GENRE bg
@@ -344,7 +344,7 @@ h_g_av = moving_average(h_g, 8)
 # In[32]:
 
 
-fig, axarr = plt.subplots(1, 3, figsize=(6, 2.5))
+fig, axarr = plt.subplots(1, 3, figsize=(4.5, 1.5), sharey=True, sharex=True)
 
 i = 0
 for fg_arr, bg_arr, kmer in zip([m_av, sm_av, h_av], [m_g_av, sm_g_av, h_g_av], 
@@ -353,15 +353,23 @@ for fg_arr, bg_arr, kmer in zip([m_av, sm_av, h_av], [m_g_av, sm_g_av, h_g_av],
     ax = axarr[i]
     
     ax.plot(fg_arr, label="%s foreground" % kmer, color="black")
-    ax.plot(bg_arr, linestyle="dashed", label="%s background" % kmer, color="grey")
+    ax.plot(bg_arr, linestyle="dashed", label="%s background" % kmer, color="grey", linewidth=0.5)
 
-    ax.set_xlabel("nucleotide position\nin centered peak")
-    ax.set_ylabel("average k-mer density")
     ax.set_title(kmer)
+    
+    for loc in ['top', 'right']:
+        ax.spines[loc].set_visible(False)
+    
+    if i == 2:
+        ax.legend(loc=2, bbox_to_anchor=(1.01, 1), labels=["foreground", "background"], frameon=False)
+        
     i += 1
+
+axarr[0].set_ylabel("mean k-mer density")
+fig.text(0.5, 0, "nucleotide position in centered peak", ha="center")
     
 plt.tight_layout()
-fig.savefig("../../../../figures/TBX5_chip_density.pdf", dpi="figure", bbox_inches="tight")
+fig.savefig("../../../../figures/fig3/TBX5_chip_density.pdf", dpi="figure", bbox_inches="tight")
 
 
 # ## 6. fisher test for k-mer occurrence v background
@@ -493,16 +501,16 @@ motif_m = motif_m.append(hd_motif_m)
 motif_m["perc"] = motif_m["value"]/len(chip_filt)
 
 
-# In[107]:
+# In[43]:
 
 
-fig = plt.figure(figsize=(2.5, 1.2))
+fig = plt.figure(figsize=(2, 1.5))
 
 pal = {"foreground": sns.color_palette("Set2")[0], "background": "lightgrey"}
 
 ax = sns.barplot(data=motif_m[~motif_m["variable"].str.startswith("no")],
                  x="variable", y="perc", hue="index", palette=pal)
-plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
 
 ax.set_ylabel("% peaks with k-mer")
 ax.set_ylim((0, 0.25))
@@ -514,7 +522,7 @@ i = 0
 for tab, y in zip([motif_tab, sp_motif_tab, hd_tab], [0.22, 0.07, 0.05]):
     pval = fisher_exact(tab)
     
-    ax.plot([i-0.2, i+0.2], [y, y], color="black", linewidth=1)
+    ax.plot([i-0.2, i+0.2], [y, y], color="black", linewidth=0.5)
     
     p = fisher_exact(tab)[1]
     if p < 1e-6:
@@ -524,8 +532,11 @@ for tab, y in zip([motif_tab, sp_motif_tab, hd_tab], [0.22, 0.07, 0.05]):
     
     ax.text(i, y, s, ha="center", va="bottom", fontsize=7)
     i += 1
+
+for loc in ['top', 'right']:
+    ax.spines[loc].set_visible(False)
     
-fig.savefig("../../../../figures/TBX5_chip_enrichment.pdf", dpi="figure", bbox_inches="tight")
+fig.savefig("../../../../figures/fig3/TBX5_chip_enrichment.pdf", dpi="figure", bbox_inches="tight")
 
 
 # ## 7. QC on the scRNA-seq Joung data: effect sizes across isoforms
@@ -567,14 +578,14 @@ chip_filt = chip_filt.merge(closest_tss[["id", "tx_tss", "dist"]], on="id", how=
 chip_filt["gene_name"] = chip_filt["tx_tss"].str[:-4]
 
 
-# In[93]:
+# In[48]:
 
 
 chip_filt["joung_ref"] = chip_filt["gene_name"].isin(joung_ref["Symbol"])
 chip_filt["joung_alt"] = chip_filt["gene_name"].isin(joung_alt["Symbol"])
 
 
-# In[94]:
+# In[49]:
 
 
 def classify_gene(row):
@@ -591,7 +602,7 @@ chip_filt["joung_status"] = chip_filt.apply(classify_gene, axis=1)
 chip_filt["joung_status"].value_counts()
 
 
-# In[95]:
+# In[50]:
 
 
 enrichment_joung_tabs = {}
@@ -633,13 +644,13 @@ for status in ["both", "ref. only", "alt. only"]:
     enrichment_joung_perc = enrichment_joung_perc.append(df)
 
 
-# In[96]:
+# In[51]:
 
 
 enrichment_joung_perc.reset_index(inplace=True)
 
 
-# In[97]:
+# In[52]:
 
 
 to_plot = pd.melt(enrichment_joung_perc, id_vars=["status", "index"])
@@ -650,20 +661,26 @@ g.map_dataframe(sns.barplot, x="variable", hue="index", y="value",
                          "perc_bg": "lightgrey"})
 
 
-# In[98]:
+# In[53]:
 
 
 enrichment_joung_perc
 
 
-# In[99]:
+# In[54]:
 
 
 0.317/0.098
 
 
-# In[100]:
+# In[55]:
 
 
 0.208/0.046
+
+
+# In[ ]:
+
+
+
 
