@@ -532,6 +532,134 @@ def m1h_activation_per_tf_gene_plot(
     ax.yaxis.set_tick_params(length=0)
     return True
 
+def m1h_activation_per_paralog_pair_plot(
+    gene_name_a, gene_name_b, data, ax=None, xlim=None, iso_order=None
+):
+    tf = (data.loc[data["gene_symbol"].isin([gene_name_a, gene_name_b]), data.columns[1:]]
+            .copy()
+            .set_index("clone_acc")
+        )
+
+
+    if ax is None:
+        ax = plt.gca()
+    rep_columns = [c for c in data.columns if c.startswith("M1H_rep")]
+
+
+    is_all_na = (
+        data[rep_columns]
+        .isnull()
+        .groupby(data["gene_symbol"])
+        .all()
+        .all(axis=1)[[gene_name_a, gene_name_b]].sum().astype(bool)
+    )
+
+    if (gene_name_a not in data["gene_symbol"].values and gene_name_b not in data["gene_symbol"].values) or is_all_na:
+        ax.set_axis_off()
+        ax.text(
+            0.5,
+            0.5,
+            "No activation data available",
+            ha="center",
+            va="center",
+            fontsize=30,
+            fontweight="bold",
+            color="grey",
+        )
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        return False
+
+    clones_a = [
+        isoform_display_name(acc)
+        for acc in data.loc[data["gene_symbol"] == gene_name_a, "clone_acc"].values
+        for __ in range(len(rep_columns))
+    ]
+    values_a = data.loc[data["gene_symbol"] == gene_name_a, rep_columns].values.flatten()
+
+
+    clones_b = [
+        isoform_display_name(acc)
+        for acc in data.loc[data["gene_symbol"] == gene_name_b, "clone_acc"].values
+        for __ in range(len(rep_columns))
+    ]
+    values_b = data.loc[data["gene_symbol"] == gene_name_b, rep_columns].values.flatten()
+
+    n_reps = len(rep_columns)
+
+    clones = clones_a + clones_b
+    values = np.asarray(list(values_a) + list(values_b))
+
+    if iso_order is None:
+        y = clones[::n_reps]
+        width = (
+            data.loc[data["gene_symbol"].isin([gene_name_a, gene_name_b]), rep_columns]
+            .mean(axis=1)
+            .values
+        )
+    else:
+        y = iso_order
+        width = []
+        for iso in iso_order:
+            idxs = [i for i, x in enumerate(clones) if x == iso]
+            width.append(np.mean(values[idxs]))
+
+    ax.barh(
+        y=y,
+        width=width,
+        edgecolor="black",
+        color="slategrey",
+        alpha=0.5,
+        height=0.6,
+    )
+
+    # swarmplot to make points more visible
+    df = pd.DataFrame()
+    df["clone"] = clones
+    df["value"] = values
+    if iso_order is None:
+        order = y
+    else:
+        order = iso_order
+
+    sns.stripplot(
+        data=df,
+        x="value",
+        y="clone",
+        ax=ax,
+        color="white",
+        linewidth=1,
+        edgecolor="black",
+        size=4,
+        order=order,
+    )
+    ax.set_ylabel("")
+
+    ax.set_yticks(
+        clones[::n_reps]
+    )  # needed to avoid truncating clones with missing data
+    ax.set_yticklabels(
+        [
+            c if not np.isnan(v) else strikethrough(c)
+            for c, v in zip(clones[::n_reps], values[::n_reps])
+        ]
+    )
+
+    if xlim is None:
+        ax.set_xlim(-3, 12)
+    else:
+        ax.set_xlim(xlim)
+    ax.set_ylim(-0.5, len(clones[::n_reps]) - 0.5)
+    ax.set_xlabel("Log2 M1H readout")
+    ax.axvline(0, linestyle="-", color="black")
+    ax.axvline(-1, linestyle="--", color="black")
+    ax.axvline(1, linestyle="--", color="black")
+    ax.invert_yaxis()
+    for pos in ["top", "left", "right"]:
+        ax.spines[pos].set_visible(False)
+    ax.yaxis.set_tick_params(length=0)
+    return True
+
 
 def validation_plot(
     positives=None,
