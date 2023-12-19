@@ -372,6 +372,59 @@ def y1h_pdi_per_tf_gene_plot(
     return True
 
 
+def y1h_pdi_per_paralog_pair_plot(
+    gene_name_a,
+    gene_name_b,
+    data,
+    ax=None,
+    min_n_isoforms=1,
+    min_n_partners=1,
+    iso_order=None,
+    bait_colors=None,
+    bait_annot=None,
+):
+    tf = (
+        data.loc[data["gene_symbol"].isin([gene_name_a, gene_name_b]), data.columns[1:]]
+        .copy()
+        .set_index("clone_acc")
+    )
+    tf.index = tf.index.map(isoform_display_name)
+    tf = tf.loc[:, tf.any(axis=0)]
+    if ax is None:
+        ax = plt.gca()
+    if tf.shape[0] < min_n_isoforms or tf.shape[1] < min_n_partners:
+        ax.set_axis_off()
+        ax.text(
+            0.5,
+            0.5,
+            "No PDI data available",
+            ha="center",
+            va="center",
+            fontsize=30,
+            fontweight="bold",
+            color="grey",
+        )
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        return False
+    if iso_order is not None:
+        tf = tf.loc[iso_order, :]
+    binary_profile_matrix(
+        tf,
+        ax=ax,
+        column_label_rotation=90,
+        bait_colors=bait_colors,
+        bait_annot=bait_annot,
+    )
+    ax.set_yticklabels(
+        [
+            strikethrough(name) if all_na else name
+            for name, all_na in tf.isnull().all(axis=1).items()
+        ]
+    )
+    return True
+
+
 def m1h_activation_per_tf_gene_plot(
     tf_gene_name, data, ax=None, xlim=None, iso_order=None
 ):
