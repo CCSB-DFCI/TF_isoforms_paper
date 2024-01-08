@@ -532,29 +532,34 @@ def m1h_activation_per_tf_gene_plot(
     ax.yaxis.set_tick_params(length=0)
     return True
 
+
 def m1h_activation_per_paralog_pair_plot(
     gene_name_a, gene_name_b, data, ax=None, xlim=None, iso_order=None
 ):
-    tf = (data.loc[data["gene_symbol"].isin([gene_name_a, gene_name_b]), data.columns[1:]]
-            .copy()
-            .set_index("clone_acc")
-        )
-
+    tf = (
+        data.loc[data["gene_symbol"].isin([gene_name_a, gene_name_b]), data.columns[1:]]
+        .copy()
+        .set_index("clone_acc")
+    )
 
     if ax is None:
         ax = plt.gca()
     rep_columns = [c for c in data.columns if c.startswith("M1H_rep")]
-
 
     is_all_na = (
         data[rep_columns]
         .isnull()
         .groupby(data["gene_symbol"])
         .all()
-        .all(axis=1)[[gene_name_a, gene_name_b]].sum().astype(bool)
+        .all(axis=1)[[gene_name_a, gene_name_b]]
+        .sum()
+        .astype(bool)
     )
 
-    if (gene_name_a not in data["gene_symbol"].values and gene_name_b not in data["gene_symbol"].values) or is_all_na:
+    if (
+        gene_name_a not in data["gene_symbol"].values
+        and gene_name_b not in data["gene_symbol"].values
+    ) or is_all_na:
         ax.set_axis_off()
         ax.text(
             0.5,
@@ -575,15 +580,18 @@ def m1h_activation_per_paralog_pair_plot(
         for acc in data.loc[data["gene_symbol"] == gene_name_a, "clone_acc"].values
         for __ in range(len(rep_columns))
     ]
-    values_a = data.loc[data["gene_symbol"] == gene_name_a, rep_columns].values.flatten()
-
+    values_a = data.loc[
+        data["gene_symbol"] == gene_name_a, rep_columns
+    ].values.flatten()
 
     clones_b = [
         isoform_display_name(acc)
         for acc in data.loc[data["gene_symbol"] == gene_name_b, "clone_acc"].values
         for __ in range(len(rep_columns))
     ]
-    values_b = data.loc[data["gene_symbol"] == gene_name_b, rep_columns].values.flatten()
+    values_b = data.loc[
+        data["gene_symbol"] == gene_name_b, rep_columns
+    ].values.flatten()
 
     n_reps = len(rep_columns)
 
@@ -929,6 +937,43 @@ def validation_titration_plot(
             )
 
 
+def table_circle_size_plot(df, ax=None, scale=3000, fontsize=12):
+    if ax is None:
+        ax = plt.gca()
+    scale_factor = scale / df.sum().sum()
+    ax.scatter(
+        x=[j for i in range(df.shape[0]) for j in range(df.shape[1])],
+        y=[i for i in range(df.shape[0]) for j in range(df.shape[1])],
+        s=df.values.flatten() * scale_factor,
+        clip_on=False,
+    )
+    # write numbers
+    for i in range(df.shape[0]):
+        for j in range(df.shape[1]):
+            ax.text(
+                s=df.values[i, j],
+                x=j,
+                y=i,
+                ha="center",
+                va="center",
+                fontsize=fontsize,
+                color="white",
+            )
+    ax.set_xticks(range(df.shape[1]))
+    ax.set_yticks(range(df.shape[0]))
+    ax.set_xlabel(df.columns.name)
+    ax.set_ylabel(df.index.name)
+    ax.set_xticklabels(df.columns.values, rotation=45, ha="right")
+    ax.set_yticklabels(df.index.values)
+    ax.set_xlim(-0.5, df.shape[1] - 0.5)
+    ax.set_ylim(df.shape[0] - 0.5, -0.5)  # NOTE: flipping axis
+    ax.set_aspect("equal")
+    ax.xaxis.set_tick_params(length=0)
+    ax.yaxis.set_tick_params(length=0)
+    for loc in ["left", "right", "top", "bottom"]:
+        ax.spines[loc].set_visible(False)
+
+
 def mimic_r_boxplot(ax):
     for i, patch in enumerate(ax.artists):
         r, g, b, a = patch.get_facecolor()
@@ -964,10 +1009,10 @@ def annotate_pval(ax, x1, x2, y, h, text_y, val, fontsize, text=None):
     else:
         s = "%.2f" % val
         # text = "n.s."
-        
+
     if text is not None:
         s = text
-        
+
     ax.text(
         (x1 + x2) * 0.5,
         text_y,

@@ -18,7 +18,7 @@ from data_loading import (
     load_human_tf_db,
     load_ppi_partner_categories,
 )
-from .utils import cache_with_pickle
+from .utils import cache_with_pickle, DATA_DIR
 
 
 @cache_with_pickle
@@ -540,3 +540,207 @@ def number_tested_partners(a, b):
 
 def number_shared_partners(a, b):
     return len(a.intersection(b))
+
+
+def load_condensate_data():
+    """
+    Reference vs alternative isoforms table with additional info
+    about condensates, restricted to pairs that were tested in the
+    condensates assay.
+    """
+    df = pd.read_excel(DATA_DIR / "internal/TFiso_LLPS_scores_20231215.xlsx")
+    df["gene_symbol"] = df["isoform_acc"].map(lambda x: x.split("|")[0])
+    df["condensates_observed_HEK"] = df["LLPS_HEK293"] != 0
+    df["condensates_observed_U2OS"] = df["LLPS_U2OS"] != 0
+    df["is_cloned_reference"] = df["Ref_isoform"].map(
+        {"Reference": True, "Alternative": False}
+    )
+    df = df.rename(
+        columns={
+            "LLPS_HEK293": "HEK_Condensate",
+            "LLPS_U2OS": "U2OS_Condensate",
+            "Localization_U2OS": "localization_U2OS",
+        }
+    )
+    df["HEK_Condensate"] = (
+        df["HEK_Condensate"]
+        .map(
+            lambda x: {
+                "cc/nm": "BOTH",
+                "few nc": "NC",
+                "few cc": "CC",
+            }.get(x, x)
+        )
+        .str.strip()
+        .str.upper()
+    )
+    df["U2OS_Condensate"] = (
+        df["U2OS_Condensate"]
+        .map(
+            lambda x: {
+                "cc/nm": "BOTH",
+                "few nc": "NC",
+                "few cc": "CC",
+            }.get(x, x)
+        )
+        .str.strip()
+        .str.upper()
+    )
+    rename_loc = {"mostly in nucleus": "both", "in nucleus": "nucleus"}
+    for cl in ["HEK", "U2OS"]:
+        df[f"localization_{cl}"] = (
+            df[f"localization_{cl}"]
+            .str.strip()
+            .str.lower()
+            .map(lambda x: rename_loc.get(x, x))
+        )
+    if df["isoform_acc"].duplicated().any():
+        raise UserWarning("unexpected duplicates")
+    df = df.set_index("isoform_acc")
+
+    pairs = load_ref_vs_alt_isoforms_table()
+    pairs.loc[
+        (pairs["n_positive_PPI_ref"] == 0) | (pairs["n_positive_PPI_alt"] == 0),
+        "PPI_jaccard",
+    ] = np.nan
+    pairs["PPI_Jaccard_d"] = 1 - pairs["PPI_jaccard"]
+    pairs["PDI_Jaccard_d"] = 1 - pairs["PDI_jaccard"]
+    for x in ["ref", "alt"]:
+        for var in [
+            "condensates_observed_HEK",
+            "condensates_observed_U2OS",
+            "HEK_Condensate",
+            "U2OS_Condensate",
+            "localization_HEK",
+            "localization_U2OS",
+        ]:
+            pairs[var + "_" + x] = pairs["clone_acc_" + x].map(df[var])
+
+    # Only take pairs with condensate info
+    pairs = pairs.loc[
+        pairs["condensates_observed_HEK_ref"].notnull()
+        & pairs["condensates_observed_HEK_alt"].notnull(),
+        :,
+    ]
+
+    for cl in ["HEK", "U2OS"]:
+        pairs.loc[:, f"condensate_cat_{cl}"] = "Unchanged"
+        pairs.loc[
+            pairs[f"{cl}_Condensate_ref"].notnull()
+            & pairs[f"{cl}_Condensate_alt"].isnull(),
+            f"condensate_cat_{cl}",
+        ] = "LOC"
+        pairs.loc[
+            pairs[f"{cl}_Condensate_ref"].isnull()
+            & pairs[f"{cl}_Condensate_alt"].notnull(),
+            f"condensate_cat_{cl}",
+        ] = "GOC"
+        pairs.loc[
+            (
+                (pairs[f"{cl}_Condensate_ref"] == "NC")
+                & (pairs[f"{cl}_Condensate_alt"] == "CC")
+            )
+            | (
+                (pairs[f"{cl}_Condensate_ref"] == "CC")
+                & (pairs[f"{cl}_Condensate_alt"] == "NC")
+            ),
+            f"condensate_cat_{cl}",
+        ] = "Changed localization"
+    pairs["condensate_cat_merged_HEK"] = pairs["condensate_cat_HEK"].map(
+        {
+            "Unchanged": "No difference",
+            "LOC": "Difference",
+            "GOC": "Difference",
+            "Changed localization": "Difference",
+        }
+    )
+    pairs["condensate_cat_merged_U2OS"] = pairs["condensate_cat_U2OS"].map(
+        {
+            "Unchanged": "No difference",
+            "LOC": "Difference",
+            "GOC": "Difference",
+            "Changed localization": "Difference",
+        }
+    )
+
+    for cl in ["HEK", "U2OS"]:
+        pairs[f"condensate_cat_only_{cl}"] = pairs[f"condensate_cat_{cl}"].map(
+            {
+                "Unchanged": "No difference",
+                "LOC": "Difference",
+                "GOC": "Difference",
+                "Changed localization": "No difference",
+            }
+        )
+
+    for cl in ["HEK", "U2OS"]:
+        var = f"localization_cat_{cl}"
+        pairs[var] = np.nan
+        pairs.loc[
+            pairs[f"localization_{cl}_ref"] == pairs[f"localization_{cl}_alt"], var
+        ] = "No difference"
+        pairs.loc[
+            pairs[f"localization_{cl}_ref"] != pairs[f"localization_{cl}_alt"], var
+        ] = "Difference"
+        if pairs[var].isnull().any():
+            raise UserWarning("bug in code")
+
+    for cl in ["HEK", "U2OS"]:
+        pairs[f"condensate_cat_only_detailed_{cl}"] = pairs[f"condensate_cat_{cl}"].map(
+            {
+                "Unchanged": "Both form condensates",
+                "LOC": "Alternative loses condensate",
+                "GOC": "Alernative gains condensate",
+                "Changed localization": "Both form condensates",
+            }
+        )
+        pairs.loc[
+            (pairs[f"condensates_observed_{cl}_ref"] == False)
+            & (pairs[f"condensates_observed_{cl}_alt"] == False),
+            f"condensate_cat_only_detailed_{cl}",
+        ] = "Neither form condensates"
+    for cl in ["HEK", "U2OS"]:
+        pairs[f"condensate_or_loc_change_{cl}"] = (
+            (
+                pairs[f"condensates_observed_{cl}_ref"]
+                == pairs[f"condensates_observed_{cl}_alt"]
+            )
+            & (pairs[f"localization_{cl}_ref"] == pairs[f"localization_{cl}_alt"])
+        ).map({True: "No difference", False: "Difference"})
+    for cl in ["HEK", "U2OS"]:
+        c = f"combined_cat_{cl}"
+        pairs[c] = np.nan
+        diff_loc = pairs[f"localization_{cl}_ref"] != pairs[f"localization_{cl}_alt"]
+        diff_cond = (
+            pairs[f"condensates_observed_{cl}_ref"]
+            != pairs[f"condensates_observed_{cl}_alt"]
+        )
+        pairs.loc[diff_loc & ~diff_cond, c] = "Difference in localization"
+        pairs.loc[~diff_loc & diff_cond, c] = "Difference in condensate formation"
+        pairs.loc[diff_loc & diff_cond, c] = "Difference in both"
+        pairs.loc[
+            ~diff_loc & ~diff_cond, c
+        ] = "Same localization and condensate formation"
+        if pairs[c].isnull().any():
+            raise UserWarning("Bug in code")
+    pairs["condensate_or_loc_change_both"] = pairs["condensate_or_loc_change_HEK"]
+    pairs.loc[
+        pairs["condensate_or_loc_change_HEK"] != pairs["condensate_or_loc_change_U2OS"],
+        "condensate_or_loc_change_both",
+    ] = np.nan
+
+    def detailed_condensate_cat(row, cl):
+        a = row[f"{cl}_Condensate_ref"]
+        if pd.isnull(a):
+            a = "None"
+        b = row[f"{cl}_Condensate_alt"]
+        if pd.isnull(b):
+            b = "None"
+        return "{} -> {}".format(a, b)
+
+    for cl in ["HEK", "U2OS"]:
+        pairs[f"condensate_cat_detailed_{cl}"] = pairs.apply(
+            detailed_condensate_cat, cl=cl, axis=1
+        )
+
+    return pairs, df
