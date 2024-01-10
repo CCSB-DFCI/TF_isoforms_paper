@@ -38,7 +38,8 @@ from plotting import PAPER_PRESET, PAPER_FONTSIZE, nice_boxplot, mimic_r_boxplot
 from data_loading import (load_annotated_TFiso1_collection,
                           load_developmental_tissue_expression_remapped,
                           load_gtex_remapped,
-                          load_ref_vs_alt_isoforms_table)
+                          load_ref_vs_alt_isoforms_table,
+                          load_condensate_data)
 
 get_ipython().run_line_magic('matplotlib', 'inline')
 get_ipython().run_line_magic('config', "InlineBackend.figure_format = 'svg'")
@@ -223,6 +224,12 @@ means_dev = (df_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + '
            .mean())
 
 
+# In[ ]:
+
+
+
+
+
 # ## 2. categorize based on assay data
 
 # ### M1H
@@ -352,13 +359,116 @@ pairs["y2h_cat"] = pairs.apply(y2h_cat, axis=1)
 pairs.y2h_cat.value_counts()
 
 
-# ## 3. categorize negative regulators
-# include any whose DBD loss is >= 10%?
+# ## localization
 
 # In[17]:
 
 
-def dn_cat(row):
+con_pairs, con_df = load_condensate_data()
+
+
+# In[18]:
+
+
+pairs = pairs.merge(con_pairs[["gene_symbol", "clone_acc_ref", "clone_acc_alt",
+                               'condensates_observed_HEK_ref',
+       'condensates_observed_U2OS_ref', 'HEK_Condensate_ref',
+       'U2OS_Condensate_ref', 'localization_HEK_ref', 'localization_U2OS_ref',
+       'condensates_observed_HEK_alt', 'condensates_observed_U2OS_alt',
+       'HEK_Condensate_alt', 'U2OS_Condensate_alt', 'localization_HEK_alt',
+       'localization_U2OS_alt', 'condensate_cat_HEK', 'condensate_cat_U2OS',
+       'condensate_cat_merged_HEK', 'condensate_cat_merged_U2OS',
+       'condensate_cat_only_HEK', 'condensate_cat_only_U2OS',
+       'localization_cat_HEK', 'localization_cat_U2OS',
+       'condensate_cat_only_detailed_HEK', 'condensate_cat_only_detailed_U2OS',
+       'condensate_or_loc_change_HEK', 'condensate_or_loc_change_U2OS',
+       'combined_cat_HEK', 'combined_cat_U2OS',
+       'condensate_or_loc_change_both', 'condensate_cat_detailed_HEK',
+       'condensate_cat_detailed_U2OS']], how="left", on=["gene_symbol", "clone_acc_ref", "clone_acc_alt"])
+
+
+# In[19]:
+
+
+pairs.localization_HEK_ref.value_counts()
+
+
+# In[20]:
+
+
+def loc_cat_HEK(row):
+    if row.localization_HEK_ref == "nucleus" or row.localization_HEK_ref == "both":
+        if row.localization_HEK_alt == "cytoplasm":
+            return "localization loss"
+        elif row.localization_HEK_alt == "nucleus" or row.localization_HEK_alt == "both":
+            return "no localization change"
+        elif not pd.isnull(row.localization_HEK_alt):
+            return "localization change"
+        else:
+            return "NA"
+        
+    # if ref is exclusively cytoplasm, call loc change but not loc loss
+    elif row.localization_HEK_ref == "cytoplasm":
+        if row.localization_HEK_alt == "cytoplasm":
+            return "no localization change"
+        elif row.localization_HEK_alt == "nucleus" or row.localization_HEK_alt == "both":
+            return "localization change"
+        elif not pd.isnull(row.localization_HEK_alt):
+            return "localization change"
+        else:
+            return "NA"
+    
+    else:
+        return "NA"
+    
+def loc_cat_U2OS(row):
+    if row.localization_U2OS_ref == "nucleus" or row.localization_U2OS_ref == "both":
+        if row.localization_U2OS_alt == "cytoplasm":
+            return "localization loss"
+        elif row.localization_U2OS_alt == "nucleus" or row.localization_U2OS_alt == "both":
+            return "no localization change"
+        elif not pd.isnull(row.localization_U2OS_alt):
+            return "localization change"
+        else:
+            return "NA"
+        
+    # if ref is exclusively cytoplasm, call loc change but not loc loss
+    elif row.localization_U2OS_ref == "cytoplasm":
+        if row.localization_HEK_alt == "cytoplasm":
+            return "no localization change"
+        elif row.localization_U2OS_alt == "nucleus" or row.localization_U2OS_alt == "both":
+            return "localization change"
+        elif not pd.isnull(row.localization_U2OS_alt):
+            return "localization change"
+        else:
+            return "NA"
+    
+    else:
+        return "NA"
+        
+def loc_cat(row):
+    if row.loc_cat_HEK == "localization loss" or row.loc_cat_U2OS == "localization loss":
+        return "localization loss"
+    elif row.loc_cat_HEK == "localization change" or row.loc_cat_U2OS == "localization change":
+        return "localization change"
+    elif row.loc_cat_HEK == "no localization change" and row.loc_cat_U2OS == "no localization change":
+        return "no localization change"
+    else:
+        return "NA"
+    
+pairs["loc_cat_HEK"] = pairs.apply(loc_cat_HEK, axis=1)
+pairs["loc_cat_U2OS"] = pairs.apply(loc_cat_U2OS, axis=1)
+pairs["loc_cat"] = pairs.apply(loc_cat, axis=1)
+pairs.loc_cat.value_counts()
+
+
+# ## 3. categorize negative regulators
+# include any whose DBD loss is >= 10%
+
+# In[21]:
+
+
+def dn_cat(row, dbd_thresh=10):
     
     # if activity loss
     if "loss" in row.m1h_cat:
@@ -373,7 +483,7 @@ def dn_cat(row):
                     n.append("PDIs")
                 if "loss" in row.y2h_cat:
                     n.append("PPIs")
-                if row.dbd_pct_lost >= 10:
+                if row.dbd_pct_lost >= dbd_thresh:
                     n.append("DBD loss")
                 s = ",".join(n)
                 s = "DN (%s)" % s
@@ -392,7 +502,7 @@ def dn_cat(row):
                     n.append("PDIs")
                 if "loss" in row.y2h_cat:
                     n.append("PPIs")
-                if row.dbd_pct_lost >= 50:
+                if row.dbd_pct_lost >= dbd_thresh:
                     n.append("DBD loss")
                 
                 if len(n) > 0:
@@ -429,7 +539,7 @@ def dn_cat(row):
                     n.append("PDIs")
                 if "loss" in row.y2h_cat:
                     n.append("PPIs")
-                if row.dbd_pct_lost >= 10:
+                if row.dbd_pct_lost >= dbd_thresh:
                     n.append("DBD loss")
                 
                 if len(n) > 0:
@@ -458,7 +568,7 @@ def dn_cat(row):
                 n.append("PDIs")
             if "loss" in row.y2h_cat:
                 n.append("PPIs")
-            if row.dbd_pct_lost >= 10:
+            if row.dbd_pct_lost >= dbd_thresh:
                 n.append("DBD loss")
 
             if len(n) > 0:
@@ -485,25 +595,87 @@ pairs["dn_cat"] = pairs.apply(dn_cat, axis=1)
 pairs.dn_cat.value_counts()
 
 
-# In[18]:
+# In[22]:
+
+
+# now update anything based on localization calls
+# but only if we were initially able to categorize it as DN/sim/rw
+# (NAs stay NAs as loc is not evidence of function on its own)
+def dn_loc(row):
+    if row.dn_cat == "NA":
+        return "NA"
+    elif row.dn_cat == "likely nf":
+        return "likely nf"
+    else:
+        
+        # loc loss = DN
+        if row.loc_cat == "localization loss":
+            if row.dn_cat == "rewire" or row.dn_cat == "similar":
+                return "DN (loc loss)"
+            else:
+                s = row.dn_cat[:-1]
+                s += ", loc loss)"
+                return s
+        
+        # loc change = rw
+        elif row.loc_cat == "localization change":
+            if row.dn_cat == "rewire" or row.dn_cat == "similar":
+                return "rewire"
+            else:
+                return row.dn_cat
+        
+        else:
+            return row.dn_cat
+        
+pairs["dn_cat_plus_loc"] = pairs.apply(dn_loc, axis=1)
+pairs["dn_cat_plus_loc"].value_counts()
+
+
+# In[23]:
+
+
+pairs["dn_cat"] = pairs["dn_cat_plus_loc"]
+
+
+# In[208]:
+
+
+pairs[pairs["dn_cat"] == "DN (loc loss)"][["gene_symbol", "clone_acc_ref", "clone_acc_alt",
+                                           "m1h_cat", "y1h_cat", "y2h_cat", "dbd_pct_lost", "loc_cat_HEK", 
+                                           "loc_cat_U2OS", "loc_cat", "dn_cat"]]
+
+
+# In[25]:
 
 
 # double check that rewirers aren't all the same across axes
 
 
-# In[19]:
+# In[26]:
 
 
 to_plot = pairs[pairs["dn_cat"].isin(["rewire", "similar"])][["gene_symbol", "clone_acc_ref", "clone_acc_alt",
                                               "PPI_jaccard", "PDI_jaccard", "dbd_pct_lost",
-                                              "activation_fold_change_log2", "dn_cat"]]
+                                              "activation_fold_change_log2", "loc_cat", "dn_cat"]]
 
 # make cols that are easier to visualize on plot
 to_plot["fc_abs_activ"] = 2**-np.abs(to_plot["activation_fold_change_log2"])
 to_plot["1m_dbd_pct"] = (100-to_plot["dbd_pct_lost"])/100
 
+# comment this out if we delete loc stuff
+def loc_quant(row):
+    if row.loc_cat == "NA":
+        return np.nan
+    elif row.loc_cat == "localization loss":
+        return 0
+    elif row.loc_cat == "no localization change":
+        return 1
+    else:
+        return 0.5
+to_plot["loc_quant"] = to_plot.apply(loc_quant, axis=1)
 
-# In[20]:
+
+# In[27]:
 
 
 isos = to_plot.copy()
@@ -514,18 +686,19 @@ theoretical_iso = {"level_0": [isos.level_0.max()+1], "index": [0], "gene_symbol
                    "clone_acc_ref": ["theoretical"], "clone_acc_alt": ["theoretical"],
                    "PPI_jaccard": [1.0], "PDI_jaccard": [1.0], "dbd_pct_lost": [0.0],
                    "activation_fold_change_log2": [np.log2(1)], "fc_abs_activ": [1.0],
-                   "1m_dbd_pct": [1.0], "dn_cat": ["theoretical"]}
+                   "1m_dbd_pct": [1.0], "loc_cat": ["no localization change"], "loc_quant": [1.0], 
+                   "dn_cat": ["theoretical"]}
 
 isos = isos.append(pd.DataFrame.from_dict(theoretical_iso))
 isos
 
 
-# In[21]:
+# In[28]:
 
 
-columns_to_plot = ["level_0", "PPI_jaccard", "PDI_jaccard", "fc_abs_activ", "1m_dbd_pct"]
+columns_to_plot = ["level_0", "PPI_jaccard", "PDI_jaccard", "fc_abs_activ", "1m_dbd_pct", "loc_quant"]
 column_titles = ["", "PPI\n(jaccard)", "PDI\n(jaccard)",
-                 "activ.\n(% of ref.)", "DBD\n(% of ref.)"]
+                 "activ.\n(% of ref.)", "DBD\n(% of ref.)", "∆ localization"]
 
 # separate into similar v rewires
 isos_sim = isos[isos["dn_cat"].isin(["similar", "theoretical"])]
@@ -536,12 +709,12 @@ colors = sns.color_palette("husl", n_colors=len(isos_rw))
 
 # ### similar first
 
-# In[22]:
+# In[29]:
 
 
 # Creating the figure and axes (subplots) aligned in a single row without shared y-axis
-gs_kw = dict(width_ratios=[0.75, 1, 1, 1, 1])
-fig, axs = plt.subplots(1, 5, sharey=False, gridspec_kw=gs_kw)
+gs_kw = dict(width_ratios=[0.75, 1, 1, 1, 1, 1])
+fig, axs = plt.subplots(1, 6, sharey=False, gridspec_kw=gs_kw)
 fig.set_size_inches(w=4, h=4)
 df = isos_sim
 
@@ -582,7 +755,7 @@ for i, col in enumerate(columns_to_plot):
     
     if i == 0:
         axs[i].spines['right'].set_visible(False)
-    elif i == 4:
+    elif i == 5:
         axs[i].yaxis.tick_right()
         axs[i].yaxis.set_label_position("right")
         axs[i].set_ylabel("percent similarity")
@@ -601,6 +774,7 @@ axs[1].set_ylim((-0.05, 1.05))
 axs[2].set_ylim((-0.05, 1.05))
 axs[3].set_ylim((-0.05, 1.05))
 axs[4].set_ylim((-0.05, 1.05))
+axs[5].set_ylim((-0.05, 1.05))
 
 
 # Data preparation for plotting
@@ -608,7 +782,7 @@ data_lines = []
 for _, row in df.iterrows():
     data_lines.append([row[columns_to_plot[0]], row[columns_to_plot[1]], 
                        row[columns_to_plot[2]], row[columns_to_plot[3]],
-                       row[columns_to_plot[4]]])
+                       row[columns_to_plot[4]], row[columns_to_plot[5]]])
 
 # Re-connecting dots across subplots with lines
 for j, data_line in enumerate(data_lines):
@@ -668,12 +842,12 @@ axs[0].set_yticks(tickpos)
 _ = axs[0].set_yticklabels(ticklabels)
 
 
-# In[23]:
+# In[30]:
 
 
 # Creating the figure and axes (subplots) aligned in a single row without shared y-axis
-gs_kw = dict(width_ratios=[0.75, 1, 1, 1, 1])
-fig, axs = plt.subplots(1, 5, sharey=False, gridspec_kw=gs_kw)
+gs_kw = dict(width_ratios=[0.75, 1, 1, 1, 1, 1])
+fig, axs = plt.subplots(1, 6, sharey=False, gridspec_kw=gs_kw)
 fig.set_size_inches(w=4, h=10)
 df = isos_rw
 
@@ -714,7 +888,7 @@ for i, col in enumerate(columns_to_plot):
     
     if i == 0:
         axs[i].spines['right'].set_visible(False)
-    elif i == 4:
+    elif i == 5:
         axs[i].yaxis.tick_right()
         axs[i].yaxis.set_label_position("right")
         axs[i].set_ylabel("percent similarity")
@@ -733,6 +907,7 @@ axs[1].set_ylim((-0.05, 1.05))
 axs[2].set_ylim((-0.05, 1.05))
 axs[3].set_ylim((-0.05, 1.05))
 axs[4].set_ylim((-0.05, 1.05))
+axs[5].set_ylim((-0.05, 1.05))
 
 
 # Data preparation for plotting
@@ -740,7 +915,7 @@ data_lines = []
 for _, row in df.iterrows():
     data_lines.append([row[columns_to_plot[0]], row[columns_to_plot[1]], 
                        row[columns_to_plot[2]], row[columns_to_plot[3]],
-                       row[columns_to_plot[4]]])
+                       row[columns_to_plot[4]], row[columns_to_plot[5]]])
 
 # Re-connecting dots across subplots with lines
 for j, data_line in enumerate(data_lines):
@@ -802,20 +977,33 @@ _ = axs[0].set_yticklabels(ticklabels)
 
 # ## 4. summary plots of DN categorization
 
-# In[24]:
+# In[31]:
 
 
 pairs["dn_short"] = pairs["dn_cat"].str.split(" ", expand=True)[0]
 pairs.dn_short.value_counts()
 
 
-# In[25]:
+# In[32]:
 
 
 pairs[pairs["dn_short"] == "likely"]
 
 
-# In[26]:
+# In[33]:
+
+
+pairs[pairs["dn_cat"] == "DN (loc loss)"]
+
+
+# In[34]:
+
+
+pairs[pairs["gene_symbol"] == "FOXP2"][["gene_symbol", "clone_acc_alt", "clone_acc_ref",
+                                        "m1h_cat", "y1h_cat", "y2h_cat", "loc_cat", "dn_cat_plus_loc"]]
+
+
+# In[35]:
 
 
 def mech_bool(row, mech_col):
@@ -831,10 +1019,11 @@ pairs["dn_ppi"] = pairs.apply(mech_bool, mech_col="PPIs", axis=1)
 pairs["dn_pdi"] = pairs.apply(mech_bool, mech_col="PDIs", axis=1)
 pairs["dn_activ"] = pairs.apply(mech_bool, mech_col="activ", axis=1)
 pairs["dn_dbd"] = pairs.apply(mech_bool, mech_col="DBD loss", axis=1)
+pairs["dn_loc"] = pairs.apply(mech_bool, mech_col="loc loss", axis=1)
 pairs[pairs["dn_short"] == "DN"].sample(5)
 
 
-# In[27]:
+# In[36]:
 
 
 fig = plt.figure(figsize=(1.5, 1.75))
@@ -848,21 +1037,23 @@ ax.set_ylabel("count of alternative TF isoforms")
 fig.savefig("../../figures/fig7/DN_countplot.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[28]:
+# In[37]:
 
 
 from upsetplot import plot
 
 
-# In[29]:
+# In[38]:
 
 
 ppis = list(set(list(pairs[pairs["dn_ppi"] == True]["clone_acc_alt"])))
 pdis = list(set(list(pairs[pairs["dn_pdi"] == True]["clone_acc_alt"])))
 activ = list(set(list(pairs[pairs["dn_activ"] == True]["clone_acc_alt"])))
 dbd = list(set(list(pairs[pairs["dn_dbd"] == True]["clone_acc_alt"])))
+loc = list(set(list(pairs[pairs["dn_loc"] == True]["clone_acc_alt"])))
 
-contents = {"loss of PPIs": ppis, "loss of PDIs": pdis, "loss of activity": activ, "loss of DBD": dbd}
+contents = {"loss of PPIs": ppis, "loss of PDIs": pdis, "loss of activity": activ, "loss of DBD": dbd,
+            "loss of localization": loc}
 contents = upsetplot.from_contents(contents)
 
 all_dn = set(ppis).union(set(pdis)).union(set(activ)).union(set(dbd))
@@ -878,15 +1069,17 @@ d["totals"].grid(False)
 fig.savefig("../../figures/fig7/DN_negreg_upset.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[30]:
+# In[39]:
 
 
 rw = pairs[pairs["dn_cat"] == "rewire"]
 ppis = list(set(list(rw[rw["y2h_cat"] == "PPI rewire"]["clone_acc_alt"])))
 pdis = list(set(list(rw[rw["y1h_cat"].str.contains("PDI")]["clone_acc_alt"])))
 activ = list(set(list(rw[rw["m1h_cat"] != "NA"]["clone_acc_alt"])))
+loc = list(set(list(rw[rw["loc_cat"] == "localization change"]["clone_acc_alt"])))
 
-contents = {"change in PPIs": ppis, "change in PDIs": pdis, "change in activity": activ}
+contents = {"change in PPIs": ppis, "change in PDIs": pdis, "change in activity": activ, 
+            "change in localization": loc}
 contents = upsetplot.from_contents(contents)
 
 fig = plt.figure(figsize=(3, 2))
@@ -899,14 +1092,15 @@ d["totals"].grid(False)
 fig.savefig("../../figures/fig7/DN_rewire_upset.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[31]:
+# In[40]:
 
 
 ppis = list(set(list(pairs[pairs["y2h_cat"] != "NA"]["clone_acc_alt"])))
 pdis = list(set(list(pairs[pairs["y1h_cat"] != "NA"]["clone_acc_alt"])))
 activ = list(set(list(pairs[pairs["m1h_cat"] != "NA"]["clone_acc_alt"])))
+loc = list(set(list(pairs[pairs["loc_cat"] != "NA"]["clone_acc_alt"])))
 
-contents = {"assessed PPIs": ppis, "assessed PDIs": pdis, "assessed activity": activ}
+contents = {"assessed PPIs": ppis, "assessed PDIs": pdis, "assessed activity": activ, "assessed localization": loc}
 contents = upsetplot.from_contents(contents)
 
 all_as = set(ppis).union(set(pdis)).union(set(activ))
@@ -922,7 +1116,7 @@ d["totals"].grid(False)
 fig.savefig("../../figures/fig7/DN_pairs_assessed_upset.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[32]:
+# In[41]:
 
 
 y = np.array([len(pairs[pairs["dn_short"] == "rewire"]), 
@@ -944,7 +1138,7 @@ ns[4].set_color("white")
 fig.savefig("../../figures/fig7/dn_pie.incl_NA.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[33]:
+# In[42]:
 
 
 ys = np.array([len(pairs[pairs["dn_short"] == "similar"]),
@@ -967,7 +1161,7 @@ ns[3].set_text("")
 fig.savefig("../../figures/fig7/dn_pie.no_NA.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[34]:
+# In[43]:
 
 
 outer_ys = np.array([len(pairs[(pairs["dn_short"] == "similar")]),
@@ -1010,7 +1204,7 @@ ax.set_title("alternative TF isoform categories\n(%s reference-alternative pairs
 fig.savefig("../../figures/fig7/dn_pie.novel_nested.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[35]:
+# In[44]:
 
 
 outer_ys = np.array([len(pairs[(pairs["dn_short"] == "similar")]),
@@ -1052,7 +1246,7 @@ ax.set_title("alternative TF isoform categories\n(%s reference-alternative pairs
 fig.savefig("../../figures/fig7/dn_pie.novel_nested.no_labels.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[36]:
+# In[45]:
 
 
 # create df for stacked bar chart
@@ -1065,15 +1259,18 @@ ppis_vc = pd.DataFrame(delta_ppis.dn_short.value_counts()).reset_index()
 delta_activ = pairs[~pairs["m1h_cat"].isin(["NA", "similar"])]
 activ_vc = pd.DataFrame(delta_activ.dn_short.value_counts()).reset_index()
 
-mrg = pdis_vc.merge(ppis_vc, on="index", how="outer").merge(activ_vc, on="index", how="outer")
+delta_loc = pairs[~pairs["loc_cat"].isin(["NA", "no localization change"])]
+loc_vc = pd.DataFrame(delta_loc.dn_short.value_counts()).reset_index()
+
+mrg = pdis_vc.merge(ppis_vc, on="index", how="outer").merge(activ_vc, on="index", how="outer").merge(loc_vc, on="index", how="outer")
 mrg.fillna(0, inplace=True)
-mrg.columns = ["index", "PDIs", "PPIs", "activity"]
+mrg.columns = ["index", "PDIs", "PPIs", "activity", "localization"]
 
 to_plot = pd.melt(mrg, id_vars="index")
 to_plot.sample(5)
 
 
-# In[37]:
+# In[46]:
 
 
 # make stacked barchart situation
@@ -1082,36 +1279,40 @@ dn_pdi_change = len(tmp[tmp["dn_pdi"] == True])
 dn_ppi_change = len(tmp[tmp["dn_ppi"] == True])
 dn_activ_change = len(tmp[tmp["dn_activ"] == True])
 dn_dbd_change = len(tmp[tmp["dn_dbd"] == True])
-tot_dn = dn_pdi_change + dn_ppi_change + dn_activ_change + dn_dbd_change
+dn_loc_change = len(tmp[tmp["dn_loc"] == True])
+tot_dn = dn_pdi_change + dn_ppi_change + dn_activ_change + dn_dbd_change + dn_loc_change
 
 tmp = pairs[pairs["dn_short"] == "rewire"]
 rw_pdi_change = len(tmp[~tmp["y1h_cat"].isin(["NA", "no PDI change"])])
 rw_ppi_change = len(tmp[~tmp["y2h_cat"].isin(["NA", "no PPI change (important PPIs)"])])
 rw_activ_change = len(tmp[tmp["m1h_cat"] != "NA"])
 rw_dbd_change = len(tmp[tmp["dbd_pct_lost"] > 0])
-tot_rw = rw_pdi_change + rw_ppi_change + rw_activ_change + rw_dbd_change
+rw_loc_change = len(tmp[tmp["loc_cat"] == "localization change"])
+tot_rw = rw_pdi_change + rw_ppi_change + rw_activ_change + rw_dbd_change + rw_loc_change
 
 df = pd.DataFrame.from_dict({"DN": {"pdi_change": dn_pdi_change/tot_dn*100, 
                                     "ppi_change": dn_ppi_change/tot_dn*100,
                                     "activ_change": dn_activ_change/tot_dn*100, 
-                                    "dbd_change": dn_dbd_change/tot_dn*100},
+                                    "dbd_change": dn_dbd_change/tot_dn*100,
+                                    "loc_change": dn_loc_change/tot_dn*100},
                              "rewire": {"pdi_change": rw_pdi_change/tot_rw*100,
                                         "ppi_change": rw_ppi_change/tot_rw*100,
                                         "activ_change": rw_activ_change/tot_rw*100,
-                                        "dbd_change": rw_dbd_change/tot_rw*100}})
+                                        "dbd_change": rw_dbd_change/tot_rw*100,
+                                        "loc_change": rw_loc_change/tot_rw*100}})
 df["DN_cumsum"] = np.cumsum(df["DN"])
 df["rw_cumsum"] = np.cumsum(df["rewire"])
 df
 
 
-# In[38]:
+# In[47]:
 
 
-colors = met_brewer.met_brew(name="Hokusai3", n=4, brew_type="discrete")
+colors = met_brewer.met_brew(name="Hokusai3", n=5, brew_type="discrete")
 sns.palplot(colors)
 
 
-# In[39]:
+# In[48]:
 
 
 fig, ax = plt.subplots(figsize=(0.85, 1.5))
@@ -1123,11 +1324,14 @@ b2 = np.add(y1, y2)
 y3 = list(df[["DN", "rewire"]].loc["activ_change"])
 b3 = np.add(b2, y3)
 y4 = list(df[["DN", "rewire"]].loc["dbd_change"])
+b4 = np.add(b3, y4)
+y5 = list(df[["DN", "rewire"]].loc["loc_change"])
 
 ax.bar(xs, y1, color=colors[0], label="∆ PDIs")
 ax.bar(xs, y2, bottom=y1, color=colors[1], label="∆ PPIs")
 ax.bar(xs, y3, bottom=b2, color=colors[2], label="∆ activity")
 ax.bar(xs, y4, bottom=b3, color=colors[3], label="∆ DBD")
+ax.bar(xs, y5, bottom=b4, color=colors[4], label="∆ localization")
 
 # add legend
 handles, labels = ax.get_legend_handles_labels()
@@ -1142,7 +1346,7 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/dn_stacked_bar.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[40]:
+# In[49]:
 
 
 # make stacked barchart situation of all assays (to compare)
@@ -1150,17 +1354,19 @@ tmp = pairs[pairs["dn_short"] != "NA"]
 pdi_assessed = len(tmp[tmp["y1h_cat"] != "NA"])
 ppi_assessed = len(tmp[tmp["y2h_cat"] != "NA"])
 activ_assessed = len(tmp[tmp["m1h_cat"] != "NA"])
+loc_assessed = len(tmp[tmp["loc_cat"] != "NA"])
 
-tot_assessed = pdi_assessed + ppi_assessed + activ_assessed
+tot_assessed = pdi_assessed + ppi_assessed + activ_assessed + loc_assessed
 
 nc = pd.DataFrame.from_dict({"assessed": {"pdi": pdi_assessed/tot_assessed*100, 
                                     "ppi": ppi_assessed/tot_assessed*100,
-                                    "activ": activ_assessed/tot_assessed*100}})
+                                    "activ": activ_assessed/tot_assessed*100,
+                                          "loc": loc_assessed/tot_assessed*100}})
 nc["assessed_cumsum"] = np.cumsum(nc["assessed"])
 nc
 
 
-# In[41]:
+# In[50]:
 
 
 fig, ax = plt.subplots(figsize=(0.25, 1.5))
@@ -1170,10 +1376,13 @@ y1 = list(nc[["assessed"]].loc["pdi"])
 y2 = list(nc[["assessed"]].loc["ppi"])
 b2 = np.add(y1, y2)
 y3 = list(nc[["assessed"]].loc["activ"])
+b3 = np.add(y2, y3)
+y4 = list(nc[["assessed"]].loc["loc"])
 
 ax.bar(xs, y1, color=colors[0], label="PDIs")
 ax.bar(xs, y2, bottom=y1, color=colors[1], label="PPIs")
 ax.bar(xs, y3, bottom=b2, color=colors[2], label="activity")
+ax.bar(xs, y4, bottom=b3, color=colors[4], label="localization")
 
 # add legend
 handles, labels = ax.get_legend_handles_labels()
@@ -1188,7 +1397,7 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/dn_stacked_bar.nc.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[42]:
+# In[51]:
 
 
 genes_w_dn = pairs[pairs["dn_short"] == "DN"][["gene_symbol", "family"]].drop_duplicates()
@@ -1216,14 +1425,14 @@ family_cats["sim_p"] = family_cats["sim"]/family_cats["sim"].sum(axis=0)*100
 family_cats.sort_values(by="tot", ascending=False).head(11)
 
 
-# In[43]:
+# In[52]:
 
 
 colors = met_brewer.met_brew(name="Renoir", n=11, brew_type="discrete")
 sns.palplot(colors)
 
 
-# In[44]:
+# In[53]:
 
 
 fig, ax = plt.subplots(figsize=(3, 1.75))
@@ -1251,15 +1460,201 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/dn_families_stacked_bar.pdf", dpi="figure", bbox_inches="tight")
 
 
-# ## 5. join data with Joung et al. o/ex
+# ## 5. are there differences in condensate formation between categories?
 
-# In[45]:
+# In[54]:
+
+
+def condensate_cat_either(row):
+    if row.condensate_cat_only_HEK == "Difference" or row.condensate_cat_only_U2OS == "Difference":
+        return "Difference"
+    elif row.condensate_cat_only_HEK == "No difference" and row.condensate_cat_only_U2OS == "No difference":
+        return "No difference"
+    elif row.condensate_cat_only_HEK == "No difference" or row.condensate_cat_only_U2OS == "No difference":
+        return "No difference"
+    else:
+        return np.nan
+    
+pairs["condensate_cat_either"] = pairs.apply(condensate_cat_either, axis=1)
+pairs.condensate_cat_either.value_counts()
+
+
+# In[55]:
+
+
+def condensate_cat_both(row):
+    if row.condensate_cat_only_HEK == "Difference" and row.condensate_cat_only_U2OS == "Difference":
+        return "Difference"
+    elif row.condensate_cat_only_HEK == "No difference" and row.condensate_cat_only_U2OS == "No difference":
+        return "No difference"
+    else:
+        return np.nan
+    
+pairs["condensate_cat_both"] = pairs.apply(condensate_cat_both, axis=1)
+pairs.condensate_cat_both.value_counts()
+
+
+# In[56]:
+
+
+from scipy.stats import fisher_exact
+
+
+# In[57]:
+
+
+fe = np.zeros((2, 2))
+
+tmp_nonan = pairs[~pd.isnull(pairs["condensate_cat_either"])]
+
+fe[0, 0] = len(tmp_nonan[(tmp_nonan["dn_short"] == "DN") & 
+                    (tmp_nonan["condensate_cat_either"] == "Difference")].clone_acc_alt.unique())
+fe[1, 0] = len(tmp_nonan[(tmp_nonan["dn_short"] != "DN") & 
+                    (tmp_nonan["condensate_cat_either"] == "Difference")].clone_acc_alt.unique())
+fe[0, 1] = len(tmp_nonan[(tmp_nonan["dn_short"] == "DN") &
+                    (tmp_nonan["condensate_cat_either"] == "No difference")].clone_acc_alt.unique())
+fe[1, 1] = len(tmp_nonan[(tmp_nonan["dn_short"] != "DN") & 
+                    (tmp_nonan["condensate_cat_either"] == "No difference")].clone_acc_alt.unique())
+fe
+
+
+# In[58]:
+
+
+p = fisher_exact(fe)[1]
+print(p)
+
+
+# In[59]:
+
+
+tots = pd.DataFrame(tmp_nonan.dn_short.value_counts())
+sig = pd.DataFrame(tmp_nonan[tmp_nonan["condensate_cat_either"] == "Difference"].dn_short.value_counts())
+con_st = tots.join(sig, lsuffix="_tot", rsuffix="_diff")
+con_st = con_st.loc[["DN", "rewire", "similar", "NA"]]
+con_st = con_st/con_st.sum(axis=0)
+con_st.fillna(0, inplace=True)
+con_st
+
+
+# In[60]:
+
+
+fig, ax = plt.subplots(figsize=(0.4, 1.5))
+
+xs = ["total", "diff. in condensates"]
+y1 = list(con_st[["dn_short_tot", "dn_short_diff"]].loc["NA"])
+y2 = list(con_st[["dn_short_tot", "dn_short_diff"]].loc["similar"])
+b2 = np.add(y1, y2)
+y3 = list(con_st[["dn_short_tot", "dn_short_diff"]].loc["rewire"])
+b3 = np.add(b2, y3)
+y4 = list(con_st[["dn_short_tot", "dn_short_diff"]].loc["DN"])
+
+ax.bar(xs, y1, color=dn_pal["NA"], label="NA", edgecolor="black", linewidth=0.5)
+ax.bar(xs, y2, bottom=y1, color=dn_pal["similar"], label="similar", edgecolor="black", linewidth=0.5)
+ax.bar(xs, y3, bottom=b2, color=dn_pal["rewire"], label="rewire", edgecolor="black", linewidth=0.5)
+ax.bar(xs, y4, bottom=b3, color=dn_pal["DN"], label="neg. reg.", edgecolor="black", linewidth=0.5)
+
+# annotate pval
+annotate_pval(ax, 0, 1, 1.025, 0, 1.025, p, fontsize-1)
+
+# add legend
+handles, labels = ax.get_legend_handles_labels()
+ax.legend(handles[::-1], labels[::-1], loc='upper left', bbox_to_anchor=(1.01, 1), frameon=False)
+
+ax.set_ylabel("% Alternative isoforms")
+ax.set_xticklabels(xs, rotation=30, ha="right", va="top")
+ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+ax.set_yticklabels(["%s%%" % x for x in [0, 20, 40, 60, 80, 100]])
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+
+fig.savefig("../../figures/fig7/dn_stacked_bar_condensates.either.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[61]:
+
+
+fe = np.zeros((2, 2))
+
+tmp_nonan = pairs[~pd.isnull(pairs["condensate_cat_both"])]
+
+fe[0, 0] = len(tmp_nonan[(tmp_nonan["dn_short"] == "DN") & 
+                    (tmp_nonan["condensate_cat_both"] == "Difference")].clone_acc_alt.unique())
+fe[1, 0] = len(tmp_nonan[(tmp_nonan["dn_short"] != "DN") & 
+                    (tmp_nonan["condensate_cat_both"] == "Difference")].clone_acc_alt.unique())
+fe[0, 1] = len(tmp_nonan[(tmp_nonan["dn_short"] == "DN") &
+                    (tmp_nonan["condensate_cat_both"] == "No difference")].clone_acc_alt.unique())
+fe[1, 1] = len(tmp_nonan[(tmp_nonan["dn_short"] != "DN") & 
+                    (tmp_nonan["condensate_cat_both"] == "No difference")].clone_acc_alt.unique())
+fe
+
+
+# In[62]:
+
+
+p = fisher_exact(fe)[1]
+print(p)
+
+
+# In[63]:
+
+
+tots = pd.DataFrame(tmp_nonan.dn_short.value_counts())
+sig = pd.DataFrame(tmp_nonan[tmp_nonan["condensate_cat_both"] == "Difference"].dn_short.value_counts())
+con_st = tots.join(sig, lsuffix="_tot", rsuffix="_diff")
+con_st = con_st.loc[["DN", "rewire", "similar", "NA"]]
+con_st = con_st/con_st.sum(axis=0)
+con_st.fillna(0, inplace=True)
+con_st
+
+
+# In[64]:
+
+
+fig, ax = plt.subplots(figsize=(0.4, 1.5))
+
+xs = ["total", "diff. in condensates"]
+y1 = list(con_st[["dn_short_tot", "dn_short_diff"]].loc["NA"])
+y2 = list(con_st[["dn_short_tot", "dn_short_diff"]].loc["similar"])
+b2 = np.add(y1, y2)
+y3 = list(con_st[["dn_short_tot", "dn_short_diff"]].loc["rewire"])
+b3 = np.add(b2, y3)
+y4 = list(con_st[["dn_short_tot", "dn_short_diff"]].loc["DN"])
+
+ax.bar(xs, y1, color=dn_pal["NA"], label="NA", edgecolor="black", linewidth=0.5)
+ax.bar(xs, y2, bottom=y1, color=dn_pal["similar"], label="similar", edgecolor="black", linewidth=0.5)
+ax.bar(xs, y3, bottom=b2, color=dn_pal["rewire"], label="rewire", edgecolor="black", linewidth=0.5)
+ax.bar(xs, y4, bottom=b3, color=dn_pal["DN"], label="neg. reg.", edgecolor="black", linewidth=0.5)
+
+# annotate pval
+annotate_pval(ax, 0, 1, 1.025, 0, 1.025, p, fontsize-1)
+
+# add legend
+handles, labels = ax.get_legend_handles_labels()
+ax.legend(handles[::-1], labels[::-1], loc='upper left', bbox_to_anchor=(1.01, 1), frameon=False)
+
+ax.set_ylabel("% Alternative isoforms")
+ax.set_xticklabels(xs, rotation=30, ha="right", va="top")
+ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+ax.set_yticklabels(["%s%%" % x for x in [0, 20, 40, 60, 80, 100]])
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+
+fig.savefig("../../figures/fig7/dn_stacked_bar_condensates.both.pdf", dpi="figure", bbox_inches="tight")
+
+
+# ## 6. join data with Joung et al. o/ex
+
+# In[65]:
 
 
 tfs = load_annotated_TFiso1_collection()
 
 
-# In[46]:
+# In[66]:
 
 
 def pd_translate(row):
@@ -1270,7 +1665,7 @@ def pd_translate(row):
 joung_orf["seq_aa"] = joung_orf.apply(pd_translate, axis=1)
 
 
-# In[47]:
+# In[67]:
 
 
 tf_id_map = {}
@@ -1318,7 +1713,7 @@ for tf in tfs:
         tf_id_map[iso_clone_acc] = sub_dict
 
 
-# In[48]:
+# In[68]:
 
 
 tf_id_map_df = pd.DataFrame.from_dict(tf_id_map, orient="index").reset_index()
@@ -1326,7 +1721,7 @@ print(len(tf_id_map_df))
 tf_id_map_df.sample(5)
 
 
-# In[49]:
+# In[69]:
 
 
 joung_orf = joung_orf.merge(tf_id_map_df, left_on="Name", right_on="joung_id", how="left", suffixes=("_joung",
@@ -1334,13 +1729,13 @@ joung_orf = joung_orf.merge(tf_id_map_df, left_on="Name", right_on="joung_id", h
 joung_orf.sample(5)
 
 
-# In[50]:
+# In[70]:
 
 
 joung_data = joung_orf.merge(joung_data, on="Name", how="left")
 
 
-# In[51]:
+# In[71]:
 
 
 dn_ref = pairs[["gene_symbol", "family", "clone_acc_ref", "is_ref_novel_isoform", "is_MANE_select_isoform_cloned",
@@ -1350,7 +1745,7 @@ dn_ref["dn_cat"] = "ref"
 dn_ref["iso_status"] = "ref"
 
 
-# In[52]:
+# In[72]:
 
 
 dn_alt = pairs[["gene_symbol", "family", "clone_acc_alt", "is_alt_novel_isoform", "is_MANE_select_isoform_cloned",
@@ -1360,31 +1755,31 @@ dn_alt["is_MANE_select"] = False # assuming none of the alts are the MANE select
 dn_alt["iso_status"] = "alt"
 
 
-# In[53]:
+# In[73]:
 
 
 dn_cats = dn_ref.append(dn_alt).drop_duplicates()
 
 
-# In[54]:
+# In[74]:
 
 
 dn_cats = dn_cats.merge(joung_data, left_on="tf1p0_id", right_on="index", how="left")
 
 
-# In[55]:
+# In[75]:
 
 
 dn_cats.iso_status.value_counts()
 
 
-# In[56]:
+# In[76]:
 
 
 dn_cats[~pd.isnull(dn_cats["Name"])].iso_status.value_counts()
 
 
-# In[57]:
+# In[77]:
 
 
 refs_inc = len(dn_cats[(~pd.isnull(dn_cats["Name"])) & (dn_cats["iso_status"] == "ref")])
@@ -1392,7 +1787,7 @@ refs_tf1p0 = len(dn_cats[dn_cats["iso_status"] == "ref"])
 print("%% of our ref seqs included in joung: %s" % (refs_inc/refs_tf1p0*100))
 
 
-# In[58]:
+# In[78]:
 
 
 alts_inc = len(dn_cats[(~pd.isnull(dn_cats["Name"])) & (dn_cats["iso_status"] == "alt")])
@@ -1400,13 +1795,13 @@ alts_tf1p0 = len(dn_cats[dn_cats["iso_status"] == "alt"])
 print("%% of our alt seqs included in joung: %s" % (alts_inc/alts_tf1p0*100))
 
 
-# In[59]:
+# In[79]:
 
 
 dn_cats["orf_len"] = dn_cats["seq_aa_joung"].str.len()
 
 
-# In[60]:
+# In[80]:
 
 
 joung_down_tf1p0_map = joung_down_map.merge(dn_cats[["TF ORF", "tf1p0_id", "iso_status", "dn_cat", "orf_len"]],
@@ -1415,13 +1810,13 @@ print(len(joung_down_tf1p0_map))
 print(len(joung_down_tf1p0_map["TF ORF"].unique()))
 
 
-# In[61]:
+# In[81]:
 
 
 joung_down_tf1p0_map.fillna("NA", inplace=True)
 
 
-# In[62]:
+# In[82]:
 
 
 joung_tf1p0_cnts = joung_down_tf1p0_map.groupby(["TF", "tf1p0_id", "iso_status", 
@@ -1429,21 +1824,21 @@ joung_tf1p0_cnts = joung_down_tf1p0_map.groupby(["TF", "tf1p0_id", "iso_status",
 joung_tf1p0_cnts.columns = ["TF", "tf1p0_id", "iso_status", "dn_cat", "orf_len", "tot_cell_cnt"]
 
 
-# In[63]:
+# In[83]:
 
 
 dn_cats_nonan = dn_cats[~pd.isnull(dn_cats["Diffusion P-value"])]
 len(dn_cats_nonan)
 
 
-# In[64]:
+# In[84]:
 
 
 dn_cats_nonan["neglog_diff_pval"] = -np.log10(dn_cats_nonan["Diffusion P-value"])
 dn_cats_nonan.fillna("NA", inplace=True)
 
 
-# In[65]:
+# In[85]:
 
 
 dn_cats_nonan_ref = dn_cats_nonan[dn_cats_nonan["iso_status"] == "ref"]
@@ -1456,19 +1851,19 @@ dn_cats_nonan_diff["diff_diff_diff"] = dn_cats_nonan_diff["Diffusion difference_
 dn_cats_nonan_diff["abs_ddd"] = np.abs(dn_cats_nonan_diff["diff_diff_diff"])
 
 
-# In[66]:
+# In[86]:
 
 
 dn_cats_nonan[dn_cats_nonan["gene_name"] == "CREB1"]
 
 
-# In[67]:
+# In[87]:
 
 
 dn_cats_nonan[dn_cats_nonan["dn_cat"] != "NA"].sort_values(by="neglog_diff_pval", ascending=False).head(10)
 
 
-# In[68]:
+# In[88]:
 
 
 fig = plt.figure(figsize=(2, 2.2))
@@ -1521,7 +1916,7 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/Joung_Volcano.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[69]:
+# In[89]:
 
 
 joung_cells["Name"] = joung_cells["TF"].str.strip().str.split("-", expand=True)[0]
@@ -1532,13 +1927,13 @@ joung_cells = joung_cells[joung_cells["prediction.score.max"] > 0.2]
 print(len(joung_cells))
 
 
-# In[70]:
+# In[90]:
 
 
 joung_cells_grp = joung_cells.groupby(["Name", "TF", "predicted.id"])["batch"].agg("count").reset_index()
 
 
-# In[71]:
+# In[91]:
 
 
 joung_tf1p0_cnts["cell_cnt_qcut"] = pd.qcut(joung_tf1p0_cnts["tot_cell_cnt"], q=4, labels=[1, 2, 3, 4])
@@ -1546,7 +1941,7 @@ dn_cats_nonan = dn_cats_nonan.merge(joung_tf1p0_cnts[["TF", "tot_cell_cnt", "cel
                                     left_on="TF ORF", right_on="TF")
 
 
-# In[72]:
+# In[92]:
 
 
 tot_cell_cnt = dn_cats_nonan[["Name", "TF", "tot_cell_cnt"]].drop_duplicates()
@@ -1563,7 +1958,7 @@ orf_enr["perc_cells_of_diff_tf"] = orf_enr["id_cell_cnt"]/orf_enr["diff_cell_cnt
 orf_enr["perc_cells_of_tot_tf"] = orf_enr["id_cell_cnt"]/orf_enr["tot_cell_cnt"]
 
 
-# In[73]:
+# In[93]:
 
 
 orf_enr_dn = orf_enr.merge(dn_cats_nonan[["gene_name", "Name", "tf1p0_id",
@@ -1572,7 +1967,7 @@ orf_enr_dn = orf_enr.merge(dn_cats_nonan[["gene_name", "Name", "tf1p0_id",
                                                                                          "dn_cat"])
 
 
-# In[74]:
+# In[94]:
 
 
 has_alt = list(orf_enr_dn[orf_enr_dn["dn_cat"] != "ref"]["gene_name"].unique())
@@ -1583,23 +1978,22 @@ orf_enr_dn_filt = orf_enr_dn_filt[orf_enr_dn_filt["gene_name"].isin(has_ref)]
 len(orf_enr_dn_filt)
 
 
-# In[75]:
+# In[95]:
 
 
 orf_enr_dn_filt["dn_cat_s"] = pd.Categorical(orf_enr_dn_filt["dn_cat"], ["ref", "similar", "rewire", 
                                                                          "DN", "NA", "likely"])
 orf_enr_dn_filt = orf_enr_dn_filt.sort_values(by=["gene_name", "dn_cat_s"])
-orf_enr_dn_filt[orf_enr_dn_filt["gene_name"] == "PBX1"]
 
 
-# In[76]:
+# In[96]:
 
 
 cell_cnt["undiff_cell_cnt"] = cell_cnt["tot_cell_cnt"] - cell_cnt["diff_cell_cnt"]
 len(cell_cnt)
 
 
-# In[77]:
+# In[97]:
 
 
 cell_cnt["diff_cell_perc"] = (cell_cnt["diff_cell_cnt"]/cell_cnt["tot_cell_cnt"])*100
@@ -1607,7 +2001,7 @@ cell_cnt["undiff_cell_perc"] = (cell_cnt["undiff_cell_cnt"]/cell_cnt["tot_cell_c
 cell_cnt[cell_cnt["TF"].str.contains("GRHL3")]
 
 
-# In[78]:
+# In[98]:
 
 
 tmp = orf_enr_dn_filt[orf_enr_dn_filt["tf1p0_id"].str.contains("GRHL3")].pivot(index="tf1p0_id", 
@@ -1627,16 +2021,16 @@ g = sns.clustermap(tmp, cmap="Greys", row_cluster=False, row_colors=idx["Isoform
 g.savefig("../../figures/fig7/Joung_GRHL3_hm.pdf", bbox_inches="tight", dpi="figure")
 
 
-# ## 6. plot expression profiles of isoform categories
+# ## 8. plot expression profiles of isoform categories
 
-# In[79]:
+# In[99]:
 
 
 # use same downsample as prev figs
 means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean()
 
 
-# In[80]:
+# In[100]:
 
 
 # calculate expression ratios - dev
@@ -1655,7 +2049,7 @@ f_dev = f_dev * ((per_gene_dev.groupby(df_dev.columns.map(metadata_dev['organism
 f_dev = f_dev * 100
 
 
-# In[81]:
+# In[101]:
 
 
 # calculate expression ratios - gtex
@@ -1670,7 +2064,7 @@ f_gtex = f_gtex * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex['body
 f_gtex = f_gtex * 100
 
 
-# In[82]:
+# In[102]:
 
 
 # calculate expression ratios -gtex downsampled
@@ -1686,7 +2080,7 @@ f_gtex_downsample = f_gtex_downsample * (per_gene_gtex.groupby(df_gtex.columns.m
 f_gtex_downsample = f_gtex_downsample * 100
 
 
-# In[83]:
+# In[103]:
 
 
 # calculate gene-level tissue specificities
@@ -1695,7 +2089,7 @@ gene_gtex_nonan_taus, gene_gtex_nan_taus, gene_gtex_array_max = calculate_tau(pe
 gene_gtex_ds_nonan_taus, gene_gtex_ds_nan_taus, gene_gtex_ds_array_max = calculate_tau(per_gene_gtex_ds.drop_duplicates())
 
 
-# In[84]:
+# In[104]:
 
 
 gene_taus = pd.DataFrame()
@@ -1707,7 +2101,7 @@ gene_taus["gene_name"] = gene_taus["UID"].str.split("|", expand=True)[0]
 gene_taus.sample(5)
 
 
-# In[85]:
+# In[105]:
 
 
 # join w pairs table
@@ -1717,7 +2111,7 @@ dev_ratios = dev_ratios[dev_ratios["clone_acc"] != "noclone"]
 len(dev_ratios)
 
 
-# In[86]:
+# In[106]:
 
 
 gtex_ratios = f_gtex.reset_index()
@@ -1726,7 +2120,7 @@ gtex_ratios = gtex_ratios[gtex_ratios["clone_acc"] != "noclone"]
 len(gtex_ratios)
 
 
-# In[87]:
+# In[107]:
 
 
 gtex_ds_ratios = f_gtex_downsample.reset_index()
@@ -1735,7 +2129,7 @@ gtex_ds_ratios = gtex_ds_ratios[gtex_ds_ratios["clone_acc"] != "noclone"]
 len(gtex_ds_ratios)
 
 
-# In[88]:
+# In[108]:
 
 
 dev_ratios = dev_ratios.merge(dn_cats, left_on="clone_acc", right_on="tf1p0_id")
@@ -1746,7 +2140,7 @@ print(len(gtex_ratios))
 print(len(gtex_ds_ratios))
 
 
-# In[89]:
+# In[109]:
 
 
 dn_cats = dn_cats.merge(gene_taus, on="gene_name")
@@ -1754,7 +2148,7 @@ print(len(dn_cats))
 dn_cats.head()
 
 
-# In[90]:
+# In[110]:
 
 
 ref_expr = dn_cats.groupby(["gene_name", "family", "dn_cat", "dev_tau",
@@ -1764,7 +2158,7 @@ ref_expr = ref_expr.pivot(index="gene_name",
 ref_expr.fillna(0, inplace=True)
 
 
-# In[91]:
+# In[111]:
 
 
 def categorize_gene(row):
@@ -1787,7 +2181,7 @@ print(len(ref_expr))
 ref_expr.sample(5)
 
 
-# In[92]:
+# In[112]:
 
 
 fig, ax = nice_boxplot(ref_expr, "dev_tau", "gene_cat", dn_pal, ["rewire", "DN", "similar", "combination", "NA"], 
@@ -1816,7 +2210,7 @@ ax.plot([left_spine_in_data_coords[0], left_spine_in_data_coords[0]], [0.45, 1],
 fig.savefig("../../figures/fig7/DN_DevTau_Gene_Boxplot.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[93]:
+# In[113]:
 
 
 fig, ax = nice_boxplot(ref_expr, "gtex_ds_tau", "gene_cat", dn_pal, ["rewire", "DN", "similar", "combination", "NA"], 
@@ -1844,9 +2238,9 @@ ax.plot([left_spine_in_data_coords[0], left_spine_in_data_coords[0]], [0.5, 1],
 fig.savefig("../../figures/fig7/DN_GTExDsTau_Gene_Boxplot.pdf", dpi="figure", bbox_inches="tight")
 
 
-# ## 7. load BRCA data
+# ## 9. load BRCA data
 
-# In[94]:
+# In[114]:
 
 
 brca_cnts_f = "../../data/processed/Nathans_analysis/Breast_cancer/isoCounts.BreastCancer.txt"
@@ -1855,7 +2249,7 @@ pam50_f = "../../data/processed/Nathans_analysis/Breast_cancer/groups.PAM50.txt"
 bulk_f = "../../data/processed/Nathans_analysis/Breast_cancer/groups.BreastCancer_ratios.txt"
 
 
-# In[95]:
+# In[115]:
 
 
 skiprows=list(range(96320, 96387))+list(range(99680,99687))
@@ -1863,7 +2257,7 @@ brca = pd.read_table(brca_tx_f, sep="\t", skiprows=skiprows)
 brca.shape
 
 
-# In[96]:
+# In[116]:
 
 
 pam50_samps = pd.read_table(pam50_f, header=None)
@@ -1872,7 +2266,7 @@ pam50_samps["tcga_id"] = pam50_samps["file"].str.split(".", expand=True)[0]
 pam50_samps.samp_type.value_counts()
 
 
-# In[97]:
+# In[117]:
 
 
 bulk_samps = pd.read_table(bulk_f, header=None)
@@ -1881,7 +2275,7 @@ bulk_samps["tcga_id"] = bulk_samps["file"].str.split(".", expand=True)[0]
 bulk_samps.samp_type.value_counts()
 
 
-# In[98]:
+# In[118]:
 
 
 # map brca sample types
@@ -1909,7 +2303,7 @@ norm_samps = list(pam50_samps[pam50_samps["samp_type"] == "Normal-like"]["tcga_i
 print("# Normal-like samples: %s" % len(norm_samps))
 
 
-# In[99]:
+# In[119]:
 
 
 # one brca samp is weirdly missing, remove
@@ -1917,7 +2311,7 @@ brca_samps = [x for x in brca_samps if x in brca.columns]
 len(brca_samps)
 
 
-# In[100]:
+# In[120]:
 
 
 ## patient is the 3rd value in the barcode
@@ -1926,7 +2320,7 @@ bulk_samps["patient_id"] = bulk_samps["tcga_id"].str.split("-", expand=True)[2]
 pam50_samps["patient_id"] = pam50_samps["tcga_id"].str.split("-", expand=True)[2]
 
 
-# In[101]:
+# In[121]:
 
 
 tcga_samps = bulk_samps.merge(pam50_samps, on=["tcga_id", "patient_id"], how="outer",
@@ -1934,28 +2328,28 @@ tcga_samps = bulk_samps.merge(pam50_samps, on=["tcga_id", "patient_id"], how="ou
 print(len(tcga_samps))
 
 
-# In[102]:
+# In[122]:
 
 
 tcga_ctrls = tcga_samps[(tcga_samps["samp_type_brca"] == "controls") | (tcga_samps["samp_type_pam50"] == "controls")]
 len(tcga_ctrls)
 
 
-# In[103]:
+# In[123]:
 
 
 tcga_tumors = tcga_samps[(tcga_samps["samp_type_brca"] != "controls") | (tcga_samps["samp_type_pam50"] != "controls")]
 len(tcga_tumors)
 
 
-# In[104]:
+# In[124]:
 
 
 tcga_paired = tcga_ctrls.merge(tcga_tumors, on=["patient_id"], suffixes=("_ctrl", "_tumor"))
 print(len(tcga_paired))
 
 
-# In[105]:
+# In[125]:
 
 
 # qc on the paired samples to make sure nothing is mis-categorized
@@ -1963,7 +2357,7 @@ tcga_paired["ctrl_samp_id"] = tcga_paired["tcga_id_ctrl"].str[13:15].astype(int)
 tcga_paired["tumor_samp_id"] = tcga_paired["tcga_id_tumor"].str[13:15].astype(int)
 
 
-# In[106]:
+# In[126]:
 
 
 # ctrls should all be between 10-19
@@ -1988,13 +2382,13 @@ tcga_paired["tumor_flag"] = tcga_paired.apply(flag_samp, samp_type="tumor", axis
 tcga_paired.ctrl_flag.value_counts()
 
 
-# In[107]:
+# In[127]:
 
 
 tcga_paired[tcga_paired["ctrl_flag"]]
 
 
-# In[108]:
+# In[128]:
 
 
 # looks like these 6 samples are marked as "controls" in Nathan's file but correspond to metastases
@@ -2004,19 +2398,19 @@ tcga_paired[tcga_paired["ctrl_flag"]]
 tcga_paired = tcga_paired[~tcga_paired["ctrl_flag"]]
 
 
-# In[109]:
+# In[129]:
 
 
 tcga_paired.tumor_flag.value_counts()
 
 
-# In[110]:
+# In[130]:
 
 
 # all looks good on tumor end
 
 
-# In[111]:
+# In[131]:
 
 
 # are there any dupes?
@@ -2024,7 +2418,7 @@ print(len(tcga_paired.tcga_id_ctrl.unique()))
 print(len(tcga_paired.tcga_id_tumor.unique()))
 
 
-# In[112]:
+# In[132]:
 
 
 # it looks like a few control samples are repeated
@@ -2032,13 +2426,13 @@ tmp = tcga_paired.groupby("tcga_id_ctrl")["file_brca_ctrl"].agg("count").reset_i
 tmp[tmp["file_brca_ctrl"] > 1]
 
 
-# In[113]:
+# In[133]:
 
 
 tcga_paired[tcga_paired["tcga_id_ctrl"] == "TCGA-A7-A0DB-11A-33R-A089-07"]
 
 
-# In[114]:
+# In[134]:
 
 
 # these are different samples for the same patient/tumor, so just randomly dedupe
@@ -2046,7 +2440,7 @@ tcga_paired = tcga_paired.drop_duplicates(subset=["tcga_id_ctrl"])
 len(tcga_paired)
 
 
-# In[115]:
+# In[135]:
 
 
 # now all should be deduped
@@ -2054,9 +2448,9 @@ print(len(tcga_paired.tcga_id_ctrl.unique()))
 print(len(tcga_paired.tcga_id_tumor.unique()))
 
 
-# ## 8. aggregate TF iso expression across transcripts + calculate isoform ratios/med expr
+# ## 10. aggregate TF iso expression across transcripts + calculate isoform ratios/med expr
 
-# In[116]:
+# In[136]:
 
 
 tf_id_map = pd.DataFrame()
@@ -2094,7 +2488,7 @@ print(len(tf_id_map))
 tf_id_map.sample(5)
 
 
-# In[117]:
+# In[137]:
 
 
 def merge_id(row):
@@ -2106,7 +2500,7 @@ def merge_id(row):
 tf_id_map["merge_id"] = tf_id_map.apply(merge_id, axis=1)
 
 
-# In[118]:
+# In[138]:
 
 
 dd = tf_id_map[["iso_id", "gene_name"]].drop_duplicates()
@@ -2114,28 +2508,28 @@ print(len(dd))
 gene_dict = {row.iso_id : row.gene_name for i, row in dd.iterrows()}
 
 
-# In[119]:
+# In[139]:
 
 
 brca_cols = [x for x in brca.columns if x != "UID"]
 len(brca_cols)
 
 
-# In[120]:
+# In[140]:
 
 
 brca = brca.merge(tf_id_map, left_on="UID", right_on="merge_id")
 len(brca)
 
 
-# In[121]:
+# In[141]:
 
 
 brca_isos = brca.groupby("iso_id")[brca_cols].agg("sum").reset_index()
 len(brca_isos)
 
 
-# In[122]:
+# In[142]:
 
 
 # calculate isoform ratios
@@ -2151,30 +2545,30 @@ f_brca = brca_idx/brca_gene_sum
 f_brca = f_brca * (brca_gene_sum >= 1).applymap(lambda x: {False: np.nan, True: 1}[x])
 
 
-# In[123]:
+# In[143]:
 
 
 tcga_paired_ctrls = list(tcga_paired["tcga_id_ctrl"].unique())
 tcga_paired_tumors = list(tcga_paired["tcga_id_tumor"].unique())
 
 
-# In[124]:
+# In[144]:
 
 
 brca_isos["med_paired-brca_tpm"] = brca_isos[tcga_paired_tumors].median(axis=1)
 brca_isos["med_paired-ctrls_tpm"] = brca_isos[tcga_paired_ctrls].median(axis=1)
 
 
-# In[125]:
+# In[145]:
 
 
 f_brca["med_paired-brca_ratio"] = f_brca[tcga_paired_tumors].median(axis=1)
 f_brca["med_paired-ctrls_ratio"] = f_brca[tcga_paired_ctrls].median(axis=1)
 
 
-# ## 9. calculate expr/ratio change across paired samples
+# ## 11. calculate expr/ratio change across paired samples
 
-# In[126]:
+# In[146]:
 
 
 paired_ctrl_samps = list(tcga_paired["tcga_id_ctrl"])
@@ -2183,7 +2577,7 @@ paired_tumor_samps = list(tcga_paired["tcga_id_tumor"])
 print(len(paired_tumor_samps))
 
 
-# In[127]:
+# In[147]:
 
 
 ## calculate p-value using wilcoxon
@@ -2225,7 +2619,7 @@ def paired_samps(row, ctrl_cols, tumor_cols):
     return len(x_filt)
 
 
-# In[128]:
+# In[148]:
 
 
 f_brca["wilcox_pval"] = f_brca.apply(paired_pval, ctrl_cols=paired_ctrl_samps, tumor_cols=paired_tumor_samps, axis=1)
@@ -2239,67 +2633,67 @@ print(len(f_brca_filt))
 f_brca_filt["wilcox_padj"] = smt.multipletests(list(f_brca_filt["wilcox_pval"]), alpha=0.05, method="fdr_bh")[1]
 
 
-# In[129]:
+# In[149]:
 
 
 for i, row in tcga_paired.iterrows():
     f_brca_filt["paired-diff_%s_ratio" % (i+1)] = f_brca_filt[row.tcga_id_tumor]-f_brca_filt[row.tcga_id_ctrl]
 
 
-# In[130]:
+# In[150]:
 
 
 paired_ratio_cols = [x for x in f_brca_filt.columns if "paired-diff_" in x]
 len(paired_ratio_cols)
 
 
-# In[131]:
+# In[151]:
 
 
 f_brca_filt["med_paired-diff_ratio"] = f_brca_filt[paired_ratio_cols].median(axis=1)
 
 
-# ## 10. merge BRCA data w/ DN cats
+# ## 12. merge BRCA data w/ DN cats
 
-# In[132]:
+# In[152]:
 
 
 f_brca_filt = f_brca_filt.merge(tf_id_map, on="iso_id")
 
 
-# In[133]:
+# In[153]:
 
 
 f_brca_med_cols = ["clone_acc"] + [x for x in f_brca_filt.columns if "med_" in x] + [x for x in f_brca_filt.columns if "wilcox" in x]
 
 
-# In[134]:
+# In[154]:
 
 
 dn_data_exp = dn_cats.merge(f_brca_filt[f_brca_med_cols], left_on="tf1p0_id", right_on="clone_acc")
 print(len(dn_data_exp))
 
 
-# In[135]:
+# In[155]:
 
 
 dn_data_exp.drop_duplicates(subset="tf1p0_id", inplace=True)
 print(len(dn_data_exp))
 
 
-# In[136]:
+# In[156]:
 
 
 dn_data_exp.dn_cat.value_counts()
 
 
-# In[137]:
+# In[157]:
 
 
 dn_data_exp["neglog_padj"] = -np.log10(dn_data_exp["wilcox_padj"])
 
 
-# In[138]:
+# In[158]:
 
 
 fig = plt.figure(figsize=(2, 2.2))
@@ -2356,13 +2750,13 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/BRCA_Volcano.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[139]:
+# In[159]:
 
 
 ## are DNs enriched within those alt. isos that significantly change in BRCA?
 
 
-# In[140]:
+# In[160]:
 
 
 tots = pd.DataFrame(dn_data_exp.dn_cat.value_counts())
@@ -2373,19 +2767,19 @@ brca_st = brca_st/brca_st.sum(axis=0)
 brca_st
 
 
-# In[141]:
+# In[161]:
 
 
 tots.sum()
 
 
-# In[142]:
+# In[162]:
 
 
 sig
 
 
-# In[143]:
+# In[163]:
 
 
 fe = np.zeros((2, 2))
@@ -2403,14 +2797,14 @@ fe[1, 1] = len(alts[(alts["dn_cat"] != "DN") &
 fe
 
 
-# In[144]:
+# In[164]:
 
 
 print(fisher_exact(fe))
 p = fisher_exact(fe)[1]
 
 
-# In[189]:
+# In[165]:
 
 
 fig, ax = plt.subplots(figsize=(0.4, 1.5))
@@ -2448,14 +2842,14 @@ fig.savefig("../../figures/fig7/dn_stacked_bar_brca.pdf", dpi="figure", bbox_inc
 
 # ### CREB1 vignette
 
-# In[146]:
+# In[166]:
 
 
 brca_isos = brca_isos.merge(tf_id_map[["iso_id", "gene_name"]], on="iso_id").drop_duplicates()
 len(brca_isos)
 
 
-# In[147]:
+# In[167]:
 
 
 brca_isos_paired = brca_isos[["gene_name", "iso_id"] + tcga_paired_ctrls + tcga_paired_tumors]
@@ -2464,7 +2858,7 @@ new_tumor_cols = ["tumor - %s" % (i+1) for i, x in enumerate(tcga_paired_tumors)
 brca_isos_paired.columns = ["gene_name", "iso_id"] + new_ctrl_cols + new_tumor_cols
 
 
-# In[148]:
+# In[168]:
 
 
 def brca_expression_plot(gene_name, figsize, ylim, df, cols, fig_suffix, ctrls_line, tumor_line):
@@ -2511,7 +2905,7 @@ def brca_expression_plot(gene_name, figsize, ylim, df, cols, fig_suffix, ctrls_l
                 bbox_inches='tight')
 
 
-# In[149]:
+# In[169]:
 
 
 creb1 = dn_data_exp[dn_data_exp["gene_name"] == "CREB1"][["gene_name", "tf1p0_id", "dn_cat", "med_paired-brca_ratio",
@@ -2519,7 +2913,7 @@ creb1 = dn_data_exp[dn_data_exp["gene_name"] == "CREB1"][["gene_name", "tf1p0_id
 creb1
 
 
-# In[150]:
+# In[170]:
 
 
 cols = new_ctrl_cols[0:35] + new_tumor_cols[0:35]
@@ -2530,7 +2924,7 @@ brca_expression_plot("CREB1", (9, 3), (0, 6), brca_isos_paired, cols, "paired",
                                    creb1[creb1["dn_cat"] == "ref"]["med_paired-brca_ratio"].iloc[0]]))
 
 
-# In[151]:
+# In[171]:
 
 
 f_brca_paired = f_brca_filt[["gene_name", "iso_id"] + tcga_paired_ctrls + tcga_paired_tumors]
@@ -2539,14 +2933,14 @@ new_tumor_cols = ["tumor - %s" % (i+1) for i, x in enumerate(tcga_paired_tumors)
 f_brca_paired.columns = ["gene_name", "iso_id"] + new_ctrl_cols + new_tumor_cols
 
 
-# In[152]:
+# In[172]:
 
 
 f_brca_paired_melt = pd.melt(f_brca_paired, id_vars=["gene_name", "iso_id"])
 f_brca_paired_melt["samp"] = f_brca_paired_melt["variable"].str.split(" ", expand=True)[0]
 
 
-# In[153]:
+# In[173]:
 
 
 dn_data_exp = dn_data_exp.merge(tf_id_map[["gene_name", "clone_acc", "iso_id", "merge_id"]], 
@@ -2555,7 +2949,7 @@ dn_data_exp = dn_data_exp.merge(tf_id_map[["gene_name", "clone_acc", "iso_id", "
 print(len(dn_data_exp))
 
 
-# In[154]:
+# In[174]:
 
 
 tmp = f_brca_paired_melt[f_brca_paired_melt["gene_name"] == "CREB1"]
@@ -2593,7 +2987,7 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/BRCA_CREB1_boxplot.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[188]:
+# In[175]:
 
 
 fig = plt.figure(figsize=(1, 1.5))
@@ -2644,7 +3038,7 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/BRCA_CREB1_swarmplot_paired.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[156]:
+# In[176]:
 
 
 creb1_iso_diff = f_brca_filt[f_brca_filt["iso_id"] == "CREB1-1"][paired_ratio_cols]
@@ -2667,33 +3061,33 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/BRCA_CREB1_iso_diff_hist.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[157]:
+# In[177]:
 
 
 for i, row in tcga_paired.iterrows():
     brca_gene_sum["paired-diff_%s" % (i+1)] = brca_gene_sum[row.tcga_id_tumor]-brca_gene_sum[row.tcga_id_ctrl]
 
 
-# In[158]:
+# In[178]:
 
 
 len(tcga_paired)
 
 
-# In[159]:
+# In[179]:
 
 
 len(tcga_paired.tcga_id_tumor.unique())
 
 
-# In[160]:
+# In[180]:
 
 
 paired_diff_cols = [x for x in brca_gene_sum.columns if "paired-diff_" in x]
 len(paired_diff_cols)
 
 
-# In[161]:
+# In[181]:
 
 
 brca_genes_paired = brca_gene_sum[tcga_paired_ctrls + tcga_paired_tumors]
@@ -2713,7 +3107,7 @@ brca_genes_paired = brca_genes_paired[["gene_name"] + new_ctrl_cols + new_tumor_
 brca_genes_paired.head()
 
 
-# In[162]:
+# In[182]:
 
 
 brca_genes_paired["wilcox_pval"] = brca_genes_paired.apply(paired_pval, ctrl_cols=new_ctrl_cols, tumor_cols=new_tumor_cols, axis=1)
@@ -2726,14 +3120,14 @@ print(len(brca_genes_paired_filt))
 brca_genes_paired_filt["wilcox_padj"] = smt.multipletests(list(brca_genes_paired_filt["wilcox_pval"]), alpha=0.05, method="fdr_bh")[1]
 
 
-# In[163]:
+# In[183]:
 
 
 brca_genes_paired_melt = pd.melt(brca_genes_paired_filt, id_vars=["gene_name"])
 brca_genes_paired_melt["samp"] = brca_genes_paired_melt["variable"].str.split(" ", expand=True)[0]
 
 
-# In[164]:
+# In[184]:
 
 
 fig = plt.figure(figsize=(1.2, 1.5))
@@ -2780,7 +3174,7 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/BRCA_CREB1_gene_expression_swarmplot_paired.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[165]:
+# In[185]:
 
 
 i = 0
@@ -2791,7 +3185,7 @@ for tumor, normal in zip(new_tumor_cols, new_ctrl_cols):
 paired_diff_cols = [x for x in brca_genes_paired_filt.columns if "paired-diff_" in x]
 
 
-# In[166]:
+# In[186]:
 
 
 creb1_gene_diff = brca_genes_paired_filt[brca_genes_paired_filt["gene_name"] == "CREB1"][paired_diff_cols]
@@ -2813,7 +3207,7 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/BRCA_CREB1_gene_diff_hist.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[167]:
+# In[187]:
 
 
 from plotting import (y2h_ppi_per_tf_gene_plot,
@@ -2825,7 +3219,7 @@ from data_loading import (load_y2h_isoform_data,
                           load_y1h_pdi_data)
 
 
-# In[168]:
+# In[188]:
 
 
 y2h = load_y2h_isoform_data()
@@ -2833,13 +3227,13 @@ m1h = load_m1h_activation_data(add_missing_data=True)
 y1h = load_y1h_pdi_data()
 
 
-# In[169]:
+# In[189]:
 
 
 gene_name = "CREB1"
 
 
-# In[170]:
+# In[190]:
 
 
 fig, ax = plt.subplots(figsize=(3, 0.6))
@@ -2848,7 +3242,7 @@ tfs[gene_name].exon_diagram(ax=ax, )
 fig.savefig("../../figures/fig7/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[171]:
+# In[191]:
 
 
 fig, ax = plt.subplots(figsize=(3, 0.6))
@@ -2857,7 +3251,7 @@ tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=
 fig.savefig("../../figures/fig7/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[172]:
+# In[192]:
 
 
 fig, ax = plt.subplots(1, 1, figsize=(0.6, 0.7))
@@ -2866,7 +3260,7 @@ df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, iso_order=["CRE
 plt.savefig('../../figures/fig7/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[173]:
+# In[193]:
 
 
 tf = tfs[gene_name]
@@ -2875,7 +3269,7 @@ y1h_pdi_per_tf_gene_plot(tf.name, ax=ax, data=y1h, iso_order=["CREB1-2", "CREB1-
 plt.savefig('../../figures/fig7/{}_y1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[174]:
+# In[194]:
 
 
 def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim, means, cols, fig_suffix, shorten_x=False):
@@ -2919,7 +3313,7 @@ def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim,
                 bbox_inches='tight')
 
 
-# In[175]:
+# In[195]:
 
 
 if not (genes_gtex == genes_dev).all():
@@ -2927,7 +3321,7 @@ if not (genes_gtex == genes_dev).all():
 genes = genes_gtex
 
 
-# In[176]:
+# In[196]:
 
 
 heart_cols = [x for x in means_dev.columns if "heart" in x]
@@ -2938,7 +3332,7 @@ developmental_tissue_expression_plot("CREB1", "husl", (6, 1.75), (0, 6), means_d
                                      "means_dev_heart_brain_liver")
 
 
-# In[177]:
+# In[197]:
 
 
 developmental_tissue_expression_plot("CREB1", "husl", (5, 1.75), (0, 5), means_gtex, 
@@ -2946,7 +3340,7 @@ developmental_tissue_expression_plot("CREB1", "husl", (5, 1.75), (0, 5), means_g
                                      "means_gtex_all")
 
 
-# In[178]:
+# In[198]:
 
 
 developmental_tissue_expression_plot("CREB1", "husl", (4.2, 1.5), (0, 5), means_gtex, 
@@ -2954,28 +3348,28 @@ developmental_tissue_expression_plot("CREB1", "husl", (4.2, 1.5), (0, 5), means_
                                      "means_gtex_all_short", shorten_x=True)
 
 
-# ## 11. make supplemental tables
+# ## 13. make supplemental tables
 
-# In[179]:
+# In[199]:
 
 
 # first supp table: DN classifications
 supp_negregs = pairs[["gene_symbol", "Ensembl_gene_ID", "family", "ref_iso",
-                      "alt_iso", "dbd_pct_lost", "m1h_cat", "y1h_cat", "y2h_cat", "dn_cat", "dn_short"]]
+                      "alt_iso", "dbd_pct_lost", "m1h_cat", "y1h_cat", "y2h_cat", "loc_cat", "dn_cat", "dn_short"]]
 supp_negregs.dn_short.value_counts()
 
 
-# In[180]:
+# In[200]:
 
 
 supp_negregs.columns = ["gene_symbol", "Ensembl_gene_ID", "family", "reference_isoform",
                         "alternative_isoform", "DBD_pct_lost_in_alt",
-                        "M1H_activation_category", "PDI_category", "PPI_category",
+                        "M1H_activation_category", "PDI_category", "PPI_category", "localization_category",
                         "detailed_alt_iso_classification",
                         "alt_iso_classification"]
 supp_negregs = supp_negregs[["gene_symbol", "Ensembl_gene_ID", "family", "reference_isoform",
                              "alternative_isoform", "DBD_pct_lost_in_alt",
-                             "PDI_category", "PPI_category", "M1H_activation_category", 
+                             "PDI_category", "PPI_category", "M1H_activation_category", "localization_category",
                              "alt_iso_classification", "detailed_alt_iso_classification"]]
 
 supp_negregs["alt_iso_classification"].replace("DN", "negative regulator", inplace=True)
@@ -2993,19 +3387,19 @@ supp_negregs["detailed_alt_iso_classification"].replace("likely", "likely non-fu
 supp_negregs[supp_negregs["alt_iso_classification"] == "negative regulator"].sample(5)
 
 
-# In[181]:
+# In[201]:
 
 
 supp_negregs.alt_iso_classification.value_counts()
 
 
-# In[182]:
+# In[202]:
 
 
 supp_negregs.to_csv("../../supp/SuppTable_NegRegs.txt", sep="\t", index=False)
 
 
-# In[183]:
+# In[203]:
 
 
 # second supp table: BRCA samples used in TCGA analysis
@@ -3013,20 +3407,20 @@ supp_brcasamps = tcga_paired[["tcga_id_ctrl", "tcga_id_tumor"]]
 len(supp_brcasamps)
 
 
-# In[184]:
+# In[204]:
 
 
 supp_brcasamps.to_csv("../../supp/SuppTable_BRCASamps.txt", sep="\t", index=False)
 
 
-# In[185]:
+# In[205]:
 
 
 # third supp table: BRCA results for isos
 [x for x in list(f_brca_filt.columns) if not x.startswith("TCGA") and not x.startswith("paired")]
 
 
-# In[186]:
+# In[206]:
 
 
 supp_brcares = f_brca_filt[["gene_name", "iso_id", "med_paired-brca_ratio", "med_paired-ctrls_ratio",
@@ -3037,7 +3431,7 @@ print(len(supp_brcares))
 supp_brcares.head()
 
 
-# In[187]:
+# In[207]:
 
 
 supp_brcares.to_csv("../../supp/SuppTable_BRCAResults.txt", sep="\t", index=False)
