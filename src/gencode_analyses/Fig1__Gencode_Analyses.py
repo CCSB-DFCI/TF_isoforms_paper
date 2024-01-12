@@ -13,6 +13,7 @@ from scipy import stats
 import seaborn as sns
 from matplotlib import pyplot as plt
 from poibin import PoiBin
+from decimal import Decimal
 import pandas as pd
 import sys
 
@@ -251,6 +252,12 @@ gn.family_updated.value_counts()
 # In[23]:
 
 
+gn["family_updated"].unique()
+
+
+# In[24]:
+
+
 def annotate(data, **kws):
     n = len(data)
     mean = data.n_isoforms.mean()
@@ -266,33 +273,57 @@ g.map_dataframe(sns.histplot, "n_isoforms", binwidth=1)
 g.map_dataframe(annotate)
 g.set_axis_labels("# unique isoforms", "# genes")
 g.set_titles(col_template="{col_name}")
+
+
+# add p-value
+for ax in g.axes:
+    fam = ax.get_title()
+    x = list(gn[gn["family_updated"] == fam]["n_isoforms"])
+    y = list(gn[gn["family_updated"] != fam]["n_isoforms"])
+    p = min(stats.mannwhitneyu(x, y).pvalue * len(gn["family_updated"].unique()), 1)
+    s = "{:.2e}".format(Decimal(p))
+    ax.text(0.98, 0.7, "p = %s" % s, ha="right", va="top", transform=ax.transAxes, fontsize=fontsize-1)
+
 g.savefig("../../figures/fig1/GENCODE_iso_counts_per_family.pdf", bbox_inches="tight", dpi="figure")
+
+
+# In[25]:
+
+
+gn_mean = gn.groupby("family")["n_isoforms"].agg(["mean", "count"]).reset_index()
+gn_mean.sort_values(by="count")
+
+
+# In[26]:
+
+
+sns.lmplot(data=gn_mean[gn_mean["family"] != "C2H2 ZF"], x="count", y="mean")
 
 
 # ## 3. downsample GTEx
 # GTEx has more samples/condition than Dev, but Dev has more conditions
 
-# In[24]:
+# In[27]:
 
 
 # conditions (body sites): gtex
 len(metadata_gtex['body_site'].value_counts())
 
 
-# In[25]:
+# In[28]:
 
 
 # samples per body site: gtex
 metadata_gtex['body_site'].value_counts()
 
 
-# In[26]:
+# In[29]:
 
 
 list(metadata_gtex['body_site'].value_counts().index)
 
 
-# In[27]:
+# In[30]:
 
 
 fig = plt.figure(figsize=(6.5, 2))
@@ -309,14 +340,14 @@ for pos in ['top', 'right']:
 fig.savefig("../../figures/fig1/gtex-metadata.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[28]:
+# In[31]:
 
 
 gtex_bs = pd.DataFrame(metadata_gtex['body_site'].value_counts()).reset_index()
 gtex_bs.head()
 
 
-# In[29]:
+# In[32]:
 
 
 # conditions (body sites): dev
@@ -324,14 +355,14 @@ metadata_dev['body_site'] = metadata_dev['organism_part'] + ' ' + metadata_dev['
 len(metadata_dev['body_site'].value_counts())
 
 
-# In[30]:
+# In[33]:
 
 
 # samples per body site: dev
 metadata_dev['body_site'].value_counts()
 
 
-# In[31]:
+# In[34]:
 
 
 fig = plt.figure(figsize=(8.5, 2))
@@ -349,14 +380,14 @@ for pos in ['top', 'right']:
 fig.savefig("../../figures/fig1/dev-metadata.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[32]:
+# In[35]:
 
 
 dev_bs = pd.DataFrame(metadata_dev['body_site'].value_counts()).reset_index()
 dev_bs.head()
 
 
-# In[33]:
+# In[36]:
 
 
 fig, ax = plt.subplots(1, 1, figsize=(1, 1.5))
@@ -374,7 +405,7 @@ for pos in ['top', 'right']:
 fig.savefig("../../figures/fig1/gtex-v-dev_body-sites.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[34]:
+# In[37]:
 
 
 gtex_bs["src"] = "GTEx"
@@ -382,7 +413,7 @@ dev_bs["src"] = "Cardoso-Moreira"
 bs = gtex_bs.append(dev_bs)
 
 
-# In[35]:
+# In[38]:
 
 
 fig = plt.figure(figsize=(1, 1.5))
@@ -405,7 +436,7 @@ fig.savefig("../../figures/fig1/gtex-v-dev_n-samples.pdf", dpi="figure", bbox_in
 # 
 # this is inherently unstable when sampling w/o replacement as will end up with times where there are more samps in the dev that you're randomly matching to than the gtex (rare but happens). set a seed and using the same metadata sampling for all downstream figures.
 
-# In[36]:
+# In[39]:
 
 
 # loop through gtex tissues
@@ -441,43 +472,43 @@ if metadata_gtex_dummy.index.duplicated().any():
     raise UserWarning('Unexpected duplicates')
 
 
-# In[37]:
+# In[40]:
 
 
 metadata_gtex_dummy.shape
 
 
-# In[38]:
+# In[41]:
 
 
 len(metadata_gtex_dummy.body_site.unique())
 
 
-# In[39]:
+# In[42]:
 
 
 len(metadata_gtex_dummy.body_site.str.split("_", expand=True)[0].unique())
 
 
-# In[40]:
+# In[43]:
 
 
 metadata_dev.shape
 
 
-# In[41]:
+# In[44]:
 
 
 len(df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).unique())
 
 
-# In[42]:
+# In[45]:
 
 
 df_dev.columns.map(metadata_dev['organism_part'] + ' ' + metadata_dev['dev_stage']).unique()
 
 
-# In[43]:
+# In[46]:
 
 
 tmp = metadata_dev.groupby(["organism_part", "dev_stage"])["BioSample"].agg("count").reset_index()
@@ -488,20 +519,20 @@ tmp.sort_values(by="BioSample")
 # 
 # gets to the same # of "sites" by re-sampling among GTEx tissues
 
-# In[44]:
+# In[47]:
 
 
 # write this file so we can load it in later figures
 metadata_gtex_dummy.to_csv("../../data/processed/metadata_gtex_dummy.csv")
 
 
-# In[45]:
+# In[48]:
 
 
 means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean()
 
 
-# In[46]:
+# In[49]:
 
 
 fig = plt.figure(figsize=(8.5, 2))
@@ -524,7 +555,7 @@ fig.savefig("../../figures/fig1/gtex-dummy-metadata.pdf", dpi="figure", bbox_inc
 
 # ### GTEx: all
 
-# In[47]:
+# In[50]:
 
 
 # plot number of isoforms above 1 TPM
@@ -577,7 +608,7 @@ fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx.pdf
 
 # ### GTEx: downsample
 
-# In[48]:
+# In[51]:
 
 
 # plot number of isoforms above 1 TPM
@@ -613,7 +644,7 @@ fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_dow
 
 # ### Dev
 
-# In[49]:
+# In[52]:
 
 
 # plot number of isoforms above 1 TPM
@@ -649,7 +680,7 @@ fig.savefig('../../figures/fig1/n-isoforms-per-gene_by-1TPM-cutoff_hist-GTEx_dev
 
 # ## 5. ref v alt 2D heatmaps: max expression
 
-# In[50]:
+# In[53]:
 
 
 ref_alt_map = pd.DataFrame([ref_isos]).T
@@ -667,7 +698,7 @@ print(len(ref_alt_map_nonan))
 ref_alt_map_nonan.head()
 
 
-# In[51]:
+# In[54]:
 
 
 ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
@@ -675,7 +706,7 @@ ref_alt_map_nonan[ref_alt_map_nonan["gene"] == "NKX2-5"]
 
 # ### GTEx: all
 
-# In[52]:
+# In[55]:
 
 
 means_gtex["max_gtex"] = means_gtex.max(axis=1)
@@ -690,7 +721,7 @@ means_gtex_ri = means_gtex.reset_index()
 means_gtex_ri["UID_rep"] = means_gtex_ri["UID"].str.replace("_", "|")
 
 
-# In[53]:
+# In[56]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex", "min_gtex"]], left_on="ref", 
@@ -699,7 +730,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_ri[["UID_rep", "max_gtex"
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[54]:
+# In[57]:
 
 
 fig = plt.figure(figsize=(1.75, 1.5))
@@ -745,7 +776,7 @@ fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-gtex.pdf',
 
 # ### GTEx: downsampled
 
-# In[55]:
+# In[58]:
 
 
 means_gtex_downsample["max_gtex_downsample"] = means_gtex_downsample.max(axis=1)
@@ -760,7 +791,7 @@ means_gtex_downsample_ri = means_gtex_downsample.reset_index()
 means_gtex_downsample_ri["UID_rep"] = means_gtex_downsample_ri["UID"].str.replace("_", "|")
 
 
-# In[56]:
+# In[59]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep", "max_gtex_downsample",
@@ -771,7 +802,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_gtex_downsample_ri[["UID_rep",
                                             left_on="alt", right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[57]:
+# In[60]:
 
 
 fig = plt.figure(figsize=(1.7, 1.5))
@@ -817,7 +848,7 @@ fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-gtex-downsample.pdf
 
 # ### Dev
 
-# In[58]:
+# In[61]:
 
 
 means_dev["max_dev"] = means_dev.max(axis=1)
@@ -832,7 +863,7 @@ means_dev_ri = means_dev.reset_index()
 means_dev_ri["UID_rep"] = means_dev_ri["UID"].str.replace("_", "|")
 
 
-# In[59]:
+# In[62]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", "min_dev"]], left_on="ref", 
@@ -841,7 +872,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(means_dev_ri[["UID_rep", "max_dev", 
                                             right_on="UID_rep", suffixes=("_ref", "_alt"), how="inner")
 
 
-# In[60]:
+# In[63]:
 
 
 fig = plt.figure(figsize=(1.7, 1.5))
@@ -891,7 +922,7 @@ fig.savefig('../../figures/fig1/expression-scatter-ref_v_alt-dev.pdf',
 
 # ### GTEx: all
 
-# In[61]:
+# In[64]:
 
 
 # percentage of alternative isoform
@@ -910,7 +941,7 @@ f_gtex = f_gtex * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex['body
 f_gtex = f_gtex * 100
 
 
-# In[62]:
+# In[65]:
 
 
 print(len(f_gtex))
@@ -923,7 +954,7 @@ f_gtex_ri = f_gtex_nonan.reset_index()
 f_gtex_ri["UID_rep"] = f_gtex_ri["UID"].str.replace("_", "|")
 
 
-# In[63]:
+# In[66]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gtex", "min_ratio_gtex"]], left_on="ref", 
@@ -934,7 +965,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_ri[["UID_rep", "max_ratio_gte
 
 # ### GTEx: downsample
 
-# In[64]:
+# In[67]:
 
 
 # percentage of alternative isoform
@@ -953,7 +984,7 @@ f_gtex_downsample = f_gtex_downsample * (per_gene_gtex.groupby(df_gtex.columns.m
 f_gtex_downsample = f_gtex_downsample * 100
 
 
-# In[65]:
+# In[68]:
 
 
 print(len(f_gtex_downsample))
@@ -967,7 +998,7 @@ f_gtex_downsample_ri = f_gtex_downsample_nonan.reset_index()
 f_gtex_downsample_ri["UID_rep"] = f_gtex_downsample_ri["UID"].str.replace("_", "|")
 
 
-# In[66]:
+# In[69]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "max_ratio_gtex_downsample", 
@@ -980,7 +1011,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_gtex_downsample_ri[["UID_rep", "ma
 
 # ### Dev
 
-# In[67]:
+# In[70]:
 
 
 # percentage of alternative isoform
@@ -1003,7 +1034,7 @@ f_dev = f_dev * ((per_gene_dev.groupby(df_dev.columns.map(metadata_dev['organism
 f_dev = f_dev * 100
 
 
-# In[68]:
+# In[71]:
 
 
 print(len(f_dev))
@@ -1016,7 +1047,7 @@ f_dev_ri = f_dev_nonan.reset_index()
 f_dev_ri["UID_rep"] = f_dev_ri["UID"].str.replace("_", "|")
 
 
-# In[69]:
+# In[72]:
 
 
 ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev", "min_ratio_dev"]], left_on="ref", 
@@ -1027,7 +1058,7 @@ ref_alt_map_nonan = ref_alt_map_nonan.merge(f_dev_ri[["UID_rep", "max_ratio_dev"
 
 # ## 2D histograms to display shift/switch + barplots to quantify
 
-# In[70]:
+# In[73]:
 
 
 print(len(ref_alt_map_nonan))
@@ -1039,14 +1070,14 @@ df["perc_change_dev_alt"] = df["max_ratio_dev_alt"] - df["min_ratio_dev_alt"]
 df["perc_change_gtex_downsample_alt"] = df["max_ratio_gtex_downsample_alt"] - df["min_ratio_gtex_downsample_alt"]
 
 
-# In[71]:
+# In[74]:
 
 
 LOW_THRESH = 10
 PERC_CHANGE_THRESH = 70
 
 
-# In[72]:
+# In[75]:
 
 
 def categorize_switch(row, min_col, max_col, perc_change_col, LOW_THRESH=LOW_THRESH, PERC_CHANGE_THRESH=PERC_CHANGE_THRESH):
@@ -1065,19 +1096,19 @@ df["cat_gtex_downsample_alt"] = df.apply(categorize_switch, min_col="min_ratio_g
                                          axis=1)
 
 
-# In[73]:
+# In[76]:
 
 
 df.cat_dev_alt.value_counts()
 
 
-# In[74]:
+# In[77]:
 
 
 df.cat_gtex_downsample_alt.value_counts()
 
 
-# In[75]:
+# In[78]:
 
 
 fig = plt.figure(figsize=(1.7, 1.5))
@@ -1106,7 +1137,7 @@ fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-dev.pdf',
             bbox_inches='tight')
 
 
-# In[76]:
+# In[79]:
 
 
 fig = plt.figure(figsize=(1.7, 1.5))
@@ -1135,7 +1166,7 @@ fig.savefig('../../figures/fig1/expression-ratio-scatter-alt-gtex-downsample.pdf
             bbox_inches='tight')
 
 
-# In[77]:
+# In[80]:
 
 
 fig = plt.figure(figsize=(1.5, 1.5))
@@ -1166,7 +1197,7 @@ fig.savefig('../../figures/fig1/perc-change-dist-gtex-v-dev.pdf',
             bbox_inches='tight')
 
 
-# In[78]:
+# In[81]:
 
 
 barp = pd.DataFrame(df.cat_dev_alt.value_counts())
@@ -1178,7 +1209,7 @@ barp = barp[["cat_dev_alt_p", "cat_gtex_downsample_alt_p"]].T.reset_index()
 barp
 
 
-# In[79]:
+# In[82]:
 
 
 palette = {"low": "lightgrey",
@@ -1186,7 +1217,7 @@ palette = {"low": "lightgrey",
            "switch": sns.color_palette("mako")[5]}
 
 
-# In[80]:
+# In[83]:
 
 
 ax = barp.plot.bar(x="index", stacked=True, color=list(palette.values())[::-1], figsize=(1.2, 1.5))
@@ -1213,7 +1244,7 @@ plt.savefig('../../figures/fig1/expression-switch-bar-dev_vs_gtex.pdf',
 
 # ### example plot: TF gene whose isoform ratios change across tissues
 
-# In[81]:
+# In[84]:
 
 
 tmp = ref_alt_map_nonan
@@ -1226,7 +1257,7 @@ tmp["dg_alt"] = tmp["mm_dev_alt"]-tmp["mm_gtex_ds_alt"]
 #tmp.sort_values(by="dg_alt", ascending=False).head(30)
 
 
-# In[82]:
+# In[85]:
 
 
 if not (genes_gtex == genes_dev).all():
@@ -1234,7 +1265,7 @@ if not (genes_gtex == genes_dev).all():
 genes = genes_gtex
 
 
-# In[83]:
+# In[86]:
 
 
 def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim, means, cols, fig_suffix):
@@ -1272,7 +1303,7 @@ def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim,
                 bbox_inches='tight')
 
 
-# In[84]:
+# In[87]:
 
 
 heart_cols = [x for x in means_dev.columns if "heart" in x]
@@ -1281,7 +1312,7 @@ developmental_tissue_expression_plot("HEY2", "Spectral", (4, 1.75), (0, 6), mean
                                      "means_dev_heart_ovary")
 
 
-# In[85]:
+# In[88]:
 
 
 heart_cols = [x for x in means_gtex.columns if "Heart" in x]
@@ -1290,49 +1321,55 @@ developmental_tissue_expression_plot("HEY2", "Spectral", (0.5, 1.75), (0, 6), me
                                      "means_gtex_heart_ovary")
 
 
-# In[86]:
+# In[89]:
 
 
 ss_alt_gtex = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_gtex_downsample_alt"] > LOW_THRESH)].gene.unique())
 ss_alt_gtex
 
 
-# In[87]:
+# In[90]:
 
 
 ss_alt_dev = len(ref_alt_map_nonan[(ref_alt_map_nonan["max_ratio_dev_alt"] > LOW_THRESH)].gene.unique())
 ss_alt_dev
 
 
-# In[88]:
+# In[91]:
 
 
 tot_genes = len(ref_alt_map_nonan.gene.unique())
 tot_genes
 
 
-# In[89]:
+# In[92]:
 
 
 ss_alt_gtex/tot_genes
 
 
-# In[90]:
+# In[93]:
 
 
 ss_alt_dev/tot_genes
 
 
+# In[94]:
+
+
+tfs["HEY2"].protein_diagram(only_cloned_isoforms=False)
+
+
 # ## 7. calculate domain switches in annotated isoforms
 
-# In[91]:
+# In[95]:
 
 
 clans = load_pfam_clans()
 dbd = load_DNA_binding_domains()
 
 
-# In[92]:
+# In[96]:
 
 
 pfam = pd.read_csv('../../data/external/Pfam-A.clans.tsv',
@@ -1340,7 +1377,7 @@ pfam = pd.read_csv('../../data/external/Pfam-A.clans.tsv',
                    names=['pfam_accession', 'clan', 'clan_name', 'short_name', 'name'])
 
 
-# In[93]:
+# In[97]:
 
 
 ref_isos = dict([(tf.name, orf.name)
@@ -1350,7 +1387,7 @@ ref_isos = dict([(tf.name, orf.name)
 ref_isos['TBX5']
 
 
-# In[94]:
+# In[98]:
 
 
 # now every comparison is alt vs annotated reference isoform
@@ -1358,14 +1395,20 @@ df = pd.concat([g.aa_feature_disruption(ref_isos[g.name]) for g in tfs.values() 
 df.head()
 
 
-# In[95]:
+# In[99]:
+
+
+df[df["gene_symbol"] == "HEY2"]
+
+
+# In[100]:
 
 
 # NES/NLS are annotated as UniProt motif
 df.category.value_counts()
 
 
-# In[96]:
+# In[101]:
 
 
 # loop through ref/alt pairs and calculate the % change in aas by domain type and mut type (del/ins/fs)
@@ -1438,7 +1481,7 @@ for i, row in df_pairs.iterrows():
     dom_df = dom_df.append(dom_df_)
 
 
-# In[97]:
+# In[102]:
 
 
 # first plot overall changes
@@ -1447,7 +1490,7 @@ dom_tot_df = pd.melt(dom_tot_df, id_vars=["ref_iso", "alt_iso", "index"])
 dom_tot_df.head()
 
 
-# In[98]:
+# In[103]:
 
 
 fig = plt.figure(figsize=(1, 1))
@@ -1473,40 +1516,40 @@ fig.savefig('../../figures/fig1/seq-change-overall-boxplot.pdf',
             bbox_inches='tight')
 
 
-# In[99]:
+# In[104]:
 
 
 dom_tot_df.groupby(["variable"]).agg("median")
 
 
-# In[100]:
+# In[105]:
 
 
 print("# alt isos that show >10% deletions")
 len(dom_tot_df[(dom_tot_df["variable"] == "p_dd") & (dom_tot_df["value"] >= 10)].alt_iso.unique())
 
 
-# In[101]:
+# In[106]:
 
 
 print("# alt isos that show >10% insertions")
 len(dom_tot_df[(dom_tot_df["variable"] == "p_ins") & (dom_tot_df["value"] >= 10)].alt_iso.unique())
 
 
-# In[102]:
+# In[107]:
 
 
 print("# alt isos that show >10% frameshifts")
 len(dom_tot_df[(dom_tot_df["variable"] == "p_fs") & (dom_tot_df["value"] >= 10)].alt_iso.unique())
 
 
-# In[103]:
+# In[108]:
 
 
 len(dom_tot_df.alt_iso.unique())
 
 
-# In[104]:
+# In[109]:
 
 
 for mut_type, mut_name in zip(["p_dd", "p_ins", "p_fs"], ["deletions", "insertions", "frameshifts"]):
@@ -1535,7 +1578,7 @@ for mut_type, mut_name in zip(["p_dd", "p_ins", "p_fs"], ["deletions", "insertio
                 bbox_inches='tight')
 
 
-# In[105]:
+# In[110]:
 
 
 dom_df["p_sum"] = dom_df[["p_ins", "p_dd", "p_fs"]].sum(axis=1, skipna=False)
@@ -1544,26 +1587,26 @@ dom_tot = dom_df[~pd.isnull(dom_df["p_sum"])].groupby(["index"])["alt_iso"].agg(
 dom_grp
 
 
-# In[106]:
+# In[111]:
 
 
 dom_tot
 
 
-# In[107]:
+# In[112]:
 
 
 dom_grp/dom_tot
 
 
-# In[108]:
+# In[113]:
 
 
 dom_any = dom_df[(dom_df["index"] != "total") & (dom_df["p_sum"] > 0)]
 len(dom_any.alt_iso.unique())
 
 
-# In[109]:
+# In[114]:
 
 
 len(dom_any.alt_iso.unique())/len(dom_df.alt_iso.unique())
@@ -1571,19 +1614,19 @@ len(dom_any.alt_iso.unique())/len(dom_df.alt_iso.unique())
 
 # ## to-do: is this a bug? isos that are identical
 
-# In[110]:
+# In[115]:
 
 
 dom_df[(dom_df["p_sum"] == 0) & (dom_df["index"] == "total")]
 
 
-# In[111]:
+# In[116]:
 
 
 tfs["MYC"].pairwise_changes_relative_to_reference("MYC-207", "MYC-206")
 
 
-# In[112]:
+# In[117]:
 
 
 tfs["MYC"].exon_diagram()
@@ -1591,32 +1634,32 @@ tfs["MYC"].exon_diagram()
 
 # ## 8. calculate domains that are affected compared to null
 
-# In[113]:
+# In[118]:
 
 
 len(df.gene_symbol.unique())
 
 
-# In[114]:
+# In[119]:
 
 
 len(df.ref_iso.unique())
 
 
-# In[115]:
+# In[120]:
 
 
 len(df.alt_iso.unique())
 
 
-# In[116]:
+# In[121]:
 
 
 df['is_DBD'] = df['accession'].isin(dbd['pfam'].values) | df['accession'].str.startswith('C2H2_ZF_array')
 df.head()
 
 
-# In[117]:
+# In[122]:
 
 
 # TODO: move to isolib.py
@@ -1629,14 +1672,14 @@ dbd_acc = set(dbd['pfam'].values).union(
             )
 
 
-# In[118]:
+# In[123]:
 
 
 dbd['clan'] = dbd['pfam'].map(clans)
 dbd['num_genes'] = dbd['pfam'].map(df.groupby('accession')['gene_symbol'].size())
 
 
-# In[119]:
+# In[124]:
 
 
 def is_DBD(domain):
@@ -1648,7 +1691,7 @@ n_aa_effector = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform
 n_aa_nls = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if not is_DBD(dom) and dom.category == 'UniProt motif']
 
 
-# In[120]:
+# In[125]:
 
 
 df.loc[df['accession'].str.startswith('C2H2_ZF_array'), 'accession'] = 'C2H2_ZF_array'
@@ -1669,13 +1712,13 @@ for c in [c for c in df.columns if c.startswith('is_affected_')]:
 doms = doms.sort_values('n_alt_iso', ascending=False)
 
 
-# In[121]:
+# In[126]:
 
 
 get_ipython().run_cell_magic('time', '', "# again, explicitly compare ref v alt\ndf_null = pd.concat([g.null_fraction_per_aa_feature(ref_isos[g.name]) for g in tfs.values() if g.has_MANE_select_isoform])\n\ndf = pd.merge(df, df_null, how='left', on=['gene_symbol', 'ref_iso', 'alt_iso', 'length'])")
 
 
-# In[122]:
+# In[127]:
 
 
 def prob_or(probabilities):
@@ -1700,7 +1743,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
     doms[null_col + '_center'] = null_p.groupby('accession').apply(null_quantile, 0.5)
 
 
-# In[123]:
+# In[128]:
 
 
 doms['is_DBD'] = doms.index.isin(dbd['pfam'].values) | (doms.index == 'C2H2_ZF_array')
@@ -1710,7 +1753,7 @@ doms.loc[~doms['is_DBD'], 'domain_name'] = doms[~doms['is_DBD']].index.map(pfam.
 doms.loc[doms.index == 'C2H2_ZF_array', 'domain_name'] = ['C2H2 ZF array']
 
 
-# In[124]:
+# In[129]:
 
 
 dom_affected_levels = [c[5:] for c in doms.columns if c.startswith('f_is_affected_')]
@@ -1721,7 +1764,7 @@ level_desc = {'affected_at_all': 'at least partial domain removal',
  'affected_10pct': '10% removal'}
 
 
-# In[125]:
+# In[130]:
 
 
 # all domains, all DBD, non-DBD
@@ -1757,7 +1800,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 doms.head()
 
 
-# In[126]:
+# In[131]:
 
 
 df['category_a'] = np.nan
@@ -1767,7 +1810,7 @@ df.loc[(df['category'] == 'effector_domain'), 'category_a'] = 'Effector domain'
 df.loc[(df['category'] == 'UniProt motif'), 'category_a'] = 'NLS/NES'
 
 
-# In[127]:
+# In[132]:
 
 
 # split by domain type
@@ -1803,7 +1846,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 data = doms.copy()
 
 
-# In[128]:
+# In[133]:
 
 
 for level in dom_affected_levels:
@@ -1839,7 +1882,7 @@ for level in dom_affected_levels:
                 bbox_inches='tight')
 
 
-# In[129]:
+# In[134]:
 
 
 print("total # ref. isoforms w/ annotated NLS/NES: %s" % (len(df[df["category"] == "UniProt motif"].ref_iso.unique())))
@@ -1851,7 +1894,7 @@ print("total # ref. isoforms w/ annotated NES: %s" % (len(df[(df["category"] == 
 
 # ### more granular plots
 
-# In[130]:
+# In[135]:
 
 
 doms = (df.loc[(df['category'] == 'Pfam_domain') | 
@@ -1882,7 +1925,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
     doms[null_col + '_center'] = null_p.groupby('accession').apply(null_quantile, 0.5)
 
 
-# In[131]:
+# In[136]:
 
 
 doms['is_DBD'] = doms.index.isin(dbd['pfam'].values) | (doms.index == 'C2H2_ZF_array')
@@ -1893,13 +1936,13 @@ doms.loc[doms.index == 'C2H2_ZF_array', 'domain_name'] = ['C2H2 ZF array']
 doms.head()
 
 
-# In[132]:
+# In[137]:
 
 
 cutoff = 30
 
 
-# In[133]:
+# In[138]:
 
 
 for level in dom_affected_levels:
@@ -1940,7 +1983,7 @@ for level in dom_affected_levels:
 
 # ## 9. calculate splicing types for ref/alt pairs
 
-# In[134]:
+# In[139]:
 
 
 alt_isos = {}
@@ -1954,28 +1997,28 @@ for tf in tfs.values():
 alt_isos["TBX5"]
 
 
-# In[135]:
+# In[140]:
 
 
 df = pd.DataFrame([g.splicing_categories(ref_isos[g.name], alt_iso) for g in tfs.values() if g.has_MANE_select_isoform for alt_iso in alt_isos[g.name]])
 df[df["gene_symbol"] == "TBX5"]
 
 
-# In[136]:
+# In[141]:
 
 
 df_m = pd.melt(df, id_vars=["gene_symbol", "reference isoform", "alternative isoform"])
 df_m.head()
 
 
-# In[137]:
+# In[142]:
 
 
 df_m_t = df_m[df_m["value"] == True]
 df_m_t.groupby("variable")["alternative isoform"].agg("count")
 
 
-# In[138]:
+# In[143]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
