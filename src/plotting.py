@@ -685,6 +685,7 @@ def validation_plot(
     errorbar_capsize=0.9,
     errorbar_thickness=None,
     bar_spacing=0.2,
+    fontsize=10,
 ):
     """Compare the validation rate of different cateogies.
 
@@ -773,6 +774,7 @@ def validation_plot(
         errorbar_capsize=errorbar_capsize,
         errorbar_thickness=errorbar_thickness,
         bar_spacing=bar_spacing,
+        fontsize=fontsize,
     )
 
 
@@ -789,6 +791,7 @@ def _validation_plot(
     errorbar_capsize=5,
     errorbar_thickness=None,
     bar_spacing=0.2,
+    fontsize=10,
 ):
     if len(positives) != len(n_tested):
         raise ValueError("Lengths of positives and n_tested must be equal")
@@ -832,7 +835,7 @@ def _validation_plot(
             if (errs[1][i] + fracs[i]) > h and (fracs[i] - errs[0][i]) < (h + 0.04):
                 c = "black"
                 h = fracs[i] + errs[1][i] + 0.02
-            ax.text(i, h, "{}/{}".format(pos[i], pos[i] + neg[i]), color=c, ha="center")
+            ax.text(i, h, "{}/{}".format(pos[i], pos[i] + neg[i]), color=c, ha="center", fontsize=fontsize)
     bar_width_pixels = (
         ax.transData.transform((bar_width, 0)) - ax.transData.transform((0, 0))
     )[0]

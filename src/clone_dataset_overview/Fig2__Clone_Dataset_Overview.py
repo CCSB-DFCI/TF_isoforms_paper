@@ -417,7 +417,7 @@ fig.savefig("../../figures/fig2/novel_isos.dev_expr_boxplot.log2.pdf", dpi="figu
 # In[29]:
 
 
-fig = plt.figure(figsize=(1.3, 1.3))
+fig = plt.figure(figsize=(1.2, 1.3))
 
 ax = sns.boxplot(data=exp_nov_melt[exp_nov_melt["variable"].str.contains("gtex_ds")], 
                  x="status", y="value_log2", hue="measurement", palette={"median": colors[7],
@@ -470,21 +470,101 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig2/novel_isos.gtex_ds_expr_boxplot.pdf", dpi="figure", bbox_inches="tight")
 
 
-# ## 4. distribution of TF families in clone collection and assays v gencode
-
 # In[31]:
 
 
-fam = load_tf_families()
+dev_cols = [x for x in means_dev.columns if x not in ["UID", "median", "max"]]
+means_dev["n_over1"] = (means_dev[dev_cols] >= 1).sum(axis=1)
+means_dev["n_over5"] = (means_dev[dev_cols] >= 5).sum(axis=1)
+
+dev_over = means_dev[["n_over1", "n_over5"]].reset_index()
+
+dev_over["clone_acc"] = dev_over["UID"].str.split(" ", expand=True)[0]
+dev_over = status_map.merge(dev_over, on="clone_acc")
+dev_over_melt = pd.melt(dev_over, id_vars=["index", "gene_name", "status", "clone_acc", "UID"])
+dev_over_melt.head()
 
 
 # In[32]:
 
 
-len(genc_tfs)
+fig = plt.figure(figsize=(1.2, 1.3))
+
+ax = sns.boxplot(data=dev_over_melt, 
+                 x="status", y="value", hue="variable", palette={"n_over1": colors[7],
+                                                                 "n_over5": colors[6]}, 
+                 flierprops={"marker": "o"}, fliersize=4, notch=True)
+
+mimic_r_boxplot(ax)
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+
+ax.set_xlabel("clone category")
+ax.set_ylabel("# of samples where iso.\nexpression ≥ threshold")
+
+plt.title("Developmental RNA-seq")
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+
+fig.savefig("../../figures/fig2/novel_isos.dev_expr_boxplot.n_over_threshold.pdf", dpi="figure", bbox_inches="tight")
 
 
 # In[33]:
+
+
+gtex_ds_cols = [x for x in means_gtex_downsample.columns if x not in ["UID", "median", "max"]]
+means_gtex_downsample["n_over1"] = (means_gtex_downsample[gtex_ds_cols] >= 1).sum(axis=1)
+means_gtex_downsample["n_over5"] = (means_gtex_downsample[gtex_ds_cols] >= 5).sum(axis=1)
+
+gtex_ds_over = means_gtex_downsample[["n_over1", "n_over5"]].reset_index()
+
+gtex_ds_over["clone_acc"] = gtex_ds_over["UID"].str.split(" ", expand=True)[0]
+gtex_ds_over = status_map.merge(gtex_ds_over, on="clone_acc")
+gtex_ds_over_melt = pd.melt(gtex_ds_over, id_vars=["index", "gene_name", "status", "clone_acc", "UID"])
+gtex_ds_over.head()
+
+
+# In[34]:
+
+
+fig = plt.figure(figsize=(1.2, 1.3))
+
+ax = sns.boxplot(data=gtex_ds_over_melt, 
+                 x="status", y="value", hue="variable", palette={"n_over1": colors[7],
+                                                                 "n_over5": colors[6]}, 
+                 flierprops={"marker": "o"}, fliersize=4, notch=True)
+
+mimic_r_boxplot(ax)
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+
+ax.set_xlabel("clone category")
+ax.set_ylabel("# of samples where iso.\nexpression ≥ threshold")
+
+plt.title("GTEx (down-sampled)")
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+
+fig.savefig("../../figures/fig2/novel_isos.gtex_ds_expr_boxplot.n_over_threshold.pdf", dpi="figure", bbox_inches="tight")
+
+
+# ## 4. distribution of TF families in clone collection and assays v gencode
+
+# In[35]:
+
+
+fam = load_tf_families()
+
+
+# In[36]:
+
+
+len(genc_tfs)
+
+
+# In[37]:
 
 
 genc_df = {k: genc_tfs[k].GENCODE_isoforms for k in genc_tfs.keys()}
@@ -495,13 +575,13 @@ genc_df['family'] = genc_df['gene'].map(fam)
 genc_df.sample(5)
 
 
-# In[34]:
+# In[38]:
 
 
 leave_separate = ["C2H2 ZF", "Homeodomain", "bHLH", "Nuclear receptor", "bZIP", "Forkhead", "Ets"]
 
 
-# In[35]:
+# In[39]:
 
 
 def rename_family(row):
@@ -514,7 +594,7 @@ genc_df['family_renamed'] = genc_df.apply(rename_family, axis=1)
 genc_df.sample(5)
 
 
-# In[36]:
+# In[40]:
 
 
 genc_vc = genc_df.groupby("family_renamed")["isoform"].agg("count").reset_index()
@@ -522,7 +602,7 @@ genc_vc["source"] = "GENCODE"
 genc_vc
 
 
-# In[37]:
+# In[41]:
 
 
 clone_df = {k: clone_tfs[k].cloned_isoforms for k in clone_tfs.keys()}
@@ -533,7 +613,7 @@ clone_df['family'] = clone_df['gene'].map(fam)
 clone_df.sample(5)
 
 
-# In[38]:
+# In[42]:
 
 
 def rename_family(row):
@@ -545,7 +625,7 @@ def rename_family(row):
 clone_df['family_renamed'] = clone_df.apply(rename_family, axis=1)
 
 
-# In[39]:
+# In[43]:
 
 
 order = clone_df.groupby("family")["isoform"].agg("count").reset_index()
@@ -554,10 +634,10 @@ xorder = list(order["family"])
 yvals = list(order["isoform"])
 
 
-# In[40]:
+# In[44]:
 
 
-fig = plt.figure(figsize=(5, 1.5))
+fig = plt.figure(figsize=(5, 1.3))
 
 ax = sns.countplot(data=clone_df, x="family", order=xorder)
 ax.set_xlabel("")
@@ -565,7 +645,7 @@ ax.set_ylabel("count of isoform clones")
 ax.set_title("families of TF isoforms in clone collection")
 ax.set_ylim((0, 370))
 
-_= plt.xticks(rotation=90, ha='right')
+_= plt.xticks(rotation=90, ha='center', va="top")
 
 for i, yval in enumerate(yvals):
     ax.text(i, yval, ' %s' % yval, ha='center', va='bottom', rotation=90, fontsize=6)
@@ -576,14 +656,14 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig2/clone_collection_families.all.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[41]:
+# In[45]:
 
 
 clone_vc = clone_df.groupby("family_renamed")["isoform"].agg("count").reset_index()
 clone_vc["source"] = "TFIso1.0"
 
 
-# In[42]:
+# In[46]:
 
 
 y1h = load_y1h_pdi_data()
@@ -592,7 +672,7 @@ y1h['family_renamed'] = y1h.apply(rename_family, axis=1)
 y1h.sample(5)
 
 
-# In[43]:
+# In[47]:
 
 
 baits = [x for x in y1h.columns if x not in ['gene_symbol', 'clone_acc', 'family', 'family_renamed']]
@@ -605,7 +685,7 @@ y1h = y1h[~y1h['all_na']]
 print(len(y1h))
 
 
-# In[44]:
+# In[48]:
 
 
 y1h_vc = y1h.groupby("family_renamed")["clone_acc"].agg("count").reset_index()
@@ -613,7 +693,7 @@ y1h_vc.columns = ["family_renamed", "isoform"]
 y1h_vc["source"] = "Y1H (all)"
 
 
-# In[45]:
+# In[49]:
 
 
 y1h_any_vc = y1h[y1h['any_true'] > 0].groupby("family_renamed")["clone_acc"].agg("count").reset_index()
@@ -621,7 +701,7 @@ y1h_any_vc.columns = ["family_renamed", "isoform"]
 y1h_any_vc["source"] = "Y1H (≥1 PDI)"
 
 
-# In[46]:
+# In[50]:
 
 
 y2h = load_y2h_isoform_data(require_at_least_one_ppi_per_isoform=False)
@@ -634,7 +714,7 @@ y2h = y2h[~pd.isnull(y2h['Y2H_result'])]
 print(len(y2h))
 
 
-# In[47]:
+# In[51]:
 
 
 y2h_vc = y2h.groupby("family_renamed")["ad_clone_acc"].agg("count").reset_index()
@@ -642,7 +722,7 @@ y2h_vc.columns = ["family_renamed", "isoform"]
 y2h_vc["source"] = "Y2H (all)"
 
 
-# In[48]:
+# In[52]:
 
 
 y2h_any_vc = y2h[y2h["Y2H_result"] == True].groupby("family_renamed")["ad_clone_acc"].agg("count").reset_index()
@@ -650,7 +730,7 @@ y2h_any_vc.columns = ["family_renamed", "isoform"]
 y2h_any_vc["source"] = "Y2H (≥1 PPI)"
 
 
-# In[49]:
+# In[53]:
 
 
 m1h = load_m1h_activation_data()
@@ -660,7 +740,7 @@ m1h['family_renamed'] = m1h.apply(rename_family, axis=1)
 m1h.sample(5)
 
 
-# In[50]:
+# In[54]:
 
 
 m1h_vc = m1h.groupby("family_renamed")["clone_acc"].agg("count").reset_index()
@@ -668,7 +748,7 @@ m1h_vc.columns = ["family_renamed", "isoform"]
 m1h_vc["source"] = "M1H (all)"
 
 
-# In[51]:
+# In[55]:
 
 
 m1h_any_vc = m1h[m1h["M1H_mean"].abs() > 1].groupby("family_renamed")["clone_acc"].agg("count").reset_index()
@@ -676,7 +756,7 @@ m1h_any_vc.columns = ["family_renamed", "isoform"]
 m1h_any_vc["source"] = "M1H (≥2-fold activ.)"
 
 
-# In[52]:
+# In[56]:
 
 
 mrg_vc = genc_vc.append(clone_vc)
@@ -686,7 +766,7 @@ mrg_vc = mrg_vc.append(m1h_vc).append(m1h_any_vc)
 mrg_vc
 
 
-# In[53]:
+# In[57]:
 
 
 mrg_piv = pd.pivot_table(mrg_vc, values="isoform", columns="source", index="family_renamed")
@@ -702,7 +782,7 @@ mrg_piv = mrg_piv[["source", "Other", "Ets", "Forkhead", "bZIP", "Nuclear recept
 mrg_piv
 
 
-# In[54]:
+# In[58]:
 
 
 colors = met_brewer.met_brew(name="Hokusai1")
@@ -712,7 +792,7 @@ colors = colors[::-1]
 sns.palplot(colors)
 
 
-# In[55]:
+# In[59]:
 
 
 ax = mrg_piv.plot.bar(x="source", stacked=True, color=colors, figsize=(1.5, 1.5))
@@ -731,7 +811,7 @@ plt.savefig('../../figures/fig2/assay_families.detailed.pdf',
             bbox_inches='tight')
 
 
-# In[56]:
+# In[60]:
 
 
 ax = mrg_piv[mrg_piv["source"].isin(["GENCODE", "TFIso1.0", "Y1H (all)",
@@ -754,119 +834,119 @@ plt.savefig('../../figures/fig2/assay_families.pdf',
 
 # ## 5. print number of genes/isos in each category for use in schematic figs/text
 
-# In[57]:
+# In[61]:
 
 
 print("total # of isos in collection")
 len(clone_df)
 
 
-# In[58]:
+# In[62]:
 
 
 print("total # of unique TF genes in collection")
 len(clone_df.gene.unique())
 
 
-# In[59]:
+# In[63]:
 
 
 print("total # of isos tested in Y1H")
 len(y1h)
 
 
-# In[60]:
+# In[64]:
 
 
 print("total # of unique TF genes tested in Y1H")
 len(y1h.gene_symbol.unique())
 
 
-# In[61]:
+# In[65]:
 
 
 print("total # of baits tested in Y1H")
 len(baits)
 
 
-# In[62]:
+# In[66]:
 
 
 print("total # of isos with at least 1 interaction in Y1H")
 len(y1h[y1h['any_true'] > 0])
 
 
-# In[63]:
+# In[67]:
 
 
 print("total # of unique TF genes with at least 1 interaction in Y1H")
 len(y1h[y1h['any_true'] > 0].gene_symbol.unique())
 
 
-# In[64]:
+# In[68]:
 
 
 print("total # of isos tested in Y2H")
 len(y2h.ad_clone_acc.unique())
 
 
-# In[65]:
+# In[69]:
 
 
 print("total # of unique TF genes tested in Y2H")
 len(y2h.ad_gene_symbol.unique())
 
 
-# In[66]:
+# In[70]:
 
 
 print("total # of partners tested in Y2H")
 len(y2h.db_gene_symbol.unique())
 
 
-# In[67]:
+# In[71]:
 
 
 print("total # of isos with at least 1 interaction in Y2H")
 len(y2h[y2h["Y2H_result"] == True].ad_clone_acc.unique())
 
 
-# In[68]:
+# In[72]:
 
 
 print("total # of unique TF genes with at least 1 interaction in Y2H")
 len(y2h[y2h["Y2H_result"] == True].ad_gene_symbol.unique())
 
 
-# In[69]:
+# In[73]:
 
 
 print("total # of isos tested in M1H")
 len(m1h.clone_acc.unique())
 
 
-# In[70]:
+# In[74]:
 
 
 print("total # of unique TF genes tested in M1H")
 len(m1h.gene_symbol.unique())
 
 
-# In[71]:
+# In[75]:
 
 
 print("total # of isos with activity in M1H (abs > 1)")
 len(m1h[m1h["M1H_mean"].abs() > 1].clone_acc.unique())
 
 
-# In[72]:
+# In[76]:
 
 
 print("total # of unique TF genes with activity in M1H (abs > 1)")
 len(m1h[m1h["M1H_mean"].abs() > 1].gene_symbol.unique())
 
 
-# In[73]:
+# In[77]:
 
 
 all_3 = set(m1h[m1h["M1H_mean"].abs() > 1].gene_symbol.unique()).intersection(set(y2h[y2h["Y2H_result"] == True].ad_gene_symbol.unique())).intersection(set(y1h[y1h['any_true'] > 0].gene_symbol.unique()))
@@ -875,20 +955,20 @@ all_3
 
 # ## 6. compare novel isoform performance in assay to annotated ref/alt
 
-# In[74]:
+# In[78]:
 
 
 from data_loading import load_valid_isoform_clones
 
 
-# In[75]:
+# In[79]:
 
 
 mane_select_clones = {tf.MANE_select_isoform.clone_acc for tf in clone_tfs.values() 
                       if tf.cloned_MANE_select_isoform}
 
 
-# In[76]:
+# In[80]:
 
 
 iso = load_valid_isoform_clones()
@@ -902,20 +982,20 @@ iso.loc[iso['is_novel_isoform'], 'category'] = 'novel'
 iso = iso[iso["clone_acc"].isin(clone_df["isoform"])]
 
 
-# In[77]:
+# In[81]:
 
 
 len(iso['gene_symbol'].unique())
 
 
-# In[78]:
+# In[82]:
 
 
 genes_w_ref = list(iso[iso['category'] == 'reference']['gene_symbol'].unique())
 len(genes_w_ref)
 
 
-# In[79]:
+# In[83]:
 
 
 # subset iso df to only genes w MANE select isoform
@@ -923,7 +1003,7 @@ iso_sub = iso[iso['gene_symbol'].isin(genes_w_ref)]
 len(iso_sub)
 
 
-# In[80]:
+# In[84]:
 
 
 iso_sub['valid_ppi_test'] = iso['clone_acc'].map(y2h.groupby('ad_clone_acc').apply(lambda rows: ((rows['Y2H_result'] == True) |
@@ -931,21 +1011,21 @@ iso_sub['valid_ppi_test'] = iso['clone_acc'].map(y2h.groupby('ad_clone_acc').app
                                                                                                  .any()))
 
 
-# In[81]:
+# In[85]:
 
 
 iso_sub['at_least_one_ppi'] = iso['clone_acc'].map(y2h.groupby('ad_clone_acc').apply(lambda rows: ((rows['Y2H_result'] == True))
                                                                                                     .any()))
 
 
-# In[82]:
+# In[86]:
 
 
 y1h = y1h.drop_duplicates('clone_acc')
 iso_sub['at_least_one_pdi'] = iso_sub['clone_acc'].map(y1h.drop(columns=['gene_symbol']).set_index('clone_acc').sum(axis=1) > 0)
 
 
-# In[83]:
+# In[87]:
 
 
 iso_sub['at_least_two_fold_activation'] = iso_sub['clone_acc'].map(
@@ -955,20 +1035,20 @@ iso_sub['at_least_two_fold_activation'] = iso_sub['clone_acc'].map(
                                                 .abs() > 1)
 
 
-# In[84]:
+# In[88]:
 
 
 iso_sub.category.value_counts()
 
 
-# In[85]:
+# In[89]:
 
 
 colors = met_brewer.met_brew(name="Monet")
 sns.palplot(colors)
 
 
-# In[86]:
+# In[90]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1140,10 +1220,8 @@ fig.savefig('../../figures/fig2/at-least-some-assay-result_ref-vs-alt-vs-novel_a
 
 
 # ## 7. make validation figures for Y2H (N2H)
-# ## kaia to update the rest of this code when N2H data is moved over
-# source notebook is n2h_validation.ipynb
 
-# In[117]:
+# In[91]:
 
 
 df = load_n2h_ppi_validation_data()
@@ -1151,7 +1229,7 @@ print(len(df))
 df.head()
 
 
-# In[118]:
+# In[92]:
 
 
 # TODO: remove this once everything finalized 
@@ -1186,13 +1264,13 @@ df = df.loc[~((df['source'] == 'isoform negatives') &
 print(len(df))
 
 
-# In[119]:
+# In[93]:
 
 
 df['source'].value_counts()
 
 
-# In[120]:
+# In[94]:
 
 
 COLOR_LIT = (60 / 255, 134 / 255, 184 / 255)
@@ -1208,7 +1286,7 @@ colors = {'vignettes': 'yellow',
           'RRS - hRRS-v2': 'tab:red'}
 
 
-# In[121]:
+# In[95]:
 
 
 sources = ['PRS - hPRS-v2', 
@@ -1221,13 +1299,13 @@ sources = ['PRS - hPRS-v2',
            'isoform negatives']
 
 
-# In[128]:
+# In[96]:
 
 
 # bar chart
 df['result'] = df['NLR'] > df.loc[df['source'] == 'RRS - hRRS-v2', 'NLR'].max()
 
-fig, ax = plt.subplots(1, 1, figsize=(4.2, 1.5))
+fig, ax = plt.subplots(1, 1, figsize=(3, 1.5))
 validation_plot(data=df,
                 selections=[df['source'] == x for x in sources],
                 labels=[str(x) for x in sources],
@@ -1235,7 +1313,9 @@ validation_plot(data=df,
                 result_column='result',
                 errorbar_capsize=0.25,
                 y_max=0.41,
-                xlabel_rotation=90)
+                xlabel_rotation=90,
+                bar_spacing=0.07,
+                fontsize=PAPER_FONTSIZE-1.5)
 ax.set_xticklabels(sources, ha="right", va="top", rotation=30)
 ax.set_yticklabels([f'{x:.0%}' for x in ax.get_yticks()])
 ax.set_title("PPI Validation (N2H Screen)")
@@ -1246,21 +1326,47 @@ for loc in ['top', 'bottom', 'right']:
 fig.savefig('../../figures/fig2/N2H_barplot.pdf', dpi="figure", bbox_inches='tight')
 
 
+# In[97]:
+
+
+line_styles = ['-', '--', ':', '-', '--', ':', '-', '-']
+fig, ax = plt.subplots(1, 1, figsize=(1.5, 1.5))
+validation_titration_plot(data=df, 
+                          selections=[df['source'] == x for x in sources],
+                          labels=sources,
+                          colors=[colors[x] for x in sources],
+                          line_styles=line_styles,
+                          score_column='log2 NLR',
+                          threshold=df.loc[df['source'] == 'RRS - hRRS-v2', 'log2 NLR'].max(),
+                          xmin=3,
+                          ax=ax)
+ax.set_xlabel('Log2 NLR threshold')
+ax.set_yticklabels([f'{x:.0%}' for x in ax.get_yticks()])
+
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+
+for loc in ['top', 'right']:
+    ax.spines[loc].set_visible(False)
+
+fig.savefig('../../figures/fig2/TFv02_titration.pdf',
+            bbox_inches='tight')
+
+
 # ## 8. make validation figures for Y1H (luciferase)
 
-# In[96]:
+# In[98]:
 
 
 df = load_PDI_luciferase_validation_experiment()
 
 
-# In[97]:
+# In[99]:
 
 
 df['Set'].value_counts()
 
 
-# In[98]:
+# In[100]:
 
 
 print('In PDI validation experiment, tested:')
@@ -1270,7 +1376,7 @@ print(df['Bait'].nunique(), 'different baits')
 print(df.shape[0], 'total PDIs')
 
 
-# In[99]:
+# In[101]:
 
 
 # update the interaction calls if needed
@@ -1288,21 +1394,21 @@ for i, row in df.iterrows():
     new_calls.append(updated_y1h_call)
 
 
-# In[100]:
+# In[102]:
 
 
 df["updated_y1h_call"] = new_calls
 df.updated_y1h_call.value_counts(dropna=False)
 
 
-# In[101]:
+# In[103]:
 
 
 # remove any updated calls that became NaN
 df_nn = df[~pd.isnull(df['updated_y1h_call'])]
 
 
-# In[102]:
+# In[104]:
 
 
 print('In PDI validation experiment, tested (updated w new calls):')
@@ -1312,21 +1418,21 @@ print(df_nn['Bait'].nunique(), 'different baits')
 print(df_nn.shape[0], 'total PDIs')
 
 
-# In[103]:
+# In[105]:
 
 
 print('Isoforms per gene:')
 df_nn.groupby(['gene_symbol'])['clone_acc'].nunique().value_counts().sort_index()
 
 
-# In[104]:
+# In[106]:
 
 
 print('Baits per isoform:')
 df_nn.groupby(['clone_acc'])['Bait'].nunique().value_counts().sort_index()
 
 
-# In[105]:
+# In[107]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1345,37 +1451,42 @@ fig.savefig('../../figures/fig2/PDI-luciferase_validation_point-plot.pdf',
             bbox_inches='tight')
 
 
-# In[106]:
+# In[108]:
 
 
 df.updated_y1h_call.value_counts()
 
 
-# In[107]:
+# In[109]:
 
 
 df.Y1H_positive.value_counts()
 
 
-# In[108]:
+# In[110]:
 
 
 # titration plot of positive vs negative
 fig, ax = plt.subplots(1, 1)
-fig.set_size_inches(w=2.5, h=1.5)
+fig.set_size_inches(w=2, h=1.5)
 validation_titration_plot(data=df_nn,
                           selections=[df_nn['updated_y1h_call'], 
                                       ~df_nn['updated_y1h_call']],
                           score_column='Log2(FC)',
                           labels=['eY1H +', 'eY1H -'],
-                          colors=[sns.color_palette("Set2")[0], 'grey'],
+                          colors=[COLOR_HURI, 'grey'],
                           ax=ax)
 ax.set_xlabel('Threshold of luciferase mean Log2(FC)')
+plt.legend(loc=2, frameon=False, bbox_to_anchor=(0.6, 1))
+
+for loc in ['top', 'right']:
+    ax.spines[loc].set_visible(False)
+    
 fig.savefig('../../figures/fig2/PDI-luciferase_validation_titration-plot.pdf',
             bbox_inches='tight')
 
 
-# In[109]:
+# In[111]:
 
 
 def p_value(row):
@@ -1393,19 +1504,19 @@ def p_value(row):
 df['p-value'] = df.apply(p_value, axis=1)
 
 
-# In[110]:
+# In[112]:
 
 
 df['positive'] = (df['p-value'] < 0.05) & (df['Log2(FC)'] >= 1)
 
 
-# In[111]:
+# In[113]:
 
 
 df.groupby('Interaction?')['positive'].mean()
 
 
-# In[112]:
+# In[114]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1432,7 +1543,7 @@ fig.savefig('../../figures/fig2/Luciferase_barplot.pdf', bbox_inches='tight', dp
 
 # ## 9. make reproducibility figure for M1H
 
-# In[113]:
+# In[115]:
 
 
 c = m1h[["M1H_rep1", "M1H_rep2", "M1H_rep3"]].corr(method="spearman")
@@ -1449,7 +1560,7 @@ fig.savefig("../../figures/fig2/M1H_heatmap.pdf", bbox_inches="tight", dpi="figu
 
 # ## 9. make tables needed for cytoscape network fig
 
-# In[114]:
+# In[116]:
 
 
 # # table of edges
@@ -1486,7 +1597,7 @@ fig.savefig("../../figures/fig2/M1H_heatmap.pdf", bbox_inches="tight", dpi="figu
 
 # ## 10. make example expression plot for ZNF414
 
-# In[115]:
+# In[117]:
 
 
 def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, fig_suffix):
@@ -1530,7 +1641,7 @@ def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, 
                 bbox_inches='tight')
 
 
-# In[116]:
+# In[118]:
 
 
 notestis_cols = [x for x in means_dev.columns if "testis" not in x]
