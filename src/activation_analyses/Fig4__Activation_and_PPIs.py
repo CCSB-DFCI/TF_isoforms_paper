@@ -32,17 +32,16 @@ from plotting import (mimic_r_boxplot,
                       annotate_pval)
 
 from data_loading import (load_y2h_isoform_data, 
-    load_m1h_activation_data, 
-    load_ppi_partner_categories, 
-    load_annotated_TFiso1_collection,
-    load_human_tf_db,
-    load_y1h_pdi_data,
-    load_tf_families,
-    DIMERIZING_TF_FAMILIES,
-   load_isoform_and_paralog_y2h_data,
-                          load_valid_isoform_clones)
+                          load_m1h_activation_data, 
+                          load_ppi_partner_categories, 
+                          load_annotated_TFiso1_collection,
+                          load_human_tf_db,
+                          load_y1h_pdi_data,
+                          load_tf_families,
+                          DIMERIZING_TF_FAMILIES,
+                          load_ref_vs_alt_isoforms_table)
 
-from isoform_pairwise_metrics import load_ref_vs_alt_isoforms_table, _add_PPI_columns
+from data_loading.isoform_pairwise_metrics import _add_PPI_columns
 
 
 # In[2]:
@@ -293,6 +292,9 @@ plt.legend(handles, labels, loc=2, bbox_to_anchor=(1.01, 1))
 
 plt.ylim((0, 400))
 
+for pos in ['top', 'right']:
+    ax.spines[pos].set_visible(False)
+
 fig.savefig("../../figures/fig4/annotated_effector_domain_count.pdf", dpi="figure", bbox_inches="tight")
 
 
@@ -425,13 +427,26 @@ ax.set_xlabel("")
 plt.legend(loc=2, bbox_to_anchor=(1.01, 1))
 ax.set_xticklabels(["above M1H baseline", "below M1H baseline"], ha="right", va="top", rotation=30)
 
+for pos in ['top', 'right']:
+    ax.spines[pos].set_visible(False)
+
 plt.savefig('../../figures/fig4/m1h_baseline_doms.pdf',
             bbox_inches='tight')
 
 
-# ## 5. summary plot looking at gain/loss of domains and activity
+# ### how many TFs have isos that are both strong activators and strong repressors?
 
 # In[26]:
+
+
+m1h_stack = pd.pivot_table(m1h, values="clone_acc", index="gene_symbol", columns="cat_gte", aggfunc='count').reset_index()
+m1h_stack.fillna(0, inplace=True)
+m1h_stack[(m1h_stack["above baseline"] > 0) & (m1h_stack["below baseline"] > 0)]
+
+
+# ## 5. summary plot looking at gain/loss of domains and activity
+
+# In[27]:
 
 
 pairs['m1h_gte_2_fold_at_least_one_iso_per_gene'] = pairs['gene_symbol'].map(m1h.groupby('gene_symbol')
@@ -440,7 +455,7 @@ pairs['m1h_gte_2_fold_at_least_one_iso_per_gene'] = pairs['gene_symbol'].map(m1h
 pairs['abs_activation_fold_change_log2'] = pairs['activation_fold_change_log2'].abs()
 
 
-# In[27]:
+# In[28]:
 
 
 # create a color map of domain length
@@ -464,20 +479,20 @@ def re_color(row, palette):
 pairs["color_dom_length"] = pairs.apply(re_color, axis=1, palette=palette_dom_length)
 
 
-# In[28]:
+# In[29]:
 
 
 df = pairs.copy()
 df = df.loc[df['activation_fold_change_log2'].notnull() & df['m1h_gte_2_fold_at_least_one_iso_per_gene'], :]
 
 
-# In[29]:
+# In[30]:
 
 
 print("# ref/alt isoform pairs with M1H data/signal: %s" % len(df))
 
 
-# In[30]:
+# In[31]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
@@ -495,10 +510,13 @@ n_greater_1 = len(df[df["activation_fold_change_log2"] >= 1])
 ax.text(-1.2, 40, "%s pairs\n(%s%%)" % (n_less_neg1, np.round(n_less_neg1/len(df)*100, 1)), ha="right", va="center")
 ax.text(1.2, 40, "%s pairs\n(%s%%)" % (n_greater_1, np.round(n_greater_1/len(df)*100, 1)), ha="left", va="center")
 
+for pos in ['top', 'right']:
+    ax.spines[pos].set_visible(False)
+
 fig.savefig("../../figures/fig4/m1h_alt_ref_dist.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[31]:
+# In[32]:
 
 
 # combining full + partial loss since we only have 1 full loss activ. domain
@@ -727,31 +745,31 @@ fig.savefig('../../figures/fig4/activation_vs_domain_removal_colored_by_dom_leng
 
 # ## 6. pie chart of PPI categories
 
-# In[32]:
+# In[33]:
 
 
 len(cats)
 
 
-# In[33]:
+# In[34]:
 
 
 len(cats.gene_symbol_partner.unique())
 
 
-# In[34]:
+# In[35]:
 
 
 cats.category.value_counts()
 
 
-# In[35]:
+# In[36]:
 
 
 cats[(~pd.isnull(cats["cofactor_type"])) & (cats["cofactor_type"] != "unknown")]
 
 
-# In[36]:
+# In[37]:
 
 
 y2h_nonan = y2h[~pd.isnull(y2h["Y2H_result"])]
@@ -759,28 +777,28 @@ print("# of unique PPI partners found to interact w/ at least 1 TF iso")
 len(y2h_nonan.db_gene_symbol.unique())
 
 
-# In[37]:
+# In[38]:
 
 
 print("# of unique TF isoforms found to have at least 1 PPI")
 len(y2h_nonan.ad_clone_acc.unique())
 
 
-# In[38]:
+# In[39]:
 
 
 print("# of unique TF genes found to have at least 1 PPI")
 len(y2h_nonan.ad_gene_symbol.unique())
 
 
-# In[39]:
+# In[40]:
 
 
 ggi = y2h_nonan[["ad_gene_symbol", "db_gene_symbol"]].drop_duplicates()
 ggi
 
 
-# In[40]:
+# In[41]:
 
 
 # limiting df to those that are in the y2h iso data
@@ -788,7 +806,7 @@ cats_y2h = cats[cats["gene_symbol_partner"].isin(ggi["db_gene_symbol"])]
 len(cats_y2h)
 
 
-# In[41]:
+# In[42]:
 
 
 cats_dupe = cats_y2h.groupby("gene_symbol_partner")["category"].agg("count").reset_index()
@@ -797,7 +815,7 @@ cats_dupe[cats_dupe["category"] > 1].head()
 
 # gene partners are now in mutually exclusive categories
 
-# In[42]:
+# In[43]:
 
 
 ys = np.array([len(cats_y2h[cats_y2h["category"] == "TF"]), len(cats_y2h[cats_y2h["category"] == "cofactor"]),
@@ -819,7 +837,7 @@ for n, w in zip(ns, ws):
 fig.savefig("../../figures/fig4/PPIs-gene-level-manual-categories_simplified.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[43]:
+# In[44]:
 
 
 cofactor_partners = set(cats_y2h.loc[cats_y2h['category'] == 'cofactor', 'gene_symbol_partner'].unique())
@@ -831,32 +849,32 @@ coactivator_partners = set(cats_y2h.loc[cats_y2h['cofactor_type'] == 'coactivato
 corepressor_partners = set(cats_y2h.loc[cats_y2h['cofactor_type'] == 'corepressor', 'gene_symbol_partner'].unique())
 
 
-# In[44]:
+# In[45]:
 
 
 cats_y2h.cofactor_type.value_counts()
 
 
-# In[45]:
+# In[46]:
 
 
 list(signaling_partners)[25:35]
 
 
-# In[46]:
+# In[47]:
 
 
 # make a similar pie chart but this time focusing on protein categories that get rewired across isoforms
 
 
-# In[47]:
+# In[48]:
 
 
 ppi = load_y2h_isoform_data(require_at_least_one_ppi_per_isoform=False)
 ppi.groupby(['ad_gene_symbol', 'db_gene_symbol'])['Y2H_result'].apply(lambda x: (x == False).sum()).reset_index()
 
 
-# In[48]:
+# In[49]:
 
 
 a = ppi.groupby(['ad_gene_symbol', 'db_gene_symbol'])['Y2H_result'].apply(lambda x: (x == False).sum()).reset_index()
@@ -866,7 +884,7 @@ rw["rewiring_score"] = rw["Y2H_result_y"]/rw["Y2H_result_x"]
 rw.sample(5)
 
 
-# In[49]:
+# In[50]:
 
 
 # anything w a rewiring score > 0 is rewired
@@ -875,7 +893,7 @@ cats_y2h_rw = cats_y2h[cats_y2h["gene_symbol_partner"].isin(rewired_ppis["db_gen
 len(cats_y2h_rw)
 
 
-# In[50]:
+# In[51]:
 
 
 ys = np.array([len(cats_y2h_rw[cats_y2h_rw["category"] == "TF"]), 
@@ -900,7 +918,7 @@ fig.savefig("../../figures/fig4/PPIs-gene-level-manual-categories_simplified.rew
 
 # ## 7. plot the relationship between gain/loss of PPIs and changes in activity
 
-# In[51]:
+# In[52]:
 
 
 def add_restricted_ppi_columns(pairs, rows, label):
@@ -913,7 +931,7 @@ def add_restricted_ppi_columns(pairs, rows, label):
                     suffixes=('', '_' + label))
 
 
-# In[52]:
+# In[53]:
 
 
 pairs = add_restricted_ppi_columns(pairs, 
@@ -978,7 +996,7 @@ pairs = add_restricted_ppi_columns(pairs,
 )
 
 
-# In[53]:
+# In[54]:
 
 
 def bar_activation_vs_ppi(x, y, pairs=pairs, x_label=None, y_label=None, color=None):
@@ -1073,13 +1091,13 @@ def bar_activation_vs_ppi(x, y, pairs=pairs, x_label=None, y_label=None, color=N
                 bbox_inches='tight')
 
 
-# In[54]:
+# In[55]:
 
 
 pairs['activation_abs_fold_change'] = pairs['activation_fold_change_log2'].abs()
 
 
-# In[55]:
+# In[56]:
 
 
 # limit to pairs w signal in m1h
@@ -1088,7 +1106,7 @@ df = df.loc[df['activation_fold_change_log2'].notnull() & df['m1h_gte_2_fold_at_
 len(df)
 
 
-# In[56]:
+# In[57]:
 
 
 bar_activation_vs_ppi(
@@ -1100,7 +1118,7 @@ bar_activation_vs_ppi(
     color="darkgrey")
 
 
-# In[57]:
+# In[58]:
 
 
 bar_activation_vs_ppi(
@@ -1112,7 +1130,7 @@ bar_activation_vs_ppi(
     color=sns.color_palette("Set2")[1])
 
 
-# In[58]:
+# In[59]:
 
 
 bar_activation_vs_ppi(
@@ -1124,7 +1142,7 @@ bar_activation_vs_ppi(
     color=sns.color_palette("Set2")[5])
 
 
-# In[59]:
+# In[60]:
 
 
 bar_activation_vs_ppi(
@@ -1136,7 +1154,7 @@ bar_activation_vs_ppi(
     color=sns.color_palette("Set2")[2])
 
 
-# In[60]:
+# In[61]:
 
 
 tmp = df.loc[df['at_least_one_isoform_in_gene_abs_activation_gte_2fold'] == True, :]
@@ -1146,13 +1164,13 @@ g = sns.lmplot(data=tmp, x='PPI_delta_n_coactivators_HEK', y='activation_fold_ch
 g.savefig("../../figures/fig4/coactivators.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[61]:
+# In[62]:
 
 
 tmp
 
 
-# In[62]:
+# In[63]:
 
 
 tmp = df.loc[df['at_least_one_isoform_in_gene_abs_activation_gte_2fold'] == True, :]
@@ -1162,13 +1180,13 @@ g = sns.lmplot(data=tmp, x='PPI_delta_n_corepressors_HEK', y='activation_fold_ch
 g.savefig("../../figures/fig4/corepressors.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[63]:
+# In[64]:
 
 
 tmp
 
 
-# In[64]:
+# In[65]:
 
 
 tmp = df.loc[df['at_least_one_isoform_in_gene_abs_activation_gte_2fold'] == True, :]
@@ -1182,14 +1200,14 @@ tmp[(tmp["PPI_delta_n_signaling_HEK"] == -1)][["gene_symbol",
 
 # ## 7. dimerizing TFs: plot conservation of interactions across isoforms
 
-# In[65]:
+# In[66]:
 
 
 ppi = load_y2h_isoform_data(require_at_least_one_ppi_per_isoform=True)
 ppi.head()
 
 
-# In[66]:
+# In[67]:
 
 
 n_iso_per_ppi = (ppi.groupby(['ad_gene_symbol', 'db_gene_symbol']))['ad_clone_acc'].agg("count").reset_index()
@@ -1201,7 +1219,7 @@ n_iso_per_ppi = n_iso_per_ppi[['ad_gene_symbol', 'db_gene_symbol', 'f_iso_positi
 n_iso_per_ppi
 
 
-# In[67]:
+# In[68]:
 
 
 n_iso_per_ppi = pd.merge(n_iso_per_ppi,
@@ -1219,13 +1237,13 @@ if n_iso_per_ppi['n_iso_successfully_tested'].isnull().any():
 n_iso_per_ppi = n_iso_per_ppi.loc[n_iso_per_ppi['n_iso_successfully_tested'] >= 2, :]
 
 
-# In[68]:
+# In[69]:
 
 
 tf_fam = load_tf_families()
 
 
-# In[69]:
+# In[70]:
 
 
 n_iso_per_ppi['db_is_tf'] = n_iso_per_ppi['db_gene_symbol'].isin(tf_fam)
@@ -1233,7 +1251,7 @@ n_iso_per_ppi['ad_tf_family'] = n_iso_per_ppi['ad_gene_symbol'].map(tf_fam)
 n_iso_per_ppi['db_tf_family'] = n_iso_per_ppi['db_gene_symbol'].map(tf_fam)
 
 
-# In[70]:
+# In[71]:
 
 
 def tf_tf_dimer_ppi_catagories(row):
@@ -1262,7 +1280,7 @@ n_iso_per_ppi['dimer_cat'] = n_iso_per_ppi.apply(tf_tf_dimer_ppi_catagories,
 n_iso_per_ppi.head()
 
 
-# In[71]:
+# In[72]:
 
 
 cats = [
@@ -1273,13 +1291,13 @@ cats = [
  ]
 
 
-# In[72]:
+# In[73]:
 
 
 n_iso_per_ppi.dimer_cat.value_counts()
 
 
-# In[73]:
+# In[74]:
 
 
 for cat in cats:
@@ -1287,7 +1305,7 @@ for cat in cats:
                                           len(n_iso_per_ppi[n_iso_per_ppi["dimer_cat"] == cat].ad_gene_symbol.unique())))
 
 
-# In[74]:
+# In[75]:
 
 
 def permutation_test(sample1, sample2, num_permutations=1000, seed=None, alternative='two-sided'):
@@ -1341,7 +1359,7 @@ def permutation_test(sample1, sample2, num_permutations=1000, seed=None, alterna
     return p_value
 
 
-# In[75]:
+# In[76]:
 
 
 def bootstrap_99_ci(series, n_bootstraps=1000):
@@ -1362,7 +1380,7 @@ def bootstrap_99_ci(series, n_bootstraps=1000):
     return lower, upper
 
 
-# In[76]:
+# In[77]:
 
 
 # n for each bar
@@ -1405,7 +1423,7 @@ for i, pair in enumerate(pairs_to_test):
     y = n_iso_per_ppi[n_iso_per_ppi["dimer_cat"] == pair[1]]["f_iso_positive"].values
     p = permutation_test(x, y, num_permutations=10000, alternative="two-sided", seed=2023)
     print(p)
-    annotate_pval(ax, 0, 1+i, 1.02+(i*0.08), 0, 1.02+(i*0.08), p, fontsize-1)
+    annotate_pval(ax, 0, 1+i, 1.02+(i*0.08), 0, 1.02+(i*0.08), p, fontsize-1, text="< 1e-4")
     print("pair: %s | p-val: %s" % (pair, p))
 
 ax.set_ylabel('Fraction isoforms interacting', position=(0, 0.425))
@@ -1431,21 +1449,27 @@ fig.savefig('../../figures/fig4/n_iso_ppi_by_dimer_cat.pdf',
             bbox_inches='tight')
 
 
+# In[78]:
+
+
+n_iso_per_ppi[n_iso_per_ppi["ad_gene_symbol"] == "ATF2"]
+
+
 # ## 8. dimerizing TFs: plot M1H change
 
-# In[77]:
+# In[79]:
 
 
 len(pairs)
 
 
-# In[78]:
+# In[80]:
 
 
 len(pairs[~pd.isnull(pairs['activation_abs_fold_change'])])
 
 
-# In[79]:
+# In[81]:
 
 
 # limit to pairs w signal in m1h
@@ -1454,19 +1478,19 @@ df = df.loc[df['activation_fold_change_log2'].notnull() & df['m1h_gte_2_fold_at_
 len(df)
 
 
-# In[80]:
+# In[82]:
 
 
 df[~pd.isnull(df['activation_abs_fold_change'])].groupby("is_dimerizing_TF_family")["activation_abs_fold_change"].agg("mean")
 
 
-# In[81]:
+# In[83]:
 
 
 df[~pd.isnull(df['activation_abs_fold_change'])].groupby("is_dimerizing_TF_family")["activation_abs_fold_change"].agg("median")
 
 
-# In[82]:
+# In[84]:
 
 
 df_nonan = df[~pd.isnull(df["activation_abs_fold_change"])]
@@ -1476,7 +1500,7 @@ y = df_nonan[df_nonan["is_dimerizing_TF_family"] == False]["activation_abs_fold_
 permutation_test(x, y, num_permutations=10000, alternative="two-sided")
 
 
-# In[83]:
+# In[85]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1503,7 +1527,14 @@ fig.savefig("../../figures/fig4/M1H_activ_v_dimerization.pdf", dpi="figure", bbo
 
 # ## 9. dimerizing TFs: retained interactions heatmap
 
-# In[84]:
+# In[86]:
+
+
+# TF isoforms are on the 'ad' side; ORFeome on 'db' side
+ppi.head()
+
+
+# In[87]:
 
 
 # TF-TF binding
@@ -1514,7 +1545,7 @@ tftf = tftf.dropna()
 tftf.head()
 
 
-# In[85]:
+# In[88]:
 
 
 # TF-TF rewiring
@@ -1525,19 +1556,19 @@ tftf = pd.merge(tftf,
         on=['ad_gene_symbol', 'db_gene_symbol'])
 
 
-# In[86]:
+# In[89]:
 
 
 tftf.loc[tftf['db_dbd'] == 'bHLH', 'ad_gene_symbol'].value_counts()
 
 
-# In[87]:
+# In[90]:
 
 
 DIMERIZING_TF_FAMILIES
 
 
-# In[88]:
+# In[91]:
 
 
 fams = tf_fam.value_counts().index
@@ -1545,7 +1576,7 @@ fams = list(filter(lambda x: x in tftf['ad_dbd'].unique() or x in tftf['db_dbd']
 len(fams)
 
 
-# In[89]:
+# In[92]:
 
 
 num_pairs = [((tftf['ad_dbd'] == x) & (tftf['db_dbd'] == y)).sum() for x in fams for y in fams]
@@ -1554,19 +1585,7 @@ num_pairs = pd.DataFrame(num_pairs, index=fams, columns=fams)
 num_pairs.head()
 
 
-# In[90]:
-
-
-tftf.sample(5)
-
-
-# In[91]:
-
-
-tftf[(tftf["ad_dbd"] == "C2H2 ZF") & (tftf["db_dbd"] == "bZIP")]
-
-
-# In[92]:
+# In[93]:
 
 
 rewiring = [tftf.loc[(tftf['ad_dbd'] == x) & (tftf['db_dbd'] == y), 'Y2H_result'].mean() for x in fams for y in fams]
@@ -1575,29 +1594,62 @@ rewiring = pd.DataFrame(rewiring, index=fams, columns=fams)
 rewiring.head()
 
 
-# In[93]:
+# In[94]:
 
 
-# limit to fams w 10 DB
+# since rewiring score is 1-fraction isos interacting, we decided to just go with that
+rewiring = 1-rewiring
+rewiring.head()
+
+
+# In[95]:
+
+
+tftf[(tftf["ad_dbd"] == "Homeodomain") & (tftf["db_dbd"] == "bHLH")].mean()
+
+
+# In[96]:
+
+
+len(tftf[(tftf["ad_dbd"] == "Homeodomain") & (tftf["db_dbd"] == "bHLH")])
+
+
+# In[97]:
+
+
+tftf[(tftf["ad_dbd"] == "bHLH") & (tftf["db_dbd"] == "Homeodomain")].mean()
+
+
+# In[98]:
+
+
+len(tftf[(tftf["ad_dbd"] == "bHLH") & (tftf["db_dbd"] == "Homeodomain")])
+
+
+# confirming that AD is on the rows and DB is on the columns as expected
+
+# In[99]:
+
+
+# limit to fams w 5 DB
 num_pairs_sum = num_pairs.sum(axis=0)
-filt_fams = num_pairs_sum[num_pairs_sum >= 3]
+filt_fams = num_pairs_sum[num_pairs_sum >= 5]
 filt_fams
 
 
-# In[94]:
+# In[100]:
 
 
 rewiring_filt = rewiring.loc[list(filt_fams.index), list(filt_fams.index)]
 rewiring_filt
 
 
-# In[95]:
+# In[101]:
 
 
 fig = plt.figure(figsize=(2.1, 1.8))
 
-# transposing so the orientation matches the y2h figures
-g = sns.heatmap(rewiring_filt.T, cmap="viridis_r", cbar_kws={"label": "mean rewiring score"})
+g = sns.heatmap(rewiring_filt, cmap="viridis", cbar_kws={"label": "mean fraction isoforms interacting"})
 
 # highlight the squares corresponding to dimerizing pairs
 for i, fam in enumerate(list(filt_fams.index)):
@@ -1612,11 +1664,80 @@ g.set_xticklabels(g.get_xticklabels(), rotation=90, ha="left", va="bottom")
 fig.savefig("../../figures/fig4/Dimerizing_PPI_heatmap.small.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[96]:
+# In[102]:
+
+
+filt_fams = list(rewiring_filt.columns)
+filt_fams
+
+
+# In[103]:
+
+
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(2, 2)
+scaling = 5
+sc = ax.scatter(x=[x for x in filt_fams for y in filt_fams],
+                y=[y for x in filt_fams for y in filt_fams],
+                s=[((tftf['db_dbd'] == x) & (tftf['ad_dbd'] == y)).sum() * scaling for x in filt_fams for y in filt_fams],
+                c=[tftf.loc[(tftf['db_dbd'] == x) & (tftf['ad_dbd'] == y), 'Y2H_result'].mean() for x in filt_fams for y in filt_fams],
+                cmap='viridis_r',
+                vmin=0,
+                vmax=7/8,
+                clip_on=False)
+
+dm = ax.scatter(x=[x for x in filt_fams for y in filt_fams if x in DIMERIZING_TF_FAMILIES and y in DIMERIZING_TF_FAMILIES and x == y],
+                y=[y for x in filt_fams for y in filt_fams if x in DIMERIZING_TF_FAMILIES and y in DIMERIZING_TF_FAMILIES and x == y],
+                s=[((tftf['db_dbd'] == x) & (tftf['ad_dbd'] == y)).sum() * scaling for x in filt_fams for y in filt_fams if x in DIMERIZING_TF_FAMILIES and y in DIMERIZING_TF_FAMILIES and x == y],
+                c=[tftf.loc[(tftf['db_dbd'] == x) & (tftf['ad_dbd'] == y), 'Y2H_result'].mean() for x in filt_fams for y in filt_fams if x in DIMERIZING_TF_FAMILIES and y in DIMERIZING_TF_FAMILIES and x == y],
+                cmap='viridis_r',
+                vmin=0,
+                vmax=7/8,
+                edgecolor="black",
+                linewidth=1,
+                clip_on=False)
+
+ax.xaxis.set_tick_params(rotation=90)
+for s in ax.spines.values():
+    s.set_visible(False)
+    
+ax.set_xlim(-0.5, len(filt_fams) - 0.5)
+ax.set_ylim(len(filt_fams) - 0.5, -0.5)
+
+ax.set_xlabel('Y2H partner TF family',
+              fontsize=fontsize,
+              labelpad=5)
+ax.xaxis.tick_top()
+ax.xaxis.set_label_position('top')
+ax.set_ylabel('TF isoform family',
+              fontsize=fontsize,
+              labelpad=5)
+
+ax.legend(*sc.legend_elements('sizes',
+                              num=[1, 10, 50],
+                              func=lambda x: x / scaling),
+          bbox_to_anchor=[1.01, 1],
+          labelspacing=1.1,
+          title='# PPIs',
+          frameon=False,
+          title_fontsize=fontsize)
+
+cbax = ax.inset_axes([1.07, 0, 0.05, 0.42], transform=ax.transAxes)
+fig.colorbar(mpl.cm.ScalarMappable(cmap='viridis', norm=mpl.colors.Normalize(vmin=0, vmax=7/8)),
+             ax=ax,
+             cax=cbax,
+             orientation='vertical',
+             fraction=0.02,
+             label='fraction of isoforms\ninteracting (mean)')
+fig.savefig('../../figures/fig4/Dimerizing_PPI_correlogram.small.pdf', bbox_inches='tight')
+
+
+# In[104]:
 
 
 fig = plt.figure(figsize=(4.5, 4.5))
-g = sns.heatmap(rewiring.T, cmap="viridis_r", cbar_kws={"label": "mean rewiring score", "aspect": 40},
+g = sns.heatmap(rewiring.T, cmap="viridis", cbar_kws={"label": "mean fraction of isoforms interacting", 
+                                                      "aspect": 40},
                 annot=num_pairs.T, annot_kws={"fontsize": 6})
 
 # highlight the squares corresponding to dimerizing pairs
@@ -1634,107 +1755,42 @@ fig.savefig("../../figures/fig4/Dimerizing_PPI_heatmap.all.pdf", dpi="figure", b
 
 # ## 10. isoform example vignettes
 
-# In[97]:
+# In[105]:
 
 
 # reload data since we edited dfs above
-y2h = load_isoform_and_paralog_y2h_data()
+y2h = load_y2h_isoform_data()
 y1h = load_y1h_pdi_data(add_missing_data=True)
 m1h = load_m1h_activation_data(add_missing_data=True)
-isoforms = load_valid_isoform_clones()
-y2h = y2h.loc[y2h['ad_clone_acc'].isin(isoforms['clone_acc']).values, :]
-y1h = y1h.loc[y1h['clone_acc'].isin(isoforms['clone_acc']).values, :]
-m1h = m1h.loc[m1h['clone_acc'].isin(isoforms['clone_acc'].values), :]
+#isoforms = load_valid_isoform_clones()
+# y2h = y2h.loc[y2h['ad_clone_acc'].isin(isoforms['clone_acc']).values, :]
+# y1h = y1h.loc[y1h['clone_acc'].isin(isoforms['clone_acc']).values, :]
+# m1h = m1h.loc[m1h['clone_acc'].isin(isoforms['clone_acc'].values), :]
 
 tfs = load_annotated_TFiso1_collection()
 
 
 # ### RFX3
 
-# In[98]:
+# In[106]:
 
 
 gene_name = "RFX3"
 
 
-# In[99]:
-
-
-fig, ax = plt.subplots(1, 1, figsize=(2, 0.8))
-
-df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(0, 6))
-plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
-
-
-# In[100]:
-
-
-fig, ax = plt.subplots(figsize=(5, 1))
-
-tfs[gene_name].exon_diagram(ax=ax)
-fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
-
-
-# In[101]:
-
-
-fig, ax = plt.subplots(figsize=(5, 1))
-
-tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
-fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
-
-
-# In[102]:
-
-
-fig, ax = plt.subplots(figsize=(5, 1))
-
-tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
-fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
-
-
-# ### PBX1
-
-# In[103]:
-
-
-gene_name = "PBX1"
-
-
-# In[104]:
-
-
-tf = tfs[gene_name]
-fig, ax = plt.subplots(1, 1, figsize=(2, 2))
-y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
-plt.savefig('../../figures/fig4/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tight')
-
-
-# In[105]:
-
-
-cats_y2h[cats_y2h["gene_symbol_partner"].isin(["PIN1", "TMF1"])]
-
-
-# In[106]:
-
-
-pairs[pairs["gene_symbol"] == "PBX1"]
-
-
 # In[107]:
 
 
-fig, ax = plt.subplots(1, 1, figsize=(2, 0.5))
+fig, ax = plt.subplots(1, 1, figsize=(1, 0.8))
 
-df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(-0.1, 3))
+df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(0, 6))
 plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
 # In[108]:
 
 
-fig, ax = plt.subplots(figsize=(5, 2))
+fig, ax = plt.subplots(figsize=(5, 1))
 
 tfs[gene_name].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
@@ -1749,15 +1805,80 @@ tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=
 fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
+# In[110]:
+
+
+fig, ax = plt.subplots(figsize=(5, 1))
+
+tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# ### PBX1
+
+# In[111]:
+
+
+gene_name = "PBX1"
+
+
+# In[112]:
+
+
+tf = tfs[gene_name]
+fig, ax = plt.subplots(1, 1, figsize=(2, 2))
+y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
+plt.savefig('../../figures/fig4/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[113]:
+
+
+cats_y2h[cats_y2h["gene_symbol_partner"].isin(["PIN1", "TMF1"])]
+
+
+# In[114]:
+
+
+pairs[pairs["gene_symbol"] == "PBX1"]
+
+
+# In[115]:
+
+
+fig, ax = plt.subplots(1, 1, figsize=(2, 0.5))
+
+df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(-0.1, 3))
+plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# In[116]:
+
+
+fig, ax = plt.subplots(figsize=(5, 2))
+
+tfs[gene_name].exon_diagram(ax=ax)
+fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# In[117]:
+
+
+fig, ax = plt.subplots(figsize=(5, 1))
+
+tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
 # ### CREB5
 
-# In[110]:
+# In[118]:
 
 
 gene_name = "CREB5"
 
 
-# In[111]:
+# In[119]:
 
 
 tf = tfs[gene_name]
@@ -1766,7 +1887,7 @@ y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
 plt.savefig('../../figures/fig4/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[112]:
+# In[120]:
 
 
 fig, ax = plt.subplots(1, 1, figsize=(2, 0.6))
@@ -1775,7 +1896,7 @@ df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(-2.2, 2.2
 plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[113]:
+# In[121]:
 
 
 fig, ax = plt.subplots(figsize=(5, 1))
@@ -1784,7 +1905,7 @@ tfs[gene_name].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[114]:
+# In[122]:
 
 
 fig, ax = plt.subplots(figsize=(5, 0.7))
@@ -1793,13 +1914,13 @@ tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=
 fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[115]:
+# In[123]:
 
 
 tfs["CREB5"]["CREB5-204"].exons
 
 
-# In[116]:
+# In[124]:
 
 
 tfs["CREB5"]["CREB5-202"]
@@ -1807,17 +1928,17 @@ tfs["CREB5"]["CREB5-202"]
 
 # ### DLX1
 
-# In[117]:
+# In[125]:
 
 
 gene_name = "DLX1"
-fig, ax = plt.subplots(figsize=(5, 0.7))
+fig, ax = plt.subplots(figsize=(3, 0.6))
 
 tfs[gene_name].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[118]:
+# In[126]:
 
 
 fig, ax = plt.subplots(figsize=(5, 0.7))
@@ -1826,24 +1947,24 @@ tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=
 fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[119]:
+# In[127]:
 
 
-fig, ax = plt.subplots(1, 1, figsize=(2, 0.6))
+fig, ax = plt.subplots(1, 1, figsize=(1, 0.5))
 
-df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(0, 4.1))
+df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(0, 4.2))
 plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
 # ### ATF2
 
-# In[120]:
+# In[128]:
 
 
 gene_name = "ATF2"
 
 
-# In[121]:
+# In[129]:
 
 
 tf = tfs[gene_name]
@@ -1852,7 +1973,7 @@ y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
 plt.savefig('../../figures/fig4/{}_y2h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
-# In[122]:
+# In[130]:
 
 
 fig, ax = plt.subplots(figsize=(6, 2))
@@ -1861,7 +1982,7 @@ tfs[gene_name].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[123]:
+# In[131]:
 
 
 fig, ax = plt.subplots(figsize=(6, 2))
@@ -1872,13 +1993,13 @@ fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_
 
 # ### TBX5
 
-# In[124]:
+# In[132]:
 
 
 gene_name = "TBX5"
 
 
-# In[125]:
+# In[133]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1))
@@ -1887,10 +2008,10 @@ tfs[gene_name].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[126]:
+# In[134]:
 
 
-fig, ax = plt.subplots(1, 1, figsize=(2, 0.6))
+fig, ax = plt.subplots(1, 1, figsize=(1, 0.6))
 
 df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(-0.5, 4.1))
 plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
@@ -1898,13 +2019,13 @@ plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inch
 
 # ### TGIF1
 
-# In[127]:
+# In[135]:
 
 
 gene_name = "TGIF1"
 
 
-# In[128]:
+# In[136]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1.5))
@@ -1913,7 +2034,7 @@ tfs[gene_name].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[129]:
+# In[137]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1))
@@ -1922,7 +2043,7 @@ tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=
 fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[130]:
+# In[138]:
 
 
 fig, ax = plt.subplots(1, 1, figsize=(2, 0.6))
@@ -1933,13 +2054,13 @@ plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inch
 
 # ### E2F3
 
-# In[131]:
+# In[139]:
 
 
 gene_name = "E2F3"
 
 
-# In[132]:
+# In[140]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1.5))
@@ -1948,7 +2069,7 @@ tfs[gene_name].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[133]:
+# In[141]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1))
@@ -1957,12 +2078,49 @@ tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=
 fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
 
 
-# In[134]:
+# In[142]:
 
 
-fig, ax = plt.subplots(1, 1, figsize=(2, 0.6))
+fig, ax = plt.subplots(1, 1, figsize=(1, 0.6))
 
-df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax)
+df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(-1.5, 7))
+plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
+
+
+# ### FOXP3
+
+# In[143]:
+
+
+gene_name = "FOXP3"
+
+
+# In[144]:
+
+
+fig, ax = plt.subplots(figsize=(4, 2))
+
+tfs[gene_name].exon_diagram(ax=ax)
+fig.savefig("../../figures/fig4/{}_exon_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# In[145]:
+
+
+fig, ax = plt.subplots(figsize=(4, 2))
+
+tfs[gene_name].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../../figures/fig4/{}_protein_diagram.pdf".format(gene_name), bbox_inches="tight", dpi="figure")
+
+
+# In[146]:
+
+
+fig, ax = plt.subplots(1, 1, figsize=(1, 1.2))
+
+df = m1h_activation_per_tf_gene_plot(gene_name, data=m1h, ax=ax, xlim=(-2, 2), iso_order=["FOXP3-3", "FOXP3-1",
+                                                                                          "FOXP3-4", "FOXP3-5",
+                                                                                          "FOXP3-6"])
 plt.savefig('../../figures/fig4/{}_m1h-profile.pdf'.format(gene_name), bbox_inches='tight')
 
 
