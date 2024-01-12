@@ -720,16 +720,31 @@ y1h_pdi_per_tf_gene_plot("ZIC3", ax=ax, data=y1h, iso_order=["ZIC3-2", "ZIC3-3",
 fig.savefig("../../figures/fig3/ZIC3_y1h_plot.pdf", bbox_inches="tight", dpi="figure")
 
 
+# In[56]:
+
+
+fig, ax = plt.subplots(figsize=(3, 0.6))
+
+tfs["RXRG"].exon_diagram(ax=ax)
+fig.savefig("../../figures/fig3/RXRG_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
+
+
 # In[57]:
 
 
-tfs["TBX5"].isoforms[0].aa_seq
+fig, ax = plt.subplots(figsize=(4, 1))
+
+tfs["RXRG"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
+fig.savefig("../../figures/fig3/RXRG_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[58]:
+# In[59]:
 
 
-tfs["TBX5"].isoforms[1].aa_seq
+fig, ax = plt.subplots(figsize=(5, 2))
+
+y1h_pdi_per_tf_gene_plot("RXRG", ax=ax, data=y1h)
+fig.savefig("../../figures/fig3/RXRG_y1h_plot.pdf", bbox_inches="tight", dpi="figure")
 
 
 # In[ ]:
