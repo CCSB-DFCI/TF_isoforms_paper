@@ -6,6 +6,7 @@
 # In[1]:
 
 
+import met_brewer
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -17,8 +18,16 @@ from statannotations.Annotator import Annotator
 
 sys.path.append("../")
 
-from plotting import violinplot_reflected, mimic_r_boxplot
-from data_loading import load_ref_vs_alt_isoforms_table
+from plotting import (violinplot_reflected, 
+                      table_circle_size_plot, 
+                      y2h_ppi_per_tf_gene_plot,
+                      m1h_activation_per_tf_gene_plot,
+                      mimic_r_boxplot,
+                      annotate_pval)
+from data_loading import (load_condensate_data, 
+                          load_annotated_TFiso1_collection, 
+                          load_y2h_isoform_data,
+                          load_m1h_activation_data)
 
 PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
                 "rc": {"font.size":7,"axes.titlesize":7,
@@ -122,539 +131,345 @@ def permutation_test(sample1, sample2, num_permutations=1000, seed=None, alterna
 # In[6]:
 
 
-df = pd.read_excel('../../data/internal/TFiso_LLPS_scores_HEK_20230909_V6.xlsx')
-df['gene_symbol'] = df['isoform_acc'].map(lambda x: x.split('|')[0])
-df['condensates_observed'] = df['Cond_Score'].map({1: True, 0: False})
-df['is_cloned_reference'] = df['Ref_isoform'].map({'Reference': True,
-                                                   'Alternative': False})
-df['HEK_Condensate'] = df['HEK_Condensate'].str.upper().str.strip()
-df['HEK_Condensate'] = df['HEK_Condensate'].map(lambda x: {'BOTH(MOST NC)': 'BOTH'}.get(x, x))
-if df['isoform_acc'].duplicated().any():
-    raise UserWarning('unexpected duplicates')
+pairs, df = load_condensate_data()
 
+
+# ## 2. summary of data
 
 # In[7]:
 
 
-df['Mutation_Class'].value_counts()
+print('successfully tested {} isoforms of {} TF genes'.format(df.index.nunique(),
+                    df['gene_symbol'].nunique())
+    )
+for cl in ['HEK', 'U2OS']:
+    print(f'in {cl} cells:')
+    print('{} ({:.0%}) reference isoforms show condensates'.format(
+        df.loc[df['is_cloned_reference'], f'condensates_observed_{cl}'].sum(),
+        df.loc[df['is_cloned_reference'], f'condensates_observed_{cl}'].mean()))
+    print('{} ({:.0%}) alternative isoforms show condensates'.format(
+        df.loc[~df['is_cloned_reference'], f'condensates_observed_{cl}'].sum(),
+        df.loc[~df['is_cloned_reference'], f'condensates_observed_{cl}'].mean()))
+    print('{} ({:.0%}) alternative isoforms change condensate formation compared to reference'.format(
+        (pairs[f'condensate_cat_{cl}'] != 'Unchanged').sum(),
+        (pairs[f'condensate_cat_{cl}'] != 'Unchanged').mean()))
+
+    print()
+    print(pairs[f'condensate_cat_{cl}'].value_counts())
+    print()
 
 
 # In[8]:
 
 
-df['Loc_Kaia'].value_counts()
+colors = met_brewer.met_brew(name="Hokusai3", n=5, brew_type="discrete")
+sns.palplot(colors)
 
-
-# ## 2. summary of data
 
 # In[9]:
 
 
-print('tested {} isoforms of {} TF genes'.format(df['isoform_acc'].nunique(),
-                df['gene_symbol'].nunique())
+f = pd.concat(
+        [pairs['combined_cat_HEK'].value_counts().to_frame().T,
+        pairs['combined_cat_U2OS'].value_counts().to_frame().T,]
 )
-print('{} ({:.0%}) reference isoforms show condensates'.format(
-    df.loc[df['is_cloned_reference'], 'condensates_observed'].sum(),
-    df.loc[df['is_cloned_reference'], 'condensates_observed'].mean()))
-print('{} ({:.0%}) alternative isoforms show condensates'.format(
-    df.loc[~df['is_cloned_reference'], 'condensates_observed'].sum(),
-    df.loc[~df['is_cloned_reference'], 'condensates_observed'].mean()))
-print('{} ({:.0%}) alternative isoforms change condensate formation compared to reference'.format(
-    (df.loc[~df['is_cloned_reference'], 'Mutation_Class'] != 'Unchanged').sum(),
-    (df.loc[~df['is_cloned_reference'], 'Mutation_Class'] != 'Unchanged').mean()))
-
-print()
-print(df.loc[~df['is_cloned_reference'], 'Mutation_Class'].value_counts())
-print()
+if f.sum(axis=1).nunique() > 1:
+    raise UserWarning('expected identical numbers for both cell lines')
+f = f / f.sum(axis=1).iloc[0] * 100
+f.head()
 
 
 # In[10]:
 
 
-fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(2.5, 2.5))
-n = df['is_cloned_reference'].sum()
-(
-    df.loc[df['is_cloned_reference'], 'Loc_Kaia']
-    .value_counts()
-    .plot.pie(autopct=lambda x: '{:.0f}\n({:.0f}%)'.format(x / 100 * n, x),
- ax=axs[0])
-)
-n = (~df['is_cloned_reference']).sum()
-(
-    df.loc[~df['is_cloned_reference'], 'Loc_Kaia']
-    .value_counts()
-    .plot.pie(autopct=lambda x: '{:.0f}\n({:.0f}%)'.format(x / 100 * n, x),
- ax=axs[1])
-)
-axs[0].set_title('Reference isoform')
-axs[1].set_title('Alternative isoform')
-for ax in axs:
-    ax.set_ylabel('')
-fig.savefig('../../figures/fig5/kaia-localisation_ref-vs-alt_pie.pdf',
-            bbox_inches='tight')
+f.columns = ["Same localization &\ncondensate formation", "∆ localization",
+             "∆ condensate formation", "∆ both"]
 
 
 # In[11]:
 
 
-fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(2.5, 2.5))
-n = df['is_cloned_reference'].sum()
-(
-    df.loc[df['is_cloned_reference'], 'HEK_Condensate']
-    .value_counts()
-    .plot.pie(autopct=lambda x: '{:.0f}\n({:.0f}%)'.format(x / 100 * n, x),
- ax=axs[0])
-)
-n = (~df['is_cloned_reference']).sum()
-(
-    df.loc[~df['is_cloned_reference'], 'HEK_Condensate']
-    .value_counts()
-    .plot.pie(autopct=lambda x: '{:.0f}\n({:.0f}%)'.format(x / 100 * n, x),
- ax=axs[1])
-)
-axs[0].set_title('Reference isoform')
-axs[1].set_title('Alternative isoform')
-for ax in axs:
-    ax.set_ylabel('')
-fig.savefig('../../figures/fig5/condensate-localisation_ref-vs-alt_pie.pdf',
-            bbox_inches='tight')
+pal = {"Same localization &\ncondensate formation": "grey",
+       "∆ localization": colors[4],
+       "∆ condensate formation": colors[2],
+       "∆ both": colors[1]}
+sns.palplot(pal.values())
 
 
 # In[12]:
 
 
-fig, ax = plt.subplots(1, 1, figsize=(1.4, 1.4))
-n = (~df['is_cloned_reference']).sum()
-(df.loc[~df['is_cloned_reference'], 'Mutation_Class']
- .value_counts()
- .plot.pie(autopct=lambda x: '{:.0f}\n({:.0f}%)'.format(x / 100 * n, x),
- ax=ax))
-ax.set_ylabel('')
-ax.set_title('Differences in alternative isoforms')
-fig.savefig('../../figures/fig5/condensate-change-categories_pie.pdf',
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(w=0.8, h=1.8)
+f.plot.bar(stacked=True, 
+           ax=ax,
+           color=pal.values())
+for pos in ['top', 'bottom', 'right']:
+    ax.spines[pos].set_visible(False)
+ax.set_xticklabels(['HEK293T', 'U2OS'], rotation=30, va="top", ha="right")
+ax.xaxis.set_tick_params(length=0)
+ax.set_ylim(0, 100)
+ax.set_yticks(range(0, 101, 20))
+ax.set_yticks(range(0, 101, 10), minor=True)
+ax.set_ylabel('% of isoform pairs')
+ax.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+fig.savefig('../../figures/fig5/localization-and-condensate-difference_stacked-bar.pdf',
             bbox_inches='tight')
 
+
+# ## 2. ribbon plots to show localization changes
 
 # In[13]:
 
 
-print('all:')
-print(df['HEK_Condensate'].value_counts())
-print('\nreference:')
-print(df.loc[df['is_cloned_reference'], 'HEK_Condensate'].value_counts())
-print('\nalternative')
-print(df.loc[~df['is_cloned_reference'], 'HEK_Condensate'].value_counts())
+# NOTE: I put this code at the end because it changes the matplotlib defaults
+# so messes up the other plots
+from pySankey import sankey
+import matplotlib.font_manager as font_manager
 
-
-# ## 3. merge info with pairs data to see how condensates correlate w PPIs/PDIs/etc
 
 # In[14]:
 
 
-pairs = load_ref_vs_alt_isoforms_table()
-pairs.head()
+pairs.loc[pairs['localization_U2OS_alt'].notnull(), 'localization_U2OS_ref']
 
 
 # In[15]:
 
 
-df = df.set_index('isoform_acc')
+tmp = pairs.copy()
+tmp["loc_U2OS_ref_srt"] = pd.Categorical(tmp['localization_U2OS_ref'], ['cytoplasm', 'both', 'nucleus'])
+tmp["loc_U2OS_alt_srt"] = pd.Categorical(tmp['localization_U2OS_alt'], ['cytoplasm', 'both', 'nucleus'])
+tmp["loc_HEK_ref_srt"] = pd.Categorical(tmp['localization_HEK_ref'], ['cytoplasm', 'both', 'nucleus'])
+tmp["loc_HEK_alt_srt"] = pd.Categorical(tmp['localization_HEK_alt'], ['cytoplasm', 'both', 'nucleus'])
+
+tmp = tmp.sort_values(by='loc_U2OS_ref_srt')
 
 
 # In[16]:
 
 
-for x in ['ref', 'alt']:
-    for var in ['condensates_observed', 'HEK_Condensate', 'Loc_Kaia']:
-        pairs[var + '_' + x] = pairs['clone_acc_' + x].map(df[var])
+sankey.sankey(left=tmp.loc[tmp['localization_U2OS_alt'].notnull(), 'localization_U2OS_ref'],
+              right=tmp.loc[tmp['localization_U2OS_alt'].notnull(), 'localization_U2OS_alt'],
+              fontsize=PAPER_FONTSIZE,
+              aspect=1.5,
+              colorDict={"both": colors[4],
+                         "nucleus": colors[1],
+                         "cytoplasm": colors[0]})
+ax = plt.gca()
+fig = plt.gcf()
+
+plt.gca().text(x=-1, y=pairs.shape[0] * 1.05, s='Reference:',
+               fontsize=PAPER_FONTSIZE,
+               va='bottom',
+               ha='right',)
+plt.gca().text(x=95, y=pairs.shape[0] * 1.05, s='Alternative:',
+               fontsize=PAPER_FONTSIZE,
+               va='bottom',
+               ha='left',)
+
+# change fonts back to helvetica
+font_prop = font_manager.FontProperties(family='Helvetica')
+for text in ax.texts:
+    text.set_fontproperties(font_prop)
+
+# change figure size
+fig.set_size_inches(1, 2)
+
+plt.savefig('../../figures/fig5/localization_ref-vs-alt_U2OS_Sankey.pdf',
+            bbox_inches='tight')
 
 
 # In[17]:
 
 
-pairs['condensate_cat'] = pairs['clone_acc_alt'].map(df['Mutation_Class'])
+tmp = tmp.sort_values(by='loc_HEK_ref_srt')
 
 
 # In[18]:
 
 
-pairs = pairs.loc[pairs['condensates_observed_ref'].notnull(), :]
+sankey.sankey(left=tmp.loc[tmp['localization_HEK_alt'].notnull(), 'localization_HEK_ref'],
+              right=tmp.loc[tmp['localization_HEK_alt'].notnull(), 'localization_HEK_alt'],
+              fontsize=PAPER_FONTSIZE,
+              aspect=1.5,
+              colorDict={"both": colors[4],
+                         "nucleus": colors[1],
+                         "cytoplasm": colors[0]})
+ax = plt.gca()
+fig = plt.gcf()
+
+plt.gca().text(x=-1, y=pairs.shape[0] * 1.05, s='Reference:',
+               fontsize=PAPER_FONTSIZE,
+               va='bottom',
+               ha='right',)
+plt.gca().text(x=95, y=pairs.shape[0] * 1.05, s='Alternative:',
+               fontsize=PAPER_FONTSIZE,
+               va='bottom',
+               ha='left',)
+
+# change fonts back to helvetica
+font_prop = font_manager.FontProperties(family='Helvetica')
+for text in ax.texts:
+    text.set_fontproperties(font_prop)
+
+# change figure size
+fig.set_size_inches(1, 2)
+
+plt.savefig('../../figures/fig5/localization_ref-vs-alt_HEK_Sankey.pdf',
+            bbox_inches='tight')
 
 
 # In[19]:
 
 
-pairs['condensate_cat'].value_counts()
+# reset matplotlib params
+import seaborn as sns
+from matplotlib import pyplot as plt
 
+sns.set(**PAPER_PRESET)
+fontsize = PAPER_FONTSIZE
+
+
+# ## 3. correlation plots to show agreement between cell lines
 
 # In[20]:
 
 
-pairs['Loc_Kaia_ref'].value_counts()
+tbl = (df.groupby(['localization_HEK', 'localization_U2OS'])
+ .size()
+ .reset_index()
+ .pivot(values=0,
+        index='localization_HEK',
+        columns='localization_U2OS')
+ .fillna(0)
+ .astype(int)
+ .iloc[::-1, ::-1]
+        )
+
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(2, 2)
+table_circle_size_plot(tbl, ax=ax, scale=4000, fontsize=PAPER_FONTSIZE)
+ax.set_ylabel('U2OS')
+ax.set_xlabel('HEK293T')
+ax.set_xticklabels([x.get_text().capitalize() for x in ax.get_xticklabels()])
+ax.set_yticklabels([x.get_text().capitalize() for x in ax.get_yticklabels()])
+fig.savefig('../../figures/fig5/localization_HEK-vs-U2OS_diff-cat_circle-plot.pdf', bbox_inches='tight')
 
 
 # In[21]:
 
 
-pairs['condensate_cat_merged'] = pairs['condensate_cat'].map({
-    'Unchanged': 'No difference',
-    'LOC': 'Difference',
-    'GOC': 'Difference',
-    'Changed localization': 'Difference',
-    })
+tbl = (pairs.groupby(['condensate_cat_only_detailed_HEK', 'condensate_cat_only_detailed_U2OS'])
+ .size()
+ .reset_index()
+ .pivot(values=0,
+        index='condensate_cat_only_detailed_HEK',
+        columns='condensate_cat_only_detailed_U2OS')
+ .fillna(0)
+ .astype(int)
+ .iloc[::-1, ::-1]
+        )
 
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(2.5, 2.5)
+table_circle_size_plot(tbl, ax=ax, scale=4000, fontsize=PAPER_FONTSIZE)
+ax.set_ylabel('U2OS')
+ax.set_xlabel('HEK293T')
+fig.savefig('../../figures/fig5/condensate_only_detailed_HEK-vs-U2OS_diff-vs-no_circle-plot.pdf', bbox_inches='tight')
+
+
+# ## 4. charts to show distribution of changes
 
 # In[22]:
 
 
-pairs.loc[(pairs['n_positive_PPI_ref'] == 0) | (pairs['n_positive_PPI_alt'] == 0),
-          'PPI_jaccard'] = np.nan
+def reword_for_pie_chart(row, col):
+    if pd.isnull(row[col]):
+        return np.nan
+    elif row[col] == "BOTH":
+        return "both nuclear/\ncytoplasmic\ncondensates"
+    elif row[col] == "CC":
+        return "cytoplasmic\ncondensates"
+    elif row[col] == "NC":
+        return "nuclear\ncondensates"
+    else:
+        return np.nan
+    
+df["HEK_Condensate_rw"] = df.apply(reword_for_pie_chart, axis=1, col="HEK_Condensate")
+df["U2OS_Condensate_rw"] = df.apply(reword_for_pie_chart, axis=1, col="U2OS_Condensate")
 
 
 # In[23]:
 
 
-var = 'PPI_jaccard'
-x = pairs.loc[(pairs['condensate_cat'] == 'Unchanged')
-              & pairs[var].notnull(), 
-              var].values
-y = pairs.loc[(pairs['condensate_cat'] != 'Unchanged')
-              & pairs[var].notnull(), 
-              var].values
-
-fig, ax = plt.subplots(1, 1)
-fig.set_size_inches(w=2, h=1.75)
-sns.swarmplot(data=pairs,
-                     x='condensate_cat_merged',
-                     y=var,
-              order=['No difference', 'Difference'],
-              color='white',
-              ax=ax,
-              edgecolor="black",
-              linewidth=0.5,
-              clip_on=False,
-              size=4)
-violinplot_reflected(data=pairs,
-                     x='condensate_cat_merged',
-                     y=var,
-                    inner=None,
-              #cut=0,
-              color=sns.color_palette("Set2")[0],
-              order=['No difference', 'Difference'],
-              ax=ax,
-              )
-ax.set_ylim(0, 1)
-
-pval = permutation_test(x, y, num_permutations=10000, seed=2023)
-print(pval)
-annotator = Annotator(ax=ax, pairs=[('No difference', 'Difference')], 
-                      data=pairs, x='condensate_cat_merged', 
-                      y=var, order=['No difference', 'Difference'],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.3f}'.format(pval)])
-
-ax.set_xlabel('Condensate formation between reference and alternative')
-for loc in ['right', 'top', 'bottom']:
-    ax.spines[loc].set_visible(False)
-ax.set_ylabel('PPI Jaccard index')
-ax.set_xticklabels(['No difference\n(N = {})'.format(x.shape[0]),
-                    'Difference\n(N = {})'.format(y.shape[0])])
-ax.xaxis.set_tick_params(length=0)
-fig.savefig('../../figures/fig5/PPI-Jaccard-vs-condensate-change_violinplot.pdf',
-            bbox_inches='tight')
+df.loc[df['is_cloned_reference'], f'{cl}_Condensate_rw'].fillna('no\ncondensates').value_counts().sort_index()
 
 
 # In[24]:
 
 
-var = 'PDI_jaccard'
-x = pairs.loc[(pairs['condensate_cat'] == 'Unchanged')
-              & pairs[var].notnull(), 
-              var].values
-y = pairs.loc[(pairs['condensate_cat'] != 'Unchanged')
-              & pairs[var].notnull(), 
-              var].values
-
-fig, ax = plt.subplots(1, 1)
-fig.set_size_inches(w=2, h=1.75)
-sns.swarmplot(data=pairs,
-                     x='condensate_cat_merged',
-                     y=var,
-              order=['No difference', 'Difference'],
-              color='white',
-              edgecolor='black',
-              linewidth=0.5,
-              ax=ax,
-              clip_on=False,
-              size=4)
-violinplot_reflected(data=pairs,
-                     x='condensate_cat_merged',
-                     y=var,
-                    inner=None,
-              #cut=0,
-              color=sns.color_palette("Set2")[0],
-              order=['No difference', 'Difference'],
-              ax=ax,
-              )
-ax.set_ylim(0, 1)
-
-pval = permutation_test(x, y, num_permutations=10000, seed=2023)
-print(pval)
-annotator = Annotator(ax=ax, pairs=[('No difference', 'Difference')], data=pairs, x='condensate_cat_merged', y=var, order=['No difference', 'Difference'],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.3f}'.format(pval)])
-
-ax.set_xlabel('Condensate formation between reference and alternative')
-for loc in ['right', 'top', 'bottom']:
-    ax.spines[loc].set_visible(False)
-ax.set_ylabel('PDI Jaccard index')
-ax.set_xticklabels(['No difference\n(N = {})'.format(x.shape[0]),
-                    'Difference\n(N = {})'.format(y.shape[0])])
-ax.xaxis.set_tick_params(length=0)
-fig.savefig('../../figures/fig5/PDI-Jaccard-vs-condensate-change_violinplot.pdf',
+fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(4.5, 3))
+for i, cl in enumerate(['HEK', 'U2OS']):
+    n = df['is_cloned_reference'].sum()
+    (
+        df.loc[df['is_cloned_reference'], f'{cl}_Condensate_rw']
+        .fillna('no\ncondensates')
+        .value_counts()
+        .sort_index()
+        .plot.pie(autopct=lambda x: '{:.0f}\n({:.0f}%)'.format(x / 100 * n, x),
+    ax=axs[i, 0], colors=[colors[4], colors[0], "grey", colors[1]])
+    )
+    n = (~df['is_cloned_reference']).sum()
+    (
+        df.loc[~df['is_cloned_reference'], f'{cl}_Condensate_rw']
+        .fillna('no\ncondensates')
+        .value_counts()
+        .sort_index()
+        .plot.pie(autopct=lambda x: '{:.0f}\n({:.0f}%)'.format(x / 100 * n, x),
+    ax=axs[i, 1], colors=[colors[4], colors[0], "grey", colors[1]])
+    )
+axs[0, 0].set_title('Reference isoform')
+axs[0, 1].set_title('Alternative isoform')
+axs[0, 0].text(s='HEK293T\n\n', x=-1.5, y=0, rotation=90, ha='right', va='center')
+axs[1, 0].text(s='U2OS\n\n', x=-1.5, y=0, rotation=90, ha='right', va='center')
+for ax in axs.flatten():
+    ax.set_ylabel('')
+fig.savefig('../../figures/fig5/condensate-localisation_ref-vs-alt_pie.pdf',
             bbox_inches='tight')
 
 
 # In[25]:
 
 
-var = 'activation_fold_change_log2'
-x = pairs.loc[(pairs['condensate_cat'] == 'Unchanged')
-              & pairs[var].notnull(), 
-              var].values
-y = pairs.loc[(pairs['condensate_cat'] != 'Unchanged')
-              & pairs[var].notnull(), 
-              var].values
-
+f = pd.concat(
+        [pairs['condensate_cat_only_detailed_HEK'].value_counts().to_frame().T,
+        pairs['condensate_cat_only_detailed_U2OS'].value_counts().to_frame().T,]
+)
+if f.sum(axis=1).nunique() > 1:
+    raise UserWarning('expected identical numbers for both cell lines')
+f = f / f.sum(axis=1).iloc[0] * 100
 fig, ax = plt.subplots(1, 1)
-fig.set_size_inches(w=2, h=1.75)
-sns.swarmplot(data=pairs,
-                     x='condensate_cat_merged',
-                     y=var,
-              order=['No difference', 'Difference'],
-              color='white',
-              edgecolor='black',
-              alpha=0.5,
-              linewidth=0.5,
-              ax=ax,
-              clip_on=False,
-              size=4)
-sns.boxplot(data=pairs,
-                     x='condensate_cat_merged',
-                     y=var,
-              #cut=0,
-              color=sns.color_palette("Set2")[0],
-              order=['No difference', 'Difference'],
-              ax=ax,
-              )
-mimic_r_boxplot(ax)
-
-pval = permutation_test(x, y, num_permutations=10000, seed=2023)
-print(pval)
-annotator = Annotator(ax=ax, pairs=[('No difference', 'Difference')], data=pairs, x='condensate_cat_merged', y=var, order=['No difference', 'Difference'],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.3f}'.format(pval)])
-
-ax.set_xlabel('Condensate formation between reference and alternative')
-for loc in ['right', 'top', 'bottom']:
-    ax.spines[loc].set_visible(False)
-ax.set_ylabel('Activation log2 fold change')
-ax.set_xticklabels(['No difference\n(N = {})'.format(x.shape[0]),
-                    'Difference\n(N = {})'.format(y.shape[0])])
+fig.set_size_inches(w=0.6, h=1.8)
+f.plot.bar(stacked=True, 
+           ax=ax,
+           color=[colors[4], colors[0], colors[1], "grey"])
+for pos in ['top', 'bottom', 'right']:
+    ax.spines[pos].set_visible(False)
+ax.set_xticklabels(['HEK293T', 'U2OS'], rotation=30, va="top", ha="right")
 ax.xaxis.set_tick_params(length=0)
-fig.savefig('../../figures/fig5/activation-vs-condensate-change_boxplot.pdf',
+ax.set_ylim(0, 100)
+ax.set_yticks(range(0, 101, 20))
+ax.set_yticks(range(0, 101, 10), minor=True)
+ax.set_ylabel('% of isoform pairs')
+ax.legend(bbox_to_anchor=(1, 1), frameon=False)
+fig.savefig('../../figures/fig5/condensate-difference_stacked-bar.pdf',
             bbox_inches='tight')
 
 
-# ## 4. look in more granularity (cytoplasmic v nuclear, etc)
+# ## 5. examine how RNA-seq expression correlates with condensate formation
 
 # In[26]:
-
-
-var = 'PPI_jaccard'
-
-fig, ax = plt.subplots(1, 1)
-fig.set_size_inches(w=2.5, h=1.75)
-sns.swarmplot(data=pairs,
-                     x='condensate_cat',
-                     y=var,
-              color='white',
-              edgecolor='black',
-              linewidth=0.5,
-              ax=ax,
-              clip_on=False,
-              size=4)
-violinplot_reflected(data=pairs,
-                     x='condensate_cat',
-                     y=var,
-                    inner=None,
-              color=sns.color_palette("Set2")[0],
-              ax=ax,
-              )
-ax.set_ylim(0, 1)
-
-"""
-pval = permutation_test(x, y)
-annotator = Annotator(ax=ax, pairs=[('No difference', 'Difference')], data=pairs, x='condensate_cat_merged', y=var, order=['No difference', 'Difference'],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.2f}'.format(pval)])
-"""
-
-ax.set_xlabel('Condensate formation between reference and alternative')
-for loc in ['right', 'top', 'bottom']:
-    ax.spines[loc].set_visible(False)
-ax.set_ylabel('PPI Jaccard index')
-#ax.set_xticklabels(['No difference\n(N = {})'.format(x.shape[0]),
-#                    'Difference\n(N = {})'.format(y.shape[0])])
-ax.xaxis.set_tick_params(length=0)
-fig.savefig('../../figures/fig5/PPI-Jaccard-vs-condensate-change_categories_boxplot.pdf',
-            bbox_inches='tight')
-
-
-# In[27]:
-
-
-var = 'activation_fold_change_log2'
-
-fig, ax = plt.subplots(1, 1)
-fig.set_size_inches(w=2.5, h=1.75)
-sns.swarmplot(data=pairs,
-                     x='condensate_cat',
-                     y=var,
-              color='white',
-              edgecolor='black',
-              alpha=0.5,
-              linewidth=0.5,
-              ax=ax,
-              clip_on=False,
-              size=4)
-sns.boxplot(data=pairs,
-                     x='condensate_cat',
-                     y=var,
-              color=sns.color_palette("Set2")[0],
-              ax=ax,
-              )
-mimic_r_boxplot(ax)
-
-"""
-pval = permutation_test(x, y)
-annotator = Annotator(ax=ax, pairs=[('No difference', 'Difference')], data=pairs, x='condensate_cat_merged', y=var, order=['No difference', 'Difference'],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.2f}'.format(pval)])
-"""
-ax.set_xlabel('Condensate formation between reference and alternative')
-for loc in ['right', 'top', 'bottom']:
-    ax.spines[loc].set_visible(False)
-ax.set_ylabel('Activation log2 fold change')
-#ax.set_xticklabels(['No difference\n(N = {})'.format(x.shape[0]),
-#                    'Difference\n(N = {})'.format(y.shape[0])])
-ax.xaxis.set_tick_params(length=0)
-fig.savefig('../../figures/fig5/activation-vs-condensate-change_categories_boxplot.pdf',
-            bbox_inches='tight')
-
-
-# In[28]:
-
-
-def detailed_condensate_cat(row):
-    a = row['HEK_Condensate_ref']
-    if pd.isnull(a):
-        a = 'None'
-    b = row['HEK_Condensate_alt']
-    if pd.isnull(b):
-        b = 'None'
-    return '{} -> {}'.format(a, b)
-
-pairs['condensate_cat_detailed'] = pairs.apply(detailed_condensate_cat, axis=1)
-
-
-# In[29]:
-
-
-pairs.sort_values('activation_fold_change_log2').head()
-
-
-# In[30]:
-
-
-pairs.sort_values('activation_fold_change_log2', ascending=False).head()
-
-
-# In[31]:
-
-
-var = 'activation_fold_change_log2'
-
-fig, ax = plt.subplots(1, 1)
-fig.set_size_inches(w=5.5, h=1.75)
-sns.swarmplot(data=pairs,
-                     x='condensate_cat_detailed',
-                     y=var,
-              color='white',
-              edgecolor='black',
-              linewidth=0.5,
-              ax=ax,
-              clip_on=False,
-              size=4)
-sns.boxplot(data=pairs,
-                     x='condensate_cat_detailed',
-                     y=var,
-              color=sns.color_palette("Set2")[0],
-              ax=ax,
-              )
-mimic_r_boxplot(ax)
-
-"""
-pval = permutation_test(x, y)
-annotator = Annotator(ax=ax, pairs=[('No difference', 'Difference')], data=pairs, x='condensate_cat_merged', y=var, order=['No difference', 'Difference'],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.2f}'.format(pval)])
-"""
-ax.set_xlabel('Condensate formation between reference and alternative')
-for loc in ['right', 'top', 'bottom']:
-    ax.spines[loc].set_visible(False)
-ax.set_ylabel('Activation log2 fold change')
-#ax.set_xticklabels(['No difference\n(N = {})'.format(x.shape[0]),
-#                    'Difference\n(N = {})'.format(y.shape[0])])
-ax.xaxis.set_tick_params(length=0, rotation=90)
-fig.savefig('../../figures/fig4/activation-vs-condensate-change_categories-detailed_boxplot.pdf',
-            bbox_inches='tight')
-
-
-# - CREB1 - the alternative isoform, with a small insertion, forms nuclear condensates (and doesn't bind DNA...)
-# - TBX5 - alternative isoforms form cytoplasmic condensates. TBX5-3, which doesn't activate, doesn't seem to be in the nucleus...
-# - ZIC3 - novel isoforms form condensates
-# - **PBX1** - ref forms condensates in both nucleus and cytoplasm. alt looses them
-
-# ## 5. are any PPIs in our y2h data well-known LLPS drivers?
-
-# In[32]:
-
-
-from data_loading import load_y2h_isoform_data
-y2h = load_y2h_isoform_data()
-y2h.head()
-
-
-# In[33]:
-
-
-llps_proteins = {'FUS', 'EWS', 'TAF15', 'DDX4',
-                 'BRD4', 'MED1',
-                 'TFEB',
-                 'YAP',}
-y2h.loc[y2h['db_gene_symbol'].isin(llps_proteins), :]
-
-
-# In[34]:
-
-
-# could also look for low complexity disordered regions
-
-
-# ## 6. examine how expression correlates with condensate formation
-
-# In[35]:
 
 
 from data_loading import (load_annotated_TFiso1_collection,
@@ -662,7 +477,7 @@ from data_loading import (load_annotated_TFiso1_collection,
                           load_gtex_remapped)
 
 
-# In[36]:
+# In[27]:
 
 
 df_gtex, metadata_gtex, genes_gtex = load_gtex_remapped()
@@ -677,7 +492,7 @@ metadata_gtex = metadata_gtex.loc[~metadata_gtex['body_site'].isin(exclusion_lis
 means_gtex = df_gtex.groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1).mean()
 
 
-# In[37]:
+# In[28]:
 
 
 df_dev, metadata_dev, genes_dev = load_developmental_tissue_expression_remapped()
@@ -709,7 +524,7 @@ means_dev = (df_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + '
            .mean())
 
 
-# In[38]:
+# In[29]:
 
 
 means_gtex["max_gtex"] = means_gtex.max(axis=1)
@@ -724,7 +539,7 @@ max_tpm = max_tpm.reset_index()
 max_tpm["clone_acc"] = max_tpm.UID.str.split(" ", expand=True)[0]
 
 
-# In[39]:
+# In[30]:
 
 
 max_tpm["gene_symbol"] = max_tpm["clone_acc"].str.split("|", expand=True)[0]
@@ -733,302 +548,116 @@ max_tpm_gene = max_tpm_gene.groupby("gene_symbol")[["max_gtex", "max_dev"]].agg(
 max_tpm_gene.columns = ["gene_symbol", "max_gtex_gene", "max_dev_gene"]
 
 
-# In[40]:
+# In[31]:
 
 
-pairs = pairs.merge(max_tpm[["clone_acc", "max_gtex", 
+pairs_exp = pairs.merge(max_tpm[["clone_acc", "max_gtex", 
                              "max_dev"]],
-                    left_on="clone_acc_ref", right_on="clone_acc")
-pairs.drop("clone_acc", axis=1, inplace=True)
-pairs = pairs.merge(max_tpm[["clone_acc", "max_gtex", "max_dev"]],
+                        left_on="clone_acc_ref", right_on="clone_acc")
+pairs_exp.drop("clone_acc", axis=1, inplace=True)
+pairs_exp = pairs_exp.merge(max_tpm[["clone_acc", "max_gtex", "max_dev"]],
                     left_on="clone_acc_alt", 
                     right_on="clone_acc",
                     suffixes=("_ref", "_alt"))
-pairs.drop("clone_acc", axis=1, inplace=True)
-pairs = pairs.merge(max_tpm_gene, on="gene_symbol")
-pairs.head()
+pairs_exp.drop("clone_acc", axis=1, inplace=True)
+pairs_exp = pairs_exp.merge(max_tpm_gene, on="gene_symbol")
+pairs_exp.head()
 
 
-# In[41]:
+# In[32]:
+
+
+to_plot = pd.melt(pairs_exp[["gene_symbol", "clone_acc_ref", "clone_acc_alt",
+                         "condensates_observed_HEK_ref", "condensates_observed_U2OS_ref",
+                         "max_dev_ref", "max_gtex_ref"]],
+                  id_vars=["gene_symbol", "clone_acc_ref", "clone_acc_alt",
+                           "max_dev_ref", "max_gtex_ref"])
+to_plot = to_plot.drop_duplicates()
+print(len(to_plot))
+to_plot.head()
+
+
+# In[33]:
 
 
 fig = plt.figure(figsize=(1.75, 1.75))
 
-x_var = "condensates_observed_ref"
-y_var = "max_dev_gene"
-data = pairs[["clone_acc_ref", x_var, y_var]].drop_duplicates()
-ax = sns.boxplot(data=data, x=x_var, y=y_var,
-                 color=sns.color_palette("Set2")[0],
+ax = sns.boxplot(data=to_plot, x="variable", hue="value", y="max_dev_ref",
+                 palette={False: "grey", True: colors[0]},
                  fliersize=0)
 mimic_r_boxplot(ax)
-sns.swarmplot(data=data, x=x_var, y=y_var, 
-              edgecolor="black", linewidth=0.5, color=sns.color_palette("Set2")[0], ax=ax,
-              size=3, alpha=0.5)
+sns.swarmplot(data=to_plot, x="variable", hue="value", y="max_dev_ref",
+              palette={False: "grey", True: colors[0]},
+              edgecolor="black", linewidth=0.5, ax=ax,
+              size=3, alpha=0.5, dodge=True)
 
 for loc in ['right', 'top']:
     ax.spines[loc].set_visible(False)
     
-ax.set_xlabel("Condensates observed")
-ax.set_ylabel("Maximum log2(tpm)\nDevelopmental RNA-seq")
-ax.set_title("Reference isoforms\n\n")
+ax.set_xlabel("")
+ax.set_xticklabels(["HEK293T", "U2OS"], rotation=30, ha="right", va="top")
+ax.set_ylabel("Maximum log2(gene-level tpm)")
+ax.set_title("Reference isoforms")
 
-x = data[data[x_var] == False][y_var].values
-y = data[data[x_var] == True][y_var].values
-pval = permutation_test(x, y, num_permutations=10000, seed=2023)
-annotator = Annotator(ax=ax, pairs=[(False, True)], 
-                      data=data, x='condensates_observed_ref', 
-                      y='max_dev_gene', order=[False, True],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.2f}'.format(pval)])
+handles, labels = ax.get_legend_handles_labels()
+plt.legend(handles=handles[0:2], labels=["no condensates observed", "condensates observed"],
+           loc=2, bbox_to_anchor=(1.01, 1), facecolor="white", markerscale=1,
+           frameon=False)
 
+for i, c in enumerate(["HEK", "U2OS"]):
+    x = to_plot[(to_plot["variable"] == "condensates_observed_%s_ref" % c) &
+                (to_plot["value"] == False)]["max_dev_ref"].values
+    y = to_plot[(to_plot["variable"] == "condensates_observed_%s_ref" % c) &
+                (to_plot["value"] == True)]["max_dev_ref"].values
+    u, p = stats.mannwhitneyu(x, y, alternative="two-sided")
+    annotate_pval(ax, i-0.2, i+0.2, 4.8, 0, 4.8, p, PAPER_FONTSIZE)
+
+ax.set_ylim((-0.1, 5))
 fig.savefig("../../figures/fig5/Dev_expr_cond.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[42]:
+# In[34]:
 
 
 fig = plt.figure(figsize=(1.75, 1.75))
 
-x_var = "condensates_observed_ref"
-y_var = "max_gtex_gene"
-data = pairs[["clone_acc_ref", x_var, y_var]].drop_duplicates()
-ax = sns.boxplot(data=data, x=x_var, y=y_var,
-                 color=sns.color_palette("Set2")[0],
+ax = sns.boxplot(data=to_plot, x="variable", hue="value", y="max_gtex_ref",
+                 palette={False: "grey", True: colors[0]},
                  fliersize=0)
 mimic_r_boxplot(ax)
-sns.swarmplot(data=data, x=x_var, y=y_var, 
-              edgecolor="black", linewidth=0.5, color=sns.color_palette("Set2")[0], ax=ax,
-              size=3, alpha=0.5)
+sns.swarmplot(data=to_plot, x="variable", hue="value", y="max_gtex_ref",
+              palette={False: "grey", True: colors[0]},
+              edgecolor="black", linewidth=0.5, ax=ax,
+              size=3, alpha=0.5, dodge=True)
 
 for loc in ['right', 'top']:
     ax.spines[loc].set_visible(False)
     
-ax.set_xlabel("Condensates observed")
-ax.set_ylabel("Maximum log2(tpm)\nGTEx RNA-seq")
-ax.set_title("Reference isoforms\n\n")
+ax.set_xlabel("")
+ax.set_xticklabels(["HEK293T", "U2OS"], rotation=30, ha="right", va="top")
+ax.set_ylabel("Maximum log2(gene-level tpm)")
+ax.set_title("Reference isoforms")
 
-x = data[data[x_var] == False][y_var].values
-y = data[data[x_var] == True][y_var].values
-pval = permutation_test(x, y, num_permutations=10000, seed=2023)
-annotator = Annotator(ax=ax, pairs=[(False, True)], 
-                      data=data, x=x_var, 
-                      y=y_var, order=[False, True],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.2f}'.format(pval)])
+handles, labels = ax.get_legend_handles_labels()
+plt.legend(handles=handles[0:2], labels=["no condensates observed", "condensates observed"],
+           loc=2, bbox_to_anchor=(1.01, 1), facecolor="white", markerscale=1,
+           frameon=False)
 
+for i, c in enumerate(["HEK", "U2OS"]):
+    x = to_plot[(to_plot["variable"] == "condensates_observed_%s_ref" % c) &
+                (to_plot["value"] == False)]["max_gtex_ref"].values
+    y = to_plot[(to_plot["variable"] == "condensates_observed_%s_ref" % c) &
+                (to_plot["value"] == True)]["max_gtex_ref"].values
+    u, p = stats.mannwhitneyu(x, y, alternative="two-sided")
+    annotate_pval(ax, i-0.2, i+0.2, 4.8, 0, 4.8, p, PAPER_FONTSIZE)
+
+ax.set_ylim((-0.1, 5))
 fig.savefig("../../figures/fig5/GTEx_expr_cond.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[43]:
+# ## 6. examine how our localizations compare to HPA
 
-
-fig = plt.figure(figsize=(1.75, 1.75))
-
-x_var = "condensates_observed_alt"
-y_var = "max_dev_alt"
-data = pairs[["clone_acc_alt", x_var, y_var]].drop_duplicates()
-ax = sns.boxplot(data=data, x=x_var, y=y_var,
-                 color=sns.color_palette("Set2")[0],
-                 fliersize=0)
-mimic_r_boxplot(ax)
-sns.swarmplot(data=data, x=x_var, y=y_var, 
-              edgecolor="black", linewidth=0.5, color=sns.color_palette("Set2")[0], ax=ax,
-              size=3, alpha=0.5)
-
-for loc in ['right', 'top']:
-    ax.spines[loc].set_visible(False)
-    
-ax.set_xlabel("Condensates observed")
-ax.set_ylabel("Maximum log2(tpm)\nDevelopmental RNA-seq")
-ax.set_title("Alternative isoforms\n\n")
-
-x = data[data[x_var] == False][y_var].values
-y = data[data[x_var] == True][y_var].values
-pval = permutation_test(x, y, num_permutations=10000, seed=2023)
-annotator = Annotator(ax=ax, pairs=[(False, True)], 
-                      data=data, x=x_var, 
-                      y=y_var, order=[False, True],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.2f}'.format(pval)])
-
-fig.savefig("../../figures/fig5/Dev_expr_cond_alt.pdf", dpi="figure", bbox_inches="tight")
-
-
-# In[44]:
-
-
-fig = plt.figure(figsize=(1.75, 1.75))
-
-x_var = "condensates_observed_alt"
-y_var = "max_gtex_alt"
-data = pairs[["clone_acc_alt", x_var, y_var]].drop_duplicates()
-ax = sns.boxplot(data=data, x=x_var, y=y_var,
-                 color=sns.color_palette("Set2")[0],
-                 fliersize=0)
-mimic_r_boxplot(ax)
-sns.swarmplot(data=data, x=x_var, y=y_var, 
-              edgecolor="black", linewidth=0.5, color=sns.color_palette("Set2")[0], ax=ax,
-              size=3, alpha=0.5)
-
-for loc in ['right', 'top']:
-    ax.spines[loc].set_visible(False)
-    
-ax.set_xlabel("Condensates observed")
-ax.set_ylabel("Maximum log2(tpm)\nGTEx RNA-seq")
-ax.set_title("Alternative isoforms\n\n")
-
-x = data[data[x_var] == False][y_var].values
-y = data[data[x_var] == True][y_var].values
-pval = permutation_test(x, y, num_permutations=10000, seed=2023)
-annotator = Annotator(ax=ax, pairs=[(False, True)], 
-                      data=data, x=x_var, 
-                      y=y_var, order=[False, True],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.2f}'.format(pval)])
-
-fig.savefig("../../figures/fig5/GTEx_expr_cond_alt.pdf", dpi="figure", bbox_inches="tight")
-
-
-# In[45]:
-
-
-df = pd.read_excel('../../data/external/Geiger-et-al_MCP_2012_Supplementary-Table-2.xlsx',
-                   skiprows=1)
-hek_avrg = df[['iBAQ HEK293_1', 'iBAQ HEK293_2', 'iBAQ HEK293_3']].mean(axis=1)
-print((hek_avrg > 0).sum(), 'proteins expressed in HEK293 proteome')
-hek_expressed_genes = set(df.loc[(hek_avrg > 0) & df['Gene Names'].notnull(),
-       'Gene Names'].str.split(';').explode().values)
-all_partners = set(y2h['db_gene_symbol'].unique())
-print('of {} PPI partners, {} are expressed in HEK293 cells'.format(len(all_partners), 
-      len(all_partners.intersection(hek_expressed_genes))))
-
-
-# In[46]:
-
-
-hek_prot = df[["Gene Names", "iBAQ HEK293_1", 'iBAQ HEK293_2', 'iBAQ HEK293_3']]
-hek_prot["HEK_avrg"] = hek_prot[['iBAQ HEK293_1', 'iBAQ HEK293_2', 'iBAQ HEK293_3']].mean(axis=1)
-hek_prot = hek_prot[~pd.isnull(hek_prot["Gene Names"])]
-print(len(hek_prot))
-
-
-# In[47]:
-
-
-hek_prot["gene_names_list"] = hek_prot["Gene Names"].str.split(';')
-hek_prot = hek_prot.explode("gene_names_list")
-hek_prot = hek_prot[["gene_names_list", "HEK_avrg"]]
-
-
-# In[48]:
-
-
-from data_loading import load_annotated_gencode_tfs
-tfs = load_annotated_gencode_tfs()
-
-
-# In[49]:
-
-
-hek_prot["is_tf"] = hek_prot["gene_names_list"].isin(list(tfs.keys()))
-hek_prot.is_tf.value_counts()
-
-
-# In[50]:
-
-
-fig = plt.figure(figsize=(1.5, 1.75))
-
-x_var = "is_tf"
-y_var = "HEK_avrg"
-ax = sns.boxplot(data=hek_prot, x=x_var, y=y_var,
-                 color=sns.color_palette("Set2")[0])
-mimic_r_boxplot(ax)
-
-for loc in ['right', 'top']:
-    ax.spines[loc].set_visible(False)
-    
-ax.set_xlabel("Is TF?")
-ax.set_ylabel("HEK expression\nproteomics data")
-ax.set_title("All detected genes\n\n")
-
-x = hek_prot[hek_prot[x_var] == False][y_var].values
-y = hek_prot[hek_prot[x_var] == True][y_var].values
-pval = permutation_test(x, y, num_permutations=10000, seed=2023)
-print(pval)
-annotator = Annotator(ax=ax, pairs=[(False, True)], 
-                      data=hek_prot, x=x_var, 
-                      y=y_var, order=[False, True],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.4f}'.format(pval)])
-
-fig.savefig("../../figures/fig5/HEK_proteomics_expr_TFs.pdf", dpi="figure", bbox_inches="tight")
-
-
-# In[51]:
-
-
-pairs = pairs.merge(hek_prot[["gene_names_list", "HEK_avrg"]], left_on="gene_symbol",
-                    right_on="gene_names_list", how="left")
-pairs.sample(5)
-
-
-# In[52]:
-
-
-fig = plt.figure(figsize=(1.75, 1.75))
-
-x_var = "condensates_observed_ref"
-y_var = "HEK_avrg"
-data = pairs[["clone_acc_ref", x_var, y_var]].drop_duplicates()
-ax = sns.boxplot(data=data, x=x_var, y=y_var,
-                 color=sns.color_palette("Set2")[0],
-                 fliersize=0)
-mimic_r_boxplot(ax)
-sns.swarmplot(data=data, x=x_var, y=y_var, 
-              edgecolor="black", linewidth=0.5, color=sns.color_palette("Set2")[0], ax=ax,
-              size=3, alpha=0.5)
-
-for loc in ['right', 'top']:
-    ax.spines[loc].set_visible(False)
-    
-ax.set_xlabel("Condensates observed")
-ax.set_ylabel("HEK expression\nproteomics")
-ax.set_title("Reference isoforms\n\n")
-
-x = data[data[x_var] == False][y_var].values
-x = [x for x in x if not pd.isnull(x)]
-print(len(x))
-y = data[data[x_var] == True][y_var].values
-y = [y for y in y if not pd.isnull(y)]
-print(len(y))
-pval = permutation_test(x, y, num_permutations=10000, seed=2023)
-print(pval)
-annotator = Annotator(ax=ax, pairs=[(False, True)], 
-                      data=pairs, x=x_var, 
-                      y=y_var, order=[False, True],)
-annotator.configure(loc='outside')
-annotator.annotate_custom_annotations(['P = {:.4f}'.format(pval)])
-
-fig.savefig("../../figures/fig5/HEK_proteomics_expr_cond.pdf", dpi="figure", bbox_inches="tight")
-
-
-# In[53]:
-
-
-pairs.HEK_Condensate_ref.value_counts()
-
-
-# In[54]:
-
-
-pairs[pairs["HEK_Condensate_ref"] == "CC"][["gene_symbol", "clone_acc_ref",
-                                            "clone_acc_alt", "condensates_observed_ref",
-                                            "condensates_observed_alt", "HEK_Condensate_ref",
-                                            "HEK_Condensate_alt", "condensate_cat"]].head(20)
-
-
-# In[55]:
+# In[35]:
 
 
 hpa = pd.read_table("../../data/external/HPA_subcellular_location.tsv", sep="\t")
@@ -1036,7 +665,7 @@ hpa["all_observed"] = hpa["Approved"].astype(str) + ";" + hpa["Enhanced"].astype
 hpa.head()
 
 
-# In[56]:
+# In[36]:
 
 
 def cytosolic_loc(row, col):
@@ -1058,53 +687,57 @@ hpa["cyto_observed"] = hpa.apply(cytosolic_loc, col="all_observed", axis=1)
 len(hpa[hpa["cyto_observed"] == True]["Gene name"].unique())
 
 
-# In[57]:
+# In[37]:
 
 
 hpa["cyto_observed_approved"] = hpa.apply(cytosolic_loc, col="Approved", axis=1)
 len(hpa[hpa["cyto_observed_approved"] == True]["Gene name"].unique())
 
 
-# In[58]:
+# In[38]:
 
 
-pairs = pairs.merge(hpa, left_on="gene_symbol", right_on="Gene name", how="left")
-pairs.head()
+pairs_hpa = pairs.merge(hpa, left_on="gene_symbol", right_on="Gene name", how="left")
+pairs_hpa.head()
 
 
-# In[59]:
+# In[39]:
 
 
-dd = pairs[["gene_symbol", "clone_acc_ref",
-            "condensates_observed_ref",
-            "HEK_Condensate_ref",
-            "Loc_Kaia_ref",
+pairs_hpa.localization_HEK_ref.value_counts()
+
+
+# In[40]:
+
+
+dd = pairs_hpa[["gene_symbol", "clone_acc_ref",
+            "localization_HEK_ref",
+            "localization_U2OS_ref",
             "Approved",
             "cyto_observed_approved",
             "all_observed",
             "cyto_observed"]].drop_duplicates()
 
-tot = dd.groupby("Loc_Kaia_ref")["clone_acc_ref"].agg("count").reset_index()
-cyto = dd[dd["cyto_observed"] == True].groupby("Loc_Kaia_ref")["clone_acc_ref"].agg("count").reset_index()
-cyto_perc = tot.merge(cyto, on="Loc_Kaia_ref")
-cyto_perc.columns = ["Loc_Kaia_ref", "tot", "cyto_observed"]
-cyto_perc["perc_cyto_observed"] = cyto_perc["cyto_observed"]/cyto_perc["tot"]*100
+percs = pd.DataFrame()
+for c in ["HEK", "U2OS"]:
+    tot = dd.groupby("localization_%s_ref" % c)["clone_acc_ref"].agg("count").reset_index()
+    cyto = dd[dd["cyto_observed"] == True].groupby(["localization_%s_ref" % c])["clone_acc_ref"].agg("count").reset_index()
+    cyto_perc = tot.merge(cyto, on="localization_%s_ref" % c)
+    cyto_perc.columns = ["localization_ref", "tot", "cyto_observed"]
+    cyto_perc["cell_line"] = c
+    cyto_perc["perc_cyto_observed"] = cyto_perc["cyto_observed"]/cyto_perc["tot"]*100
+    percs = percs.append(cyto_perc)
+
+percs
 
 
-tot = dd[~pd.isnull(dd["Approved"])].groupby("Loc_Kaia_ref")["clone_acc_ref"].agg("count").reset_index()
-cyto_app = dd[dd["cyto_observed_approved"] == True].groupby("Loc_Kaia_ref")["clone_acc_ref"].agg("count").reset_index()
-cyto_perc_app = tot.merge(cyto_app, on="Loc_Kaia_ref")
-cyto_perc_app.columns = ["Loc_Kaia_ref", "tot", "cyto_observed_approved"]
-cyto_perc_app["perc_cyto_observed_approved"] = cyto_perc_app["cyto_observed_approved"]/cyto_perc_app["tot"]*100
-
-
-# In[60]:
+# In[41]:
 
 
 fig = plt.figure(figsize=(1.5, 1.75))
 
-ax = sns.barplot(data=cyto_perc, x="Loc_Kaia_ref", y="perc_cyto_observed",
-                 color=sns.color_palette("Set2")[0])
+ax = sns.barplot(data=percs, x="localization_ref", y="perc_cyto_observed", hue="cell_line",
+                 palette=sns.color_palette("Set2"), order=["cytoplasm", "both", "nucleus"])
 
 for loc in ['right', 'top']:
     ax.spines[loc].set_visible(False)
@@ -1113,115 +746,364 @@ ax.set_xlabel("Subcellular localization\nin our assay")
 ax.set_ylabel("% where cytoplasmic loc.\nis observed in HPA")
 ax.set_title("Reference isoforms\n")
 
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+
 
 fig.savefig("../../figures/fig5/hpa.pdf", dpi="figure", bbox_inches="tight")
+
+
+# ## 7. examine how PDIs/PPIs/activ diffs correlate with condensate/loc diffs
+
+# In[42]:
+
+
+def Welchs_t_statistic(x, y):
+    denom = np.sqrt(x.var() / len(x) + y.var() / len(y))
+    return (x.mean() - y.mean()) / denom
+
+
+def permutation_test(x, y):
+    """
+    two-sided
+    """
+    nx = x.shape[0]
+    ny = y.shape[0]
+    #obs = x.mean() - y.mean()
+    obs = Welchs_t_statistic(x, y)
+    merged = np.concatenate([x, y])
+    rnd = []
+    np.random.seed(2023)
+    for _i in range(10000):
+        np.random.shuffle(merged)
+        #rnd.append(merged[:nx].mean() - merged[nx:].mean())
+        rnd.append(Welchs_t_statistic(merged[:nx], merged[nx:]))
+    return (min([sum(r >= obs for r in rnd), sum(r <= obs for r in rnd)]) / len(rnd)) * 2
+
+
+# In[43]:
+
+
+def condensate_violin_plot(var, cl, xvar='condensate_cat_merged', ub=1, bw=0.1,
+                           draw_mean=False, xlabel='Condensate formation between reference and alternative',
+                           set_axis=True, p_height=1.05, fig_height=2):
+    x = pairs.loc[(pairs[f'{xvar}_{cl}'] == 'No difference')
+                & pairs[var].notnull(), 
+                var].values
+    y = pairs.loc[(pairs[f'{xvar}_{cl}'] == 'Difference')
+                & pairs[var].notnull(), 
+                var].values
+
+    fig, ax = plt.subplots(1, 1)
+    fig.set_size_inches(w=2, h=fig_height)
+    sns.swarmplot(data=pairs,
+                        x=f'{xvar}_{cl}',
+                        y=var,
+                order=['No difference', 'Difference'],
+                color='white',
+                  edgecolor='black',
+                  linewidth=0.5,
+                ax=ax,
+                clip_on=False,
+                 size=4)
+    violinplot_reflected(data=pairs,
+                        x=f'{xvar}_{cl}',
+                        y=var,
+                        inner=None,
+                        ub=ub,
+                        bw_const=bw,
+                cut=0,
+                color=colors[0],
+                order=['No difference', 'Difference'],
+                ax=ax,
+                )
+    if draw_mean:
+        sns.pointplot(data=pairs,
+                      x=f'{xvar}_{cl}',
+                      y=var,
+                      )
+    ax.set_ylim(0, 1 if ub == 1 else None)
+
+    pval = permutation_test(x, y)
+    annotate_pval(ax, 0.1, 0.9, p_height, 0, p_height, pval, PAPER_FONTSIZE)
+    
+    # manually set left axis so it stops at 1.0
+    if set_axis == True:
+        ax.set_ylim((-0.1, 1.2))
+        ax.spines['left'].set_visible(False)
+        ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+        axes_to_data = ax.transAxes + ax.transData.inverted()
+        left_spine_in_data_coords = axes_to_data.transform((0, 0))
+        ax.plot([left_spine_in_data_coords[0], left_spine_in_data_coords[0]], [0, 1],
+                 color=ax.spines['bottom'].get_edgecolor(), linewidth=ax.spines['bottom'].get_linewidth())
+        ax.tick_params(axis='x', which='major', pad=-5)
+
+    ax.set_xlabel(xlabel)
+    for loc in ['right', 'top', 'bottom']:
+        ax.spines[loc].set_visible(False)
+    ax.set_ylabel(
+        {'activation_abs_fold_change_log2': '|Activation log2FC|',
+        'PPI_Jaccard_d': 'PPI Jaccard distance',
+        'PDI_Jaccard_d': 'PDI Jaccard distance',
+        }.get(var, var)
+ )
+    ax.set_xticklabels(['No difference\n(N = {})'.format(x.shape[0]),
+                        'Difference\n(N = {})'.format(y.shape[0])])
+    ax.xaxis.set_tick_params(length=0)
+    fig.savefig(f'../../figures/fig5/{var}-vs-{xvar}_{cl}_violinplot.pdf',
+                bbox_inches='tight')
+
+
+# In[44]:
+
+
+pairs.groupby(['condensate_or_loc_change_HEK', 
+               'condensate_or_loc_change_U2OS']).size()
+
+
+# In[45]:
+
+
+condensate_violin_plot(var='PPI_Jaccard_d', 
+                       cl='both', 
+                       xvar='condensate_or_loc_change', 
+                       draw_mean=False,
+                       xlabel='Condensate formation and localization\nbetween reference and alternative',
+                       )
+
+
+# In[46]:
+
+
+condensate_violin_plot(var='PDI_Jaccard_d',
+                       cl='both',
+                       xvar='condensate_or_loc_change',
+                       draw_mean=False,
+                       xlabel='Condensate formation and localization\nbetween reference and alternative',
+)
+
+
+# In[47]:
+
+
+pairs["activation_abs_fold_change_log2"] = np.abs(pairs["activation_fold_change_log2"])
+
+
+# In[48]:
+
+
+condensate_violin_plot(var='activation_abs_fold_change_log2', 
+                       cl='both',
+                       ub=1000,
+                       bw=0.5,
+                       xvar='condensate_or_loc_change',
+                       draw_mean=False,
+                       xlabel='Condensate formation and localization\nbetween reference and alternative',
+                       set_axis=False,
+                       p_height=7,
+                       fig_height=1.65,
+                       )
+
+
+# ## 8. PBX1 & FOXP2 vignettes
+
+# In[49]:
+
+
+tfs = load_annotated_TFiso1_collection()
+
+
+# In[50]:
+
+
+fig, ax = plt.subplots(figsize=(3.25, 2))
+
+tfs["PBX1"].exon_diagram(ax=ax)
+fig.savefig("../../figures/fig5/{}_exon_diagram.pdf".format("PBX1"), bbox_inches="tight", dpi="figure")
+
+
+# In[51]:
+
+
+fig, ax = plt.subplots(figsize=(3.25, 2))
+
+tfs["PBX1"].protein_diagram(ax=ax, only_cloned_isoforms=True)
+fig.savefig("../../figures/fig5/{}_protein_diagram.pdf".format("PBX1"), bbox_inches="tight", dpi="figure")
+
+
+# In[52]:
+
+
+y2h = load_y2h_isoform_data()
+m1h = load_m1h_activation_data(add_missing_data=True)
+
+
+# In[53]:
+
+
+tf = tfs["PBX1"]
+fig, ax = plt.subplots(1, 1, figsize=(2, 2))
+y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
+plt.savefig('../../figures/fig5/{}_y2h-profile.pdf'.format("PBX1"), bbox_inches='tight')
+
+
+# In[54]:
+
+
+fig, ax = plt.subplots(1, 1, figsize=(1, 0.5))
+
+df = m1h_activation_per_tf_gene_plot("PBX1", data=m1h, ax=ax, xlim=(0, 2.5))
+plt.savefig('../../figures/fig5/{}_m1h-profile.pdf'.format("PBX1"), bbox_inches='tight')
+
+
+# ## 9. NLS analysis
+
+# In[55]:
+
+
+# look at NLS and NES
+nls = pd.concat(tf.aa_feature_disruption(tf.cloned_reference_isoform.name) for tf in tfs.values())
+nls = nls.loc[nls['category'] == 'UniProt motif', :]
+nls['clone_acc_alt'] = nls['alt_iso'].map(
+    {iso.name: iso.clone_acc 
+     for tf in tfs.values() 
+     for iso in tf.cloned_isoforms}
+    )
+nls['type'] = nls['accession'].apply(lambda x: x.split('_')[0])
+nls['affected'] = (nls['deletion'] + nls['insertion'] + nls['frameshift']) > 0 
+pairs['NLS_affected'] = pairs['clone_acc_alt'].map(
+    nls.loc[nls['type'] == 'NLS', :]
+    .groupby('clone_acc_alt')
+    ['affected']
+    .any()
+    )
+pairs['NES_affected'] = pairs['clone_acc_alt'].map(
+    nls.loc[nls['type'] == 'NES', :]
+    .groupby('clone_acc_alt')
+    ['affected']
+    .any()
+    )
+
+
+# In[56]:
+
+
+pairs['NLS_affected'].value_counts()
+
+
+# In[57]:
+
+
+pairs.loc[pairs['NLS_affected'].notnull(), 'gene_symbol'].value_counts()
+
+
+# In[58]:
+
+
+pairs.loc[pairs['NES_affected'].notnull(), 'gene_symbol'].value_counts()
+
+
+# In[59]:
+
+
+pairs['NES_affected'].value_counts()
+
+
+# In[60]:
+
+
+pairs.loc[pairs['NLS_affected'].notnull(),
+          ['clone_acc_alt',
+           'NLS_affected',
+           'NES_affected',
+           'HEK_Condensate_ref', 'HEK_Condensate_alt',
+           'condensate_cat_HEK',
+           'localization_HEK_ref', 'localization_HEK_alt']].sort_values('NLS_affected')
 
 
 # In[61]:
 
 
-fig = plt.figure(figsize=(1.5, 1.75))
-
-ax = sns.barplot(data=cyto_perc_app, x="Loc_Kaia_ref", y="perc_cyto_observed_approved",
-                 color=sns.color_palette("Set2")[0])
-
-for loc in ['right', 'top']:
-    ax.spines[loc].set_visible(False)
-    
-ax.set_xlabel("Subcellular localization\nin our assay")
-ax.set_ylabel("% where cytoplasmic loc.\nis approved in HPA")
-ax.set_title("Reference isoforms\n")
-
-
-fig.savefig("../../figures/fig5/hpa_approved.pdf", dpi="figure", bbox_inches="tight")
+pairs.loc[pairs['NLS_affected'].notnull(), ].groupby(['NLS_affected', 'localization_cat_HEK']).size()
 
 
 # In[62]:
 
 
-cyto_perc
+pairs.loc[pairs['NLS_affected'].notnull(), ].groupby(['NLS_affected', 'localization_cat_U2OS']).size()
 
 
 # In[63]:
 
 
-cyto_perc_app
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(w=1.5, h=0.6)
+
+data = pd.concat([(pairs.loc[pairs['localization_cat_HEK'] == x, 'NLS_affected'].value_counts(dropna=False)
+                    .sort_index()
+                    .to_frame()
+                    .T)
+                    for x in ['No difference', 'Difference']])
+data.columns = data.columns.map({np.nan: 'No annotated NLS',
+                             False: 'NLS preserved',
+                             True: 'NLS removed',
+                             })
+print(data)
+data.plot.barh(stacked=True,
+              ax=ax,
+              color=[colors[1], colors[0], "grey"])
+
+for pos in ['top', 'left', 'right']:
+    ax.spines[pos].set_visible(False)
+ax.yaxis.set_tick_params(length=0)
+
+ax.set_yticklabels(['No difference', 'Difference'] * 2)
+ax.set_ylabel('HEK293T\nlocalization')
+ax.set_xticks(range(0, 81, 20))
+ax.set_xticks(range(0, 81, 10), minor=True)
+ax.set_xlabel('Alternative isoforms')
+ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), frameon=False)
+
+
+
+fig.savefig('../../figures/fig5/HEK-NLS-annotation_stacked-bar.pdf',
+            bbox_inches='tight')
 
 
 # In[64]:
 
 
-pairs[["clone_acc_ref", "cyto_observed"]].drop_duplicates().cyto_observed.value_counts()
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(w=1.5, h=0.6)
+
+data = pd.concat([(pairs.loc[pairs['localization_cat_U2OS'] == x, 'NLS_affected'].value_counts(dropna=False)
+                    .sort_index()
+                    .to_frame()
+                    .T)
+                    for x in ['No difference', 'Difference']])
+data.columns = data.columns.map({np.nan: 'No annotated NLS',
+                             False: 'NLS preserved',
+                             True: 'NLS removed',
+                             })
+print(data)
+data.plot.barh(stacked=True,
+              ax=ax,
+              color=[colors[1], colors[0], "grey"])
+
+for pos in ['top', 'left', 'right']:
+    ax.spines[pos].set_visible(False)
+ax.yaxis.set_tick_params(length=0)
+
+ax.set_yticklabels(['No difference', 'Difference'] * 2)
+ax.set_ylabel('U2OS\nlocalization')
+ax.set_xticks(range(0, 81, 20))
+ax.set_xticks(range(0, 81, 10), minor=True)
+ax.set_xlabel('Alternative isoforms')
+ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), frameon=False)
 
 
-# In[65]:
 
-
-pairs[pairs["Loc_Kaia_ref"] == "cyto"][["gene_symbol", "clone_acc_ref",
-                                            "condensates_observed_ref",
-                                            "HEK_Condensate_ref",
-                                            "all_observed",
-                                            "cyto_observed"]].drop_duplicates().head(20)
-
-
-# In[66]:
-
-
-dd[dd["HEK_Condensate_ref"] == "CC"][["gene_symbol", "clone_acc_ref",
-                                            "condensates_observed_ref",
-                                            "HEK_Condensate_ref",
-                                            "all_observed",
-                                            "cyto_observed"]].drop_duplicates().head(20)
-
-
-# In[67]:
-
-
-pairs["HEK_Condensate_ref_na"] = pairs["HEK_Condensate_ref"].fillna("none")
-
-
-# In[68]:
-
-
-fig = plt.figure(figsize=(1.75, 1.75))
-
-x_var = "HEK_Condensate_ref_na"
-y_var = "max_dev_gene"
-ax = sns.boxplot(data=pairs, x=x_var, y=y_var,
-                 color=sns.color_palette("Set2")[0],
-                 fliersize=0)
-mimic_r_boxplot(ax)
-sns.swarmplot(data=pairs, x=x_var, y=y_var, 
-              edgecolor="black", linewidth=0.5, color=sns.color_palette("Set2")[0], ax=ax,
-              size=3, alpha=0.5)
-
-for loc in ['right', 'top']:
-    ax.spines[loc].set_visible(False)
-    
-ax.set_xlabel("Condensate type")
-ax.set_ylabel("Maximum log2(tpm)\nDevelopmental RNA-seq")
-ax.set_title("Reference isoforms\n\n")
-
-
-# In[69]:
-
-
-pairs[pairs["gene_symbol"] == "PPARG"][["clone_acc_ref", "clone_acc_alt", "HEK_Condensate_ref", 
-                                        "HEK_Condensate_alt", "condensate_cat_detailed"]]
-
-
-# In[70]:
-
-
-pairs.columns
-
-
-# In[71]:
-
-
-pairs[pairs["condensate_cat"] == "LOC"][["gene_symbol", "clone_acc_ref", "clone_acc_alt", "family",
-                                         "PPI_jaccard", "PDI_jaccard", "activation_fold_change_log2",
-                                         "condensate_cat_detailed"]]
+fig.savefig('../../figures/fig5/U2OS-NLS-annotation_stacked-bar.pdf',
+            bbox_inches='tight')
 
 
 # In[ ]:
