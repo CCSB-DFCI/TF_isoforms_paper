@@ -17,6 +17,16 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
     text(0.5, 0.5, txt, cex = cex.cor * r * 10)
 }
 
+# writing the design files for GEO submission
+write.table(pbm_8x60k_v1@design, file=file.path("../../../data/internal/pbms/gpr_geo/pbm_8x60k_v1.txt"), 
+            row.names=FALSE,
+            quote=FALSE, sep="\t")
+write.table(broom::tidy(refcy3_8x60k_v1), file=file.path("../../../data/internal/pbms/gpr_geo/refcy3_8x60k_v1.txt"), 
+            row.names=FALSE,
+            quote=FALSE, sep="\t")
+
+head(refcy3_8x60k_v1)
+
 tf <- "CREB1"
 
 motif <- "CGTCA"
