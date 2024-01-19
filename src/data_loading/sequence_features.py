@@ -191,7 +191,7 @@ def load_pfam_domains_horfeome():
         pandas.DataFrame: ORFeome annotated with Pfam domains
 
     """
-    filepath = Path("../data/internal/horfeome_hmmscan_pfam.domtab")
+    filepath = Path("%s/internal/horfeome_hmmscan_pfam.domtab" % DATA_DIR)
     evalue_cutoff = 1e-5
     pfam = read_hmmer3_domtab(filepath)
     pfam = pfam.loc[

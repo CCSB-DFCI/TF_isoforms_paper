@@ -224,12 +224,6 @@ means_dev = (df_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + '
            .mean())
 
 
-# In[ ]:
-
-
-
-
-
 # ## 2. categorize based on assay data
 
 # ### M1H
