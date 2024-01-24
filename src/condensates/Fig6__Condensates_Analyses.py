@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Figure 5: Condensates Analyses
+# # Figure 6: Condensates Analyses
 
 # In[1]:
 
@@ -57,24 +57,6 @@ np.random.seed(2023)
 # In[4]:
 
 
-# def permutation_test(x, y):
-#     """
-#     two-sided
-#     """
-#     nx = x.shape[0]
-#     ny = y.shape[0]
-#     obs = x.mean() - y.mean()
-#     merged = np.concatenate([x, y])
-#     rnd = []
-#     for _i in range(100000):
-#         np.random.shuffle(merged)
-#         rnd.append(merged[:nx].mean() - merged[nx:].mean())
-#     return (min([sum(r >= obs for r in rnd), sum(r <= obs for r in rnd)]) / len(rnd)) * 2
-
-
-# In[5]:
-
-
 def permutation_test(sample1, sample2, num_permutations=1000, seed=None, alternative='two-sided'):
     """
     Conduct a permutation test on two samples.
@@ -128,7 +110,7 @@ def permutation_test(sample1, sample2, num_permutations=1000, seed=None, alterna
 
 # ## 1. import data
 
-# In[6]:
+# In[5]:
 
 
 pairs, df = load_condensate_data()
@@ -136,7 +118,7 @@ pairs, df = load_condensate_data()
 
 # ## 2. summary of data
 
-# In[7]:
+# In[6]:
 
 
 print('successfully tested {} isoforms of {} TF genes'.format(df.index.nunique(),
@@ -159,14 +141,14 @@ for cl in ['HEK', 'U2OS']:
     print()
 
 
-# In[8]:
+# In[7]:
 
 
 colors = met_brewer.met_brew(name="Hokusai3", n=5, brew_type="discrete")
 sns.palplot(colors)
 
 
-# In[9]:
+# In[8]:
 
 
 f = pd.concat(
@@ -179,14 +161,14 @@ f = f / f.sum(axis=1).iloc[0] * 100
 f.head()
 
 
-# In[10]:
+# In[9]:
 
 
 f.columns = ["Same localization &\ncondensate formation", "∆ localization",
              "∆ condensate formation", "∆ both"]
 
 
-# In[11]:
+# In[10]:
 
 
 pal = {"Same localization &\ncondensate formation": "grey",
@@ -196,7 +178,7 @@ pal = {"Same localization &\ncondensate formation": "grey",
 sns.palplot(pal.values())
 
 
-# In[12]:
+# In[11]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -219,7 +201,7 @@ fig.savefig('../../figures/fig5/localization-and-condensate-difference_stacked-b
 
 # ## 2. ribbon plots to show localization changes
 
-# In[13]:
+# In[12]:
 
 
 # NOTE: I put this code at the end because it changes the matplotlib defaults
@@ -228,13 +210,13 @@ from pySankey import sankey
 import matplotlib.font_manager as font_manager
 
 
-# In[14]:
+# In[13]:
 
 
 pairs.loc[pairs['localization_U2OS_alt'].notnull(), 'localization_U2OS_ref']
 
 
-# In[15]:
+# In[14]:
 
 
 tmp = pairs.copy()
@@ -246,7 +228,7 @@ tmp["loc_HEK_alt_srt"] = pd.Categorical(tmp['localization_HEK_alt'], ['cytoplasm
 tmp = tmp.sort_values(by='loc_U2OS_ref_srt')
 
 
-# In[16]:
+# In[15]:
 
 
 sankey.sankey(left=tmp.loc[tmp['localization_U2OS_alt'].notnull(), 'localization_U2OS_ref'],
@@ -280,13 +262,13 @@ plt.savefig('../../figures/fig5/localization_ref-vs-alt_U2OS_Sankey.pdf',
             bbox_inches='tight')
 
 
-# In[17]:
+# In[16]:
 
 
 tmp = tmp.sort_values(by='loc_HEK_ref_srt')
 
 
-# In[18]:
+# In[17]:
 
 
 sankey.sankey(left=tmp.loc[tmp['localization_HEK_alt'].notnull(), 'localization_HEK_ref'],
@@ -320,7 +302,7 @@ plt.savefig('../../figures/fig5/localization_ref-vs-alt_HEK_Sankey.pdf',
             bbox_inches='tight')
 
 
-# In[19]:
+# In[18]:
 
 
 # reset matplotlib params
@@ -333,7 +315,7 @@ fontsize = PAPER_FONTSIZE
 
 # ## 3. correlation plots to show agreement between cell lines
 
-# In[20]:
+# In[19]:
 
 
 tbl = (df.groupby(['localization_HEK', 'localization_U2OS'])
@@ -357,7 +339,7 @@ ax.set_yticklabels([x.get_text().capitalize() for x in ax.get_yticklabels()])
 fig.savefig('../../figures/fig5/localization_HEK-vs-U2OS_diff-cat_circle-plot.pdf', bbox_inches='tight')
 
 
-# In[21]:
+# In[20]:
 
 
 tbl = (pairs.groupby(['condensate_cat_only_detailed_HEK', 'condensate_cat_only_detailed_U2OS'])
@@ -379,9 +361,32 @@ ax.set_xlabel('HEK293T')
 fig.savefig('../../figures/fig5/condensate_only_detailed_HEK-vs-U2OS_diff-vs-no_circle-plot.pdf', bbox_inches='tight')
 
 
-# ## 4. charts to show distribution of changes
+# In[21]:
+
+
+# to do fix the typo in alternative gains
+pairs.condensate_cat_only_detailed_HEK.value_counts()
+
 
 # In[22]:
+
+
+num_consistent = pairs[pairs["condensate_cat_only_detailed_HEK"] == pairs["condensate_cat_only_detailed_U2OS"]]
+print("NUM REF/ALT PAIRS THAT SHOW CONSISTENT RESULTS BETWEEN HEK/U2OS: %s" % len(num_consistent))
+print("PERCENT REF/ALT PAIRS THAT SHOW CONSISTENT RESULTS BETWEEN HEK/U2OS: %s" % (len(num_consistent)/len(pairs)*100))
+
+
+# In[23]:
+
+
+num_consistent_diff = num_consistent[num_consistent["condensate_cat_only_detailed_HEK"].isin(["Alternative loses condensate", "Alernative gains condensate"])]
+print("NUM REF/ALT PAIRS THAT SHOW DIFFS IN CONDENSATES, CONSISTENTLY: %s" % len(num_consistent_diff))
+print("PERCENT REF/ALT PAIRS THAT SHOW DIFFS IN CONDENSATES, CONSISTENTLY: %s" % (len(num_consistent_diff)/len(pairs)*100))
+
+
+# ## 4. charts to show distribution of changes
+
+# In[24]:
 
 
 def reword_for_pie_chart(row, col):
@@ -400,13 +405,13 @@ df["HEK_Condensate_rw"] = df.apply(reword_for_pie_chart, axis=1, col="HEK_Conden
 df["U2OS_Condensate_rw"] = df.apply(reword_for_pie_chart, axis=1, col="U2OS_Condensate")
 
 
-# In[23]:
+# In[25]:
 
 
 df.loc[df['is_cloned_reference'], f'{cl}_Condensate_rw'].fillna('no\ncondensates').value_counts().sort_index()
 
 
-# In[24]:
+# In[26]:
 
 
 fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(4.5, 3))
@@ -439,7 +444,7 @@ fig.savefig('../../figures/fig5/condensate-localisation_ref-vs-alt_pie.pdf',
             bbox_inches='tight')
 
 
-# In[25]:
+# In[27]:
 
 
 f = pd.concat(
@@ -469,7 +474,7 @@ fig.savefig('../../figures/fig5/condensate-difference_stacked-bar.pdf',
 
 # ## 5. examine how RNA-seq expression correlates with condensate formation
 
-# In[26]:
+# In[28]:
 
 
 from data_loading import (load_annotated_TFiso1_collection,
@@ -477,7 +482,7 @@ from data_loading import (load_annotated_TFiso1_collection,
                           load_gtex_remapped)
 
 
-# In[27]:
+# In[29]:
 
 
 df_gtex, metadata_gtex, genes_gtex = load_gtex_remapped()
@@ -492,7 +497,7 @@ metadata_gtex = metadata_gtex.loc[~metadata_gtex['body_site'].isin(exclusion_lis
 means_gtex = df_gtex.groupby(df_gtex.columns.map(metadata_gtex['body_site']), axis=1).mean()
 
 
-# In[28]:
+# In[30]:
 
 
 df_dev, metadata_dev, genes_dev = load_developmental_tissue_expression_remapped()
@@ -524,7 +529,7 @@ means_dev = (df_dev.groupby(df_dev.columns.map(metadata_dev['organism_part'] + '
            .mean())
 
 
-# In[29]:
+# In[31]:
 
 
 means_gtex["max_gtex"] = means_gtex.max(axis=1)
@@ -539,7 +544,7 @@ max_tpm = max_tpm.reset_index()
 max_tpm["clone_acc"] = max_tpm.UID.str.split(" ", expand=True)[0]
 
 
-# In[30]:
+# In[32]:
 
 
 max_tpm["gene_symbol"] = max_tpm["clone_acc"].str.split("|", expand=True)[0]
@@ -548,7 +553,7 @@ max_tpm_gene = max_tpm_gene.groupby("gene_symbol")[["max_gtex", "max_dev"]].agg(
 max_tpm_gene.columns = ["gene_symbol", "max_gtex_gene", "max_dev_gene"]
 
 
-# In[31]:
+# In[33]:
 
 
 pairs_exp = pairs.merge(max_tpm[["clone_acc", "max_gtex", 
@@ -564,7 +569,7 @@ pairs_exp = pairs_exp.merge(max_tpm_gene, on="gene_symbol")
 pairs_exp.head()
 
 
-# In[32]:
+# In[34]:
 
 
 to_plot = pd.melt(pairs_exp[["gene_symbol", "clone_acc_ref", "clone_acc_alt",
@@ -577,7 +582,7 @@ print(len(to_plot))
 to_plot.head()
 
 
-# In[33]:
+# In[35]:
 
 
 fig = plt.figure(figsize=(1.75, 1.75))
@@ -616,7 +621,7 @@ ax.set_ylim((-0.1, 5))
 fig.savefig("../../figures/fig5/Dev_expr_cond.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[34]:
+# In[36]:
 
 
 fig = plt.figure(figsize=(1.75, 1.75))
@@ -657,7 +662,7 @@ fig.savefig("../../figures/fig5/GTEx_expr_cond.pdf", dpi="figure", bbox_inches="
 
 # ## 6. examine how our localizations compare to HPA
 
-# In[35]:
+# In[37]:
 
 
 hpa = pd.read_table("../../data/external/HPA_subcellular_location.tsv", sep="\t")
@@ -665,7 +670,7 @@ hpa["all_observed"] = hpa["Approved"].astype(str) + ";" + hpa["Enhanced"].astype
 hpa.head()
 
 
-# In[36]:
+# In[38]:
 
 
 def cytosolic_loc(row, col):
@@ -687,27 +692,27 @@ hpa["cyto_observed"] = hpa.apply(cytosolic_loc, col="all_observed", axis=1)
 len(hpa[hpa["cyto_observed"] == True]["Gene name"].unique())
 
 
-# In[37]:
+# In[39]:
 
 
 hpa["cyto_observed_approved"] = hpa.apply(cytosolic_loc, col="Approved", axis=1)
 len(hpa[hpa["cyto_observed_approved"] == True]["Gene name"].unique())
 
 
-# In[38]:
+# In[40]:
 
 
 pairs_hpa = pairs.merge(hpa, left_on="gene_symbol", right_on="Gene name", how="left")
 pairs_hpa.head()
 
 
-# In[39]:
+# In[41]:
 
 
 pairs_hpa.localization_HEK_ref.value_counts()
 
 
-# In[40]:
+# In[42]:
 
 
 dd = pairs_hpa[["gene_symbol", "clone_acc_ref",
@@ -731,7 +736,7 @@ for c in ["HEK", "U2OS"]:
 percs
 
 
-# In[41]:
+# In[43]:
 
 
 fig = plt.figure(figsize=(1.5, 1.75))
@@ -754,7 +759,7 @@ fig.savefig("../../figures/fig5/hpa.pdf", dpi="figure", bbox_inches="tight")
 
 # ## 7. examine how PDIs/PPIs/activ diffs correlate with condensate/loc diffs
 
-# In[42]:
+# In[44]:
 
 
 def Welchs_t_statistic(x, y):
@@ -780,7 +785,7 @@ def permutation_test(x, y):
     return (min([sum(r >= obs for r in rnd), sum(r <= obs for r in rnd)]) / len(rnd)) * 2
 
 
-# In[43]:
+# In[45]:
 
 
 def condensate_violin_plot(var, cl, xvar='condensate_cat_merged', ub=1, bw=0.1,
@@ -853,14 +858,14 @@ def condensate_violin_plot(var, cl, xvar='condensate_cat_merged', ub=1, bw=0.1,
                 bbox_inches='tight')
 
 
-# In[44]:
+# In[46]:
 
 
 pairs.groupby(['condensate_or_loc_change_HEK', 
                'condensate_or_loc_change_U2OS']).size()
 
 
-# In[45]:
+# In[47]:
 
 
 condensate_violin_plot(var='PPI_Jaccard_d', 
@@ -871,7 +876,7 @@ condensate_violin_plot(var='PPI_Jaccard_d',
                        )
 
 
-# In[46]:
+# In[48]:
 
 
 condensate_violin_plot(var='PDI_Jaccard_d',
@@ -882,13 +887,13 @@ condensate_violin_plot(var='PDI_Jaccard_d',
 )
 
 
-# In[47]:
+# In[49]:
 
 
 pairs["activation_abs_fold_change_log2"] = np.abs(pairs["activation_fold_change_log2"])
 
 
-# In[48]:
+# In[50]:
 
 
 condensate_violin_plot(var='activation_abs_fold_change_log2', 
@@ -906,13 +911,13 @@ condensate_violin_plot(var='activation_abs_fold_change_log2',
 
 # ## 8. PBX1 & FOXP2 vignettes
 
-# In[49]:
+# In[51]:
 
 
 tfs = load_annotated_TFiso1_collection()
 
 
-# In[50]:
+# In[52]:
 
 
 fig, ax = plt.subplots(figsize=(3.25, 2))
@@ -921,7 +926,7 @@ tfs["PBX1"].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig5/{}_exon_diagram.pdf".format("PBX1"), bbox_inches="tight", dpi="figure")
 
 
-# In[51]:
+# In[53]:
 
 
 fig, ax = plt.subplots(figsize=(3.25, 2))
@@ -930,14 +935,14 @@ tfs["PBX1"].protein_diagram(ax=ax, only_cloned_isoforms=True)
 fig.savefig("../../figures/fig5/{}_protein_diagram.pdf".format("PBX1"), bbox_inches="tight", dpi="figure")
 
 
-# In[52]:
+# In[54]:
 
 
 y2h = load_y2h_isoform_data()
 m1h = load_m1h_activation_data(add_missing_data=True)
 
 
-# In[53]:
+# In[55]:
 
 
 tf = tfs["PBX1"]
@@ -946,7 +951,7 @@ y2h_ppi_per_tf_gene_plot(tf.name, ax=ax, data=y2h)
 plt.savefig('../../figures/fig5/{}_y2h-profile.pdf'.format("PBX1"), bbox_inches='tight')
 
 
-# In[54]:
+# In[56]:
 
 
 fig, ax = plt.subplots(1, 1, figsize=(1, 0.5))
@@ -957,7 +962,7 @@ plt.savefig('../../figures/fig5/{}_m1h-profile.pdf'.format("PBX1"), bbox_inches=
 
 # ## 9. NLS analysis
 
-# In[55]:
+# In[57]:
 
 
 # look at NLS and NES
@@ -984,31 +989,31 @@ pairs['NES_affected'] = pairs['clone_acc_alt'].map(
     )
 
 
-# In[56]:
+# In[58]:
 
 
 pairs['NLS_affected'].value_counts()
 
 
-# In[57]:
+# In[59]:
 
 
 pairs.loc[pairs['NLS_affected'].notnull(), 'gene_symbol'].value_counts()
 
 
-# In[58]:
+# In[60]:
 
 
 pairs.loc[pairs['NES_affected'].notnull(), 'gene_symbol'].value_counts()
 
 
-# In[59]:
+# In[61]:
 
 
 pairs['NES_affected'].value_counts()
 
 
-# In[60]:
+# In[62]:
 
 
 pairs.loc[pairs['NLS_affected'].notnull(),
@@ -1020,19 +1025,19 @@ pairs.loc[pairs['NLS_affected'].notnull(),
            'localization_HEK_ref', 'localization_HEK_alt']].sort_values('NLS_affected')
 
 
-# In[61]:
+# In[63]:
 
 
 pairs.loc[pairs['NLS_affected'].notnull(), ].groupby(['NLS_affected', 'localization_cat_HEK']).size()
 
 
-# In[62]:
+# In[64]:
 
 
 pairs.loc[pairs['NLS_affected'].notnull(), ].groupby(['NLS_affected', 'localization_cat_U2OS']).size()
 
 
-# In[63]:
+# In[65]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1069,7 +1074,7 @@ fig.savefig('../../figures/fig5/HEK-NLS-annotation_stacked-bar.pdf',
             bbox_inches='tight')
 
 
-# In[64]:
+# In[66]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1104,6 +1109,30 @@ ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), frameon=False)
 
 fig.savefig('../../figures/fig5/U2OS-NLS-annotation_stacked-bar.pdf',
             bbox_inches='tight')
+
+
+# ## 10. make supp table
+
+# In[67]:
+
+
+supp_conds = pairs.copy()
+supp_conds["clone_id_ref"] = supp_conds.clone_acc_ref.apply(lambda x: x.split('|')[0] + '-' + x.split('|')[1].split('/')[0])
+supp_conds["clone_id_alt"] = supp_conds.clone_acc_alt.apply(lambda x: x.split('|')[0] + '-' + x.split('|')[1].split('/')[0])
+supp_conds = supp_conds[["gene_symbol", "clone_id_ref", "clone_id_alt", "condensate_cat_only_detailed_HEK",
+                         "condensate_cat_only_detailed_U2OS", "localization_HEK_ref", "localization_HEK_alt",
+                         "localization_U2OS_ref", "localization_U2OS_alt"]]
+supp_conds.columns = ["gene_symbol", "clone_id_ref", "clone_id_alt", "condensates_ref-v-alt_HEK",
+                      "condensates_ref-v-alt_U2OS", "localization_ref_HEK", "localization_alt_HEK",
+                      "localization_ref_U2OS", "localization_alt_U2OS"]
+print(len(supp_conds))
+supp_conds.head()
+
+
+# In[68]:
+
+
+supp_conds.to_csv("../../supp/SuppTable_Condensates.txt", sep="\t", index=False)
 
 
 # In[ ]:
