@@ -10,11 +10,17 @@ import matplotlib as mpl
 import met_brewer
 import pandas as pd
 import numpy as np
+import os
 import seaborn as sns
+import subprocess
 import sys
+import tqdm
 
 from matplotlib import pyplot as plt
 from scipy import stats
+from pathlib import Path
+from Bio.PDB.DSSP import make_dssp_dict
+from Bio.Data.IUPACData import protein_letters_3to1
 
 # import utils
 sys.path.append("../")
@@ -30,8 +36,14 @@ from data_loading import (load_annotated_TFiso1_collection,
                           load_full_y2h_data_including_controls,
                           load_ref_vs_alt_isoforms_table,
                           load_PDI_luciferase_validation_experiment,
-                          load_n2h_ppi_validation_data)
-from plotting import mimic_r_boxplot, validation_titration_plot, validation_plot
+                          load_n2h_ppi_validation_data,
+                          load_Y1H_DNA_bait_sequences,
+                          load_ppi_partner_categories)
+from plotting import (mimic_r_boxplot, 
+                      validation_titration_plot, 
+                      validation_plot, 
+                      violinplot_reflected, 
+                      annotate_pval)
 
 
 # In[2]:
@@ -82,23 +94,9 @@ len(genc_tfs)
 len(clone_tfs)
 
 
-# In[8]:
-
-
-# check that we're using the most up-to-date clone annotations
-clone_tfs['ZIC3'].exon_diagram()
-
-
-# In[9]:
-
-
-# check that we're using the most up-to-date clone annotations
-clone_tfs['HSFY1'].exon_diagram()
-
-
 # ## 2. count number of splicing categories across gencode and cloned TFs
 
-# In[10]:
+# In[8]:
 
 
 def count_splicing_types(tfs, index):
@@ -147,36 +145,36 @@ def count_splicing_types(tfs, index):
             tot += 1
 
     df = pd.DataFrame.from_dict({"alt. N-terminal": [alt_n], "alt. C-terminal": [alt_c],
-                                      "alt. internal exon": [alt_int], "alt. 5' splice site": [alt_5ss],
-                                      "alt. 3' splice site": [alt_3ss], "exon skipping": [exon_sk],
-                                      "mutually exclusive exons": [mut_ex], "intron retention": [intron_ret],
-                                      "total": tot})
+                              "alt. internal exon": [alt_int], "alt. 5' splice site": [alt_5ss],
+                              "alt. 3' splice site": [alt_3ss], "exon skipping": [exon_sk],
+                              "mutually exclusive exons": [mut_ex], "intron retention": [intron_ret],
+                              "total": tot})
     df.index = [index]
     return df
 
 
-# In[11]:
+# In[9]:
 
 
 genc_df = count_splicing_types(genc_tfs, "gencode")
 genc_df
 
 
-# In[12]:
+# In[10]:
 
 
 clone_df = count_splicing_types(clone_tfs, "TFIso1.0")
 clone_df
 
 
-# In[13]:
+# In[11]:
 
 
 novel_df = count_splicing_types(clone_tfs, "TFIso1.0 - novel")
 novel_df
 
 
-# In[14]:
+# In[12]:
 
 
 splicing = genc_df.append(clone_df).append(novel_df)
@@ -186,20 +184,20 @@ splicing_perc = splicing.divide(splicing_tot, axis='rows').reset_index()
 splicing_perc
 
 
-# In[15]:
+# In[13]:
 
 
 splicing_perc_melt = pd.melt(splicing_perc, id_vars="index")
 
 
-# In[16]:
+# In[14]:
 
 
 colors = met_brewer.met_brew(name="VanGogh2")
 sns.palplot(colors)
 
 
-# In[17]:
+# In[15]:
 
 
 fig = plt.figure(figsize=(2.25, 1.5))
@@ -224,7 +222,7 @@ fig.savefig("../../figures/fig2/splicing_cats.pdf", dpi="figure", bbox_inches="t
 # 
 # using the same dummy, downsampled data as in fig1 for consistency
 
-# In[18]:
+# In[16]:
 
 
 status_map = {}
@@ -255,10 +253,24 @@ status_map = pd.DataFrame.from_dict(status_map, orient="index")
 status_map
 
 
+# In[17]:
+
+
+vc = pd.DataFrame(status_map.status.value_counts())
+vc
+
+
+# In[18]:
+
+
+print("NUM OF ISOFORMS IN TF1.0 THAT MATCH GENCODE ANNOTATIONS: %s" % (vc.loc[["alt", "ref"]]["status"].sum()))
+
+
 # In[19]:
 
 
-status_map.status.value_counts()
+print("NUM OF ISOFORMS IN TF1.0 THAT ARE NOVEL: %s" % (vc.loc["novel"]["status"]))
+print("PERCENT OF ISOFORMS IN TF1.0 THAT ARE NOVEL: %s" % (vc.loc["novel"]["status"]/vc["status"].sum()*100))
 
 
 # In[20]:
@@ -669,20 +681,26 @@ clone_vc["source"] = "TFIso1.0"
 y1h = load_y1h_pdi_data()
 y1h['family'] = y1h['gene_symbol'].map(fam)
 y1h['family_renamed'] = y1h.apply(rename_family, axis=1)
+
+# limit to only clones considered in tf1.0, e.g. anything for a tf >1 iso
+y1h = y1h[y1h["clone_acc"].isin(status_map["clone_acc"])]
+
 y1h.sample(5)
 
 
 # In[47]:
 
 
-baits = [x for x in y1h.columns if x not in ['gene_symbol', 'clone_acc', 'family', 'family_renamed']]
+baits = [x for x in y1h.columns if x not in ['gene_symbol', 'clone_acc', 'family', 'family_renamed',
+                                             'any_true', 'all_na']]
+print("NUMBER OF BAITS TESTED IN Y1H: %s" % len(baits))
+print("number of new baits Anna's paired screen added: %s" % len([x for x in baits if not x.startswith("HS") and not x.startswith("MUT")]))
 y1h['any_true'] = y1h[baits].sum(axis=1)
 y1h['all_na'] = y1h[baits].isnull().values.all()
 
 # remove any rows with allna values
-print(len(y1h))
 y1h = y1h[~y1h['all_na']]
-print(len(y1h))
+print("NUMBER OF ISOS SUCCESSFULLY TESTED IN Y1H: %s" % len(y1h))
 
 
 # In[48]:
@@ -707,6 +725,9 @@ y1h_any_vc["source"] = "Y1H (≥1 PDI)"
 y2h = load_y2h_isoform_data(require_at_least_one_ppi_per_isoform=False)
 y2h['family'] = y2h['ad_gene_symbol'].map(fam)
 y2h['family_renamed'] = y2h.apply(rename_family, axis=1)
+
+# limit to only clones considered in tf1.0, e.g. anything for a tf >1 iso
+y2h = y2h[y2h["ad_clone_acc"].isin(status_map["clone_acc"])]
 
 # remove any rows with na values
 print(len(y2h))
@@ -737,10 +758,21 @@ m1h = load_m1h_activation_data()
 m1h['M1H_mean'] = m1h[['M1H_rep1', 'M1H_rep2', 'M1H_rep3']].mean(axis=1)
 m1h['family'] = m1h['gene_symbol'].map(fam)
 m1h['family_renamed'] = m1h.apply(rename_family, axis=1)
+
+# limit to only clones considered in tf1.0, e.g. anything for a tf >1 iso
+m1h = m1h[m1h["clone_acc"].isin(status_map["clone_acc"])]
+
 m1h.sample(5)
 
 
 # In[54]:
+
+
+print("NUM ISOS TESTED IN M1H: %s" % (len(m1h[~pd.isnull(m1h["M1H_mean"])].clone_acc.unique())))
+print("NUM GENES TESTED IN M1H: %s" % (len(m1h[~pd.isnull(m1h["M1H_mean"])].gene_symbol.unique())))
+
+
+# In[55]:
 
 
 m1h_vc = m1h.groupby("family_renamed")["clone_acc"].agg("count").reset_index()
@@ -748,7 +780,7 @@ m1h_vc.columns = ["family_renamed", "isoform"]
 m1h_vc["source"] = "M1H (all)"
 
 
-# In[55]:
+# In[56]:
 
 
 m1h_any_vc = m1h[m1h["M1H_mean"].abs() > 1].groupby("family_renamed")["clone_acc"].agg("count").reset_index()
@@ -756,7 +788,7 @@ m1h_any_vc.columns = ["family_renamed", "isoform"]
 m1h_any_vc["source"] = "M1H (≥2-fold activ.)"
 
 
-# In[56]:
+# In[57]:
 
 
 mrg_vc = genc_vc.append(clone_vc)
@@ -766,7 +798,7 @@ mrg_vc = mrg_vc.append(m1h_vc).append(m1h_any_vc)
 mrg_vc
 
 
-# In[57]:
+# In[58]:
 
 
 mrg_piv = pd.pivot_table(mrg_vc, values="isoform", columns="source", index="family_renamed")
@@ -782,7 +814,7 @@ mrg_piv = mrg_piv[["source", "Other", "Ets", "Forkhead", "bZIP", "Nuclear recept
 mrg_piv
 
 
-# In[58]:
+# In[59]:
 
 
 colors = met_brewer.met_brew(name="Hokusai1")
@@ -792,7 +824,7 @@ colors = colors[::-1]
 sns.palplot(colors)
 
 
-# In[59]:
+# In[60]:
 
 
 ax = mrg_piv.plot.bar(x="source", stacked=True, color=colors, figsize=(1.5, 1.5))
@@ -811,7 +843,7 @@ plt.savefig('../../figures/fig2/assay_families.detailed.pdf',
             bbox_inches='tight')
 
 
-# In[60]:
+# In[61]:
 
 
 ax = mrg_piv[mrg_piv["source"].isin(["GENCODE", "TFIso1.0", "Y1H (all)",
@@ -834,119 +866,119 @@ plt.savefig('../../figures/fig2/assay_families.pdf',
 
 # ## 5. print number of genes/isos in each category for use in schematic figs/text
 
-# In[61]:
+# In[62]:
 
 
 print("total # of isos in collection")
 len(clone_df)
 
 
-# In[62]:
+# In[63]:
 
 
 print("total # of unique TF genes in collection")
 len(clone_df.gene.unique())
 
 
-# In[63]:
+# In[64]:
 
 
 print("total # of isos tested in Y1H")
 len(y1h)
 
 
-# In[64]:
+# In[65]:
 
 
 print("total # of unique TF genes tested in Y1H")
 len(y1h.gene_symbol.unique())
 
 
-# In[65]:
+# In[66]:
 
 
 print("total # of baits tested in Y1H")
 len(baits)
 
 
-# In[66]:
+# In[67]:
 
 
 print("total # of isos with at least 1 interaction in Y1H")
 len(y1h[y1h['any_true'] > 0])
 
 
-# In[67]:
+# In[68]:
 
 
 print("total # of unique TF genes with at least 1 interaction in Y1H")
 len(y1h[y1h['any_true'] > 0].gene_symbol.unique())
 
 
-# In[68]:
-
-
-print("total # of isos tested in Y2H")
-len(y2h.ad_clone_acc.unique())
-
-
 # In[69]:
 
 
-print("total # of unique TF genes tested in Y2H")
-len(y2h.ad_gene_symbol.unique())
+print("total # of isos tested in Y2H")
+len(y2h[~pd.isnull(y2h["Y2H_result"])].ad_clone_acc.unique())
 
 
 # In[70]:
+
+
+print("total # of unique TF genes tested in Y2H")
+len(y2h[~pd.isnull(y2h["Y2H_result"])].ad_gene_symbol.unique())
+
+
+# In[71]:
 
 
 print("total # of partners tested in Y2H")
 len(y2h.db_gene_symbol.unique())
 
 
-# In[71]:
+# In[72]:
 
 
 print("total # of isos with at least 1 interaction in Y2H")
 len(y2h[y2h["Y2H_result"] == True].ad_clone_acc.unique())
 
 
-# In[72]:
+# In[73]:
 
 
 print("total # of unique TF genes with at least 1 interaction in Y2H")
 len(y2h[y2h["Y2H_result"] == True].ad_gene_symbol.unique())
 
 
-# In[73]:
+# In[74]:
 
 
 print("total # of isos tested in M1H")
 len(m1h.clone_acc.unique())
 
 
-# In[74]:
+# In[75]:
 
 
 print("total # of unique TF genes tested in M1H")
 len(m1h.gene_symbol.unique())
 
 
-# In[75]:
+# In[76]:
 
 
 print("total # of isos with activity in M1H (abs > 1)")
 len(m1h[m1h["M1H_mean"].abs() > 1].clone_acc.unique())
 
 
-# In[76]:
+# In[77]:
 
 
 print("total # of unique TF genes with activity in M1H (abs > 1)")
 len(m1h[m1h["M1H_mean"].abs() > 1].gene_symbol.unique())
 
 
-# In[77]:
+# In[78]:
 
 
 all_3 = set(m1h[m1h["M1H_mean"].abs() > 1].gene_symbol.unique()).intersection(set(y2h[y2h["Y2H_result"] == True].ad_gene_symbol.unique())).intersection(set(y1h[y1h['any_true'] > 0].gene_symbol.unique()))
@@ -955,20 +987,20 @@ all_3
 
 # ## 6. compare novel isoform performance in assay to annotated ref/alt
 
-# In[78]:
+# In[79]:
 
 
 from data_loading import load_valid_isoform_clones
 
 
-# In[79]:
+# In[80]:
 
 
 mane_select_clones = {tf.MANE_select_isoform.clone_acc for tf in clone_tfs.values() 
                       if tf.cloned_MANE_select_isoform}
 
 
-# In[80]:
+# In[81]:
 
 
 iso = load_valid_isoform_clones()
@@ -982,20 +1014,20 @@ iso.loc[iso['is_novel_isoform'], 'category'] = 'novel'
 iso = iso[iso["clone_acc"].isin(clone_df["isoform"])]
 
 
-# In[81]:
+# In[82]:
 
 
 len(iso['gene_symbol'].unique())
 
 
-# In[82]:
+# In[83]:
 
 
 genes_w_ref = list(iso[iso['category'] == 'reference']['gene_symbol'].unique())
 len(genes_w_ref)
 
 
-# In[83]:
+# In[84]:
 
 
 # subset iso df to only genes w MANE select isoform
@@ -1003,7 +1035,7 @@ iso_sub = iso[iso['gene_symbol'].isin(genes_w_ref)]
 len(iso_sub)
 
 
-# In[84]:
+# In[85]:
 
 
 iso_sub['valid_ppi_test'] = iso['clone_acc'].map(y2h.groupby('ad_clone_acc').apply(lambda rows: ((rows['Y2H_result'] == True) |
@@ -1011,21 +1043,21 @@ iso_sub['valid_ppi_test'] = iso['clone_acc'].map(y2h.groupby('ad_clone_acc').app
                                                                                                  .any()))
 
 
-# In[85]:
+# In[86]:
 
 
 iso_sub['at_least_one_ppi'] = iso['clone_acc'].map(y2h.groupby('ad_clone_acc').apply(lambda rows: ((rows['Y2H_result'] == True))
                                                                                                     .any()))
 
 
-# In[86]:
+# In[87]:
 
 
 y1h = y1h.drop_duplicates('clone_acc')
 iso_sub['at_least_one_pdi'] = iso_sub['clone_acc'].map(y1h.drop(columns=['gene_symbol']).set_index('clone_acc').sum(axis=1) > 0)
 
 
-# In[87]:
+# In[88]:
 
 
 iso_sub['at_least_two_fold_activation'] = iso_sub['clone_acc'].map(
@@ -1035,20 +1067,20 @@ iso_sub['at_least_two_fold_activation'] = iso_sub['clone_acc'].map(
                                                 .abs() > 1)
 
 
-# In[88]:
+# In[89]:
 
 
 iso_sub.category.value_counts()
 
 
-# In[89]:
+# In[90]:
 
 
 colors = met_brewer.met_brew(name="Monet")
 sns.palplot(colors)
 
 
-# In[90]:
+# In[91]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1221,7 +1253,7 @@ fig.savefig('../../figures/fig2/at-least-some-assay-result_ref-vs-alt-vs-novel_a
 
 # ## 7. make validation figures for Y2H (N2H)
 
-# In[91]:
+# In[92]:
 
 
 df = load_n2h_ppi_validation_data()
@@ -1229,7 +1261,7 @@ print(len(df))
 df.head()
 
 
-# In[92]:
+# In[93]:
 
 
 # TODO: remove this once everything finalized 
@@ -1264,13 +1296,13 @@ df = df.loc[~((df['source'] == 'isoform negatives') &
 print(len(df))
 
 
-# In[93]:
+# In[94]:
 
 
 df['source'].value_counts()
 
 
-# In[94]:
+# In[95]:
 
 
 COLOR_LIT = (60 / 255, 134 / 255, 184 / 255)
@@ -1286,7 +1318,7 @@ colors = {'vignettes': 'yellow',
           'RRS - hRRS-v2': 'tab:red'}
 
 
-# In[95]:
+# In[96]:
 
 
 sources = ['PRS - hPRS-v2', 
@@ -1299,7 +1331,7 @@ sources = ['PRS - hPRS-v2',
            'isoform negatives']
 
 
-# In[96]:
+# In[97]:
 
 
 # bar chart
@@ -1326,7 +1358,7 @@ for loc in ['top', 'bottom', 'right']:
 fig.savefig('../../figures/fig2/N2H_barplot.pdf', dpi="figure", bbox_inches='tight')
 
 
-# In[97]:
+# In[98]:
 
 
 line_styles = ['-', '--', ':', '-', '--', ':', '-', '-']
@@ -1354,19 +1386,19 @@ fig.savefig('../../figures/fig2/TFv02_titration.pdf',
 
 # ## 8. make validation figures for Y1H (luciferase)
 
-# In[98]:
+# In[99]:
 
 
 df = load_PDI_luciferase_validation_experiment()
 
 
-# In[99]:
+# In[100]:
 
 
 df['Set'].value_counts()
 
 
-# In[100]:
+# In[101]:
 
 
 print('In PDI validation experiment, tested:')
@@ -1376,7 +1408,7 @@ print(df['Bait'].nunique(), 'different baits')
 print(df.shape[0], 'total PDIs')
 
 
-# In[101]:
+# In[102]:
 
 
 # update the interaction calls if needed
@@ -1394,21 +1426,21 @@ for i, row in df.iterrows():
     new_calls.append(updated_y1h_call)
 
 
-# In[102]:
+# In[103]:
 
 
 df["updated_y1h_call"] = new_calls
 df.updated_y1h_call.value_counts(dropna=False)
 
 
-# In[103]:
+# In[104]:
 
 
 # remove any updated calls that became NaN
 df_nn = df[~pd.isnull(df['updated_y1h_call'])]
 
 
-# In[104]:
+# In[105]:
 
 
 print('In PDI validation experiment, tested (updated w new calls):')
@@ -1418,21 +1450,21 @@ print(df_nn['Bait'].nunique(), 'different baits')
 print(df_nn.shape[0], 'total PDIs')
 
 
-# In[105]:
+# In[106]:
 
 
 print('Isoforms per gene:')
 df_nn.groupby(['gene_symbol'])['clone_acc'].nunique().value_counts().sort_index()
 
 
-# In[106]:
+# In[107]:
 
 
 print('Baits per isoform:')
 df_nn.groupby(['clone_acc'])['Bait'].nunique().value_counts().sort_index()
 
 
-# In[107]:
+# In[108]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1451,19 +1483,19 @@ fig.savefig('../../figures/fig2/PDI-luciferase_validation_point-plot.pdf',
             bbox_inches='tight')
 
 
-# In[108]:
+# In[109]:
 
 
 df.updated_y1h_call.value_counts()
 
 
-# In[109]:
+# In[110]:
 
 
 df.Y1H_positive.value_counts()
 
 
-# In[110]:
+# In[111]:
 
 
 # titration plot of positive vs negative
@@ -1486,7 +1518,7 @@ fig.savefig('../../figures/fig2/PDI-luciferase_validation_titration-plot.pdf',
             bbox_inches='tight')
 
 
-# In[111]:
+# In[112]:
 
 
 def p_value(row):
@@ -1504,19 +1536,19 @@ def p_value(row):
 df['p-value'] = df.apply(p_value, axis=1)
 
 
-# In[112]:
+# In[113]:
 
 
 df['positive'] = (df['p-value'] < 0.05) & (df['Log2(FC)'] >= 1)
 
 
-# In[113]:
+# In[114]:
 
 
 df.groupby('Interaction?')['positive'].mean()
 
 
-# In[114]:
+# In[115]:
 
 
 fig, ax = plt.subplots(1, 1)
@@ -1528,7 +1560,8 @@ validation_plot(data=df,
                 labels=['+', '-'],
                 colors=[COLOR_HURI, 'grey'],
                 errorbar_capsize=0.25,
-                ax=ax)
+                ax=ax,
+                fontsize=PAPER_FONTSIZE-1)
 ax.set_ylim(0, 0.7)
 ax.set_xlabel('eY1H result')
 ax.set_ylabel('Fraction positive\nin luciferase assay')
@@ -1543,7 +1576,7 @@ fig.savefig('../../figures/fig2/Luciferase_barplot.pdf', bbox_inches='tight', dp
 
 # ## 9. make reproducibility figure for M1H
 
-# In[115]:
+# In[116]:
 
 
 c = m1h[["M1H_rep1", "M1H_rep2", "M1H_rep3"]].corr(method="spearman")
@@ -1560,7 +1593,7 @@ fig.savefig("../../figures/fig2/M1H_heatmap.pdf", bbox_inches="tight", dpi="figu
 
 # ## 9. make tables needed for cytoscape network fig
 
-# In[116]:
+# In[117]:
 
 
 # # table of edges
@@ -1597,7 +1630,7 @@ fig.savefig("../../figures/fig2/M1H_heatmap.pdf", bbox_inches="tight", dpi="figu
 
 # ## 10. make example expression plot for ZNF414
 
-# In[117]:
+# In[118]:
 
 
 def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, fig_suffix):
@@ -1641,7 +1674,7 @@ def developmental_tissue_expression_plot(gene_name, figsize, ylim, means, cols, 
                 bbox_inches='tight')
 
 
-# In[118]:
+# In[119]:
 
 
 notestis_cols = [x for x in means_dev.columns if "testis" not in x]
@@ -1651,6 +1684,362 @@ notestis_cols = [x for x in notestis_cols if "ovary" not in x]
 notestis_cols = [x for x in notestis_cols if "brain" not in x]
 developmental_tissue_expression_plot("ZNF414", (7.2, 1.75), (0, 6), means_dev, notestis_cols, 
                                      "means_dev_notestis_large")
+
+
+# In[120]:
+
+
+liver_cols = [x for x in means_dev.columns if "liver" in x]
+developmental_tissue_expression_plot("ZNF414", (3, 1.75), (0, 6), means_dev, liver_cols, 
+                                     "means_dev_liver_large")
+
+
+# ## 11. make alphafold disorder plots
+
+# In[121]:
+
+
+dssp_dir = Path('../../data/processed/dssp_alphafold')
+dfs = []
+for dssp_file_path in dssp_dir.iterdir():
+    dssp = make_dssp_dict(dssp_file_path)
+    dfs.append(pd.DataFrame(data=[(dssp_file_path.stem, k[1][1], v[0], v[1], v[2]) for k, v in dssp[0].items()],
+                      columns=['clone_name', 'position', 'aa', 'secondary_structure', 'ASA']))
+df = pd.concat(dfs, axis=0, ignore_index=True)
+# NOTE: the Davey analysis uses GGXGG whereas I think this paper is GXG
+# Wilke: Tien et al. 2013 https://doi.org/10.1371/journal.pone.0080635
+max_asa = {
+        "ALA": 129.0,
+        "ARG": 274.0,
+        "ASN": 195.0,
+        "ASP": 193.0,
+        "CYS": 167.0,
+        "GLN": 225.0,
+        "GLU": 223.0,
+        "GLY": 104.0,
+        "HIS": 224.0,
+        "ILE": 197.0,
+        "LEU": 201.0,
+        "LYS": 236.0,
+        "MET": 224.0,
+        "PHE": 240.0,
+        "PRO": 159.0,
+        "SER": 155.0,
+        "THR": 172.0,
+        "TRP": 285.0,
+        "TYR": 263.0,
+        "VAL": 174.0,
+    }
+max_asa = {protein_letters_3to1[k.capitalize()]: v for k, v in max_asa.items()}
+df['RSA'] = df['ASA'] / df['aa'].map(max_asa)
+df['RSA'] = df['RSA'].clip(upper=1.)
+WINDOW_SIZE_RESIDUES = 20
+DISORDER_WINDOW_RSA_CUTOFF = 0.5
+rsa_window_col = f'RSA_window_{WINDOW_SIZE_RESIDUES}'
+df[rsa_window_col] = (
+         df.groupby('clone_name')['RSA']
+           .rolling(window=WINDOW_SIZE_RESIDUES * 2 + 1,
+                  min_periods=WINDOW_SIZE_RESIDUES + 1,
+                  center=True)
+             .mean().rename(rsa_window_col).droplevel('clone_name')
+)
+df['is_disordered'] = df[rsa_window_col] >= DISORDER_WINDOW_RSA_CUTOFF
+
+# correct for long helices which are structured, usually bound to a partner
+# but have high RSA in the monomer state
+DISORDER_HELIX_LENGTH_CUTOFF = 20
+to_change = []
+for clone_name, df_clone in df.groupby('clone_name'):
+    helix_count = 0
+    for _i, row in df_clone.iterrows():
+        if row['secondary_structure'] == 'H':
+            helix_count += 1
+        else:
+            if helix_count >= DISORDER_HELIX_LENGTH_CUTOFF:
+                for i in range(row['position'] - 1, row['position'] - helix_count, -1):
+                    to_change.append((clone_name, i))
+            helix_count = 0
+    if helix_count >= DISORDER_HELIX_LENGTH_CUTOFF:
+        for i in range(row['position'], row['position'] - helix_count, -1):
+            to_change.append((clone_name, i))
+to_change = (df['clone_name'] + '_' + df['position'].astype(str)).isin({a + '_' + str(b) for a, b in to_change})
+print(f'{to_change.sum()} ({to_change.mean():.0%}) aa in helices of length 20 aa or more')
+print(f"{df.loc[to_change, 'is_disordered'].mean():.0%} of residues in long helices misclassified as disordered")
+df.loc[to_change, 'is_disordered'] = False
+
+
+# In[122]:
+
+
+tfs = load_annotated_TFiso1_collection()
+len(tfs)
+
+
+# In[123]:
+
+
+df.head()
+
+
+# In[124]:
+
+
+df['is_cloned_reference'] = df['clone_name'].map({iso.name: iso.name == tf.cloned_reference_isoform.name
+                                                  for tf in tfs.values() 
+                                                  for iso in tf.cloned_isoforms})
+
+
+# In[125]:
+
+
+df_nonan = df.loc[~pd.isnull(df['is_cloned_reference'])]
+f_dis_ref = df_nonan[df_nonan['is_cloned_reference'] == True].groupby('clone_name')['is_disordered'].mean()
+f_dis_alt = df_nonan[df_nonan['is_cloned_reference'] == False].groupby('clone_name')['is_disordered'].mean()
+
+# randomization p-value
+obs_val = f_dis_alt.median() - f_dis_ref.median()
+
+print("MEDIAN NUM OF RESIDUES IN DISORDERED REGIONS IN ALT ISOS: %s" % (f_dis_alt.median()*100))
+print("MEDIAN NUM OF RESIDUES IN DISORDERED REGIONS IN REF ISOS: %s" % (f_dis_ref.median()*100))
+rnd_vals = []
+gene_to_isoforms = {tf.name: [iso.name for iso in tf.cloned_isoforms] for tf in tfs.values()}
+np.random.seed(34298793)
+for _i in tqdm.tqdm(range(1, 10000)):
+    all_vals = df.groupby('clone_name')['is_disordered'].mean()
+    rnd_refs = set()
+    for isoforms in gene_to_isoforms.values():
+        rnd_refs.add(np.random.choice(isoforms))
+    rnd_vals.append(all_vals.loc[~all_vals.index.isin(rnd_refs)].median()
+                    -
+                    all_vals.loc[all_vals.index.isin(rnd_refs)].median())
+pval = sum(rnd_val >= obs_val for rnd_val in rnd_vals) / len(rnd_vals) * 2
+print(f'p = {pval}')
+
+
+# In[126]:
+
+
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(w=1.1, h=1.8)
+data = (df.groupby(['clone_name', 'is_cloned_reference'])
+                            ['is_disordered']
+                            .mean()
+                            .reset_index())
+violinplot_reflected(data=data,
+                     x='is_cloned_reference',
+                     y='is_disordered',
+                     order=[True, False],
+                     cut=0,
+                     color=sns.color_palette("Set2")[0],
+                     )
+ax.set_ylim(0, 1)
+ax.set_xlim(-0.5, 1.5)
+ax.set_ylabel('Residues in disordered regions')
+ax.set_yticks(np.linspace(0, 1, 6))
+ax.set_yticks(np.linspace(0, 1, 11), minor=True)
+ax.set_yticklabels([f'{y:.0%}' for y in ax.get_yticks()])
+ax.set_xlabel('')
+ax.set_xticklabels(['Reference\nisoforms', 'Alternative\nisoforms'])
+for loc in ['top', 'right', 'bottom']:
+    ax.spines[loc].set_visible(False)
+ax.xaxis.set_tick_params(length=0)
+
+annotate_pval(ax, 0, 1, 1.05, 0, 1.05, pval, PAPER_FONTSIZE - 1)
+
+# manually set left axis so it stops at 1.0
+ax.set_ylim((-0.1, 1.1))
+ax.spines['left'].set_visible(False)
+ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+axes_to_data = ax.transAxes + ax.transData.inverted()
+left_spine_in_data_coords = axes_to_data.transform((0, 0))
+ax.plot([left_spine_in_data_coords[0], left_spine_in_data_coords[0]], [0, 1],
+         color=ax.spines['bottom'].get_edgecolor(), linewidth=ax.spines['bottom'].get_linewidth())
+ax.tick_params(axis='x', which='major', pad=-5)
+
+fig.savefig('../../figures/fig2/disordered-residued-pct-per-isoform_TFiso1_violin.pdf',
+            bbox_inches='tight')
+
+
+# ## 12. make supplemental files
+
+# ### Clone List
+
+# In[127]:
+
+
+supp_clones = {}
+
+for gene in clone_tfs:
+    gene_ref = clone_tfs[gene].cloned_reference_isoform.name
+    for iso in clone_tfs[gene].cloned_isoforms:
+        clone_name = iso.name
+        if not iso.ensembl_transcript_names is None:
+            tx_names = "|".join(iso.ensembl_transcript_names)
+            tx_ids = "|".join(iso.ensembl_transcript_ids)
+            if clone_name == gene_ref:
+                status = "annotated reference"
+            else:
+                status = "annotated alternative"
+        else:
+            tx_names = "NA"
+            tx_ids = "NA"
+            
+            if clone_name == gene_ref:
+                status = "novel reference"
+            else:
+                status = "novel alternative"
+        aa_seq = iso.aa_seq
+        supp_clones[clone_name] = {"gene_symbol": gene, "isoform_status": status,
+                                   "gencode_transcript_names": tx_names,
+                                   "ensembl_transcript_ids": tx_ids, "aa_seq": aa_seq}
+        
+supp_clones = pd.DataFrame.from_dict(supp_clones, 
+                                     orient="index").rename_axis("clone_id").reset_index()
+supp_clones["isoform_status"] = pd.Categorical(supp_clones["isoform_status"], 
+                                       ["annotated reference", "novel reference", 
+                                        "annotated alternative",
+                                        "novel alternative"])
+supp_clones["tf_family"] = supp_clones["gene_symbol"].map(fam)
+
+supp_clones = supp_clones.sort_values(by=["clone_id", "isoform_status"])
+print("NUMBER OF ISOS IN SUPP FILE: %s" % (len(supp_clones.clone_id.unique())))
+print("NUMBER OF GENES IN SUPP FILE: %s" % (len(supp_clones.gene_symbol.unique())))
+supp_clones.isoform_status.value_counts()
+
+
+# In[128]:
+
+
+supp_clones.to_csv("../../supp/SuppTable_CloneList.txt", index=False, sep="\t")
+
+
+# In[129]:
+
+
+supp_clones.head()
+
+
+# ### DNA baits in Y1H
+
+# In[130]:
+
+
+# NOTE this is missing anna's baits -- luke will add to the fnx below
+# then re-running code will produce correct number
+supp_baits = load_Y1H_DNA_bait_sequences()
+supp_baits = pd.DataFrame.from_dict(supp_baits, orient="index").rename_axis("bait_id").reset_index()
+supp_baits.columns = ["bait_id", "seq"]
+supp_baits["bait_id"] = supp_baits["bait_id"].str.upper()
+
+# limit to baits that are in our y1h data
+supp_baits = supp_baits[supp_baits["bait_id"].isin(baits)]
+print("NUM OF BAITS IN SUPP FILE: %s" % len(supp_baits))
+
+supp_baits.to_csv("../../supp/SuppTable_DNABaits.txt", index=False, sep="\t")
+
+
+# ### Y1H results
+
+# In[131]:
+
+
+# map clone_acc to clone_name
+clone_acc_map = {}
+
+for gene in clone_tfs:
+    for iso in clone_tfs[gene].cloned_isoforms:
+        clone_acc = iso.clone_acc
+        clone_name = iso.name
+        clone_acc_map[clone_acc] = clone_name
+
+
+# In[132]:
+
+
+supp_y1h = y1h.copy()
+supp_y1h["clone_id"] = supp_y1h["clone_acc"].map(clone_acc_map)
+supp_y1h = supp_y1h[["gene_symbol", "clone_id"] + baits]
+
+print("NUM ISOS IN SUPP Y1H FILE: %s" % (len(supp_y1h.clone_id.unique())))
+print("NUM GENES IN SUPP Y1H FILE: %s" % (len(supp_y1h.gene_symbol.unique())))
+print("NUM BAITS IN SUPP Y1H FILE: %s" % len(baits))
+supp_y1h
+
+
+# In[133]:
+
+
+supp_y1h.to_csv("../../supp/SuppTable_eY1HResults.txt", index=False, sep="\t")
+
+
+# ### Y2H results
+
+# In[134]:
+
+
+# reload y2h since we loaded validation data above
+supp_y2h = load_y2h_isoform_data(require_at_least_one_ppi_per_isoform=False)
+supp_y2h["clone_id"] = supp_y2h["ad_clone_acc"].map(clone_acc_map)
+supp_y2h = supp_y2h[["clone_id", "ad_gene_symbol", "db_gene_symbol", "Y2H_result"]]
+
+print("NUM ISOS IN SUPP Y2H FILE: %s" % (len(supp_y2h.clone_id.unique())))
+print("NUM GENES IN SUPP Y2H FILE: %s" % (len(supp_y2h.ad_gene_symbol.unique())))
+print("NUM PARTNERS IN SUPP Y2H FILE: %s" % len(supp_y2h.db_gene_symbol.unique()))
+supp_y2h.head()
+
+
+# In[135]:
+
+
+# add the categories
+cats = load_ppi_partner_categories()
+cats.columns = ["db_gene_symbol", "db_gene_category", "db_gene_cofactor_type"]
+supp_y2h = supp_y2h.merge(cats, on="db_gene_symbol", how="left")
+supp_y2h[pd.isnull(supp_y2h["db_gene_category"])]
+
+
+# In[136]:
+
+
+supp_y2h.sample(5)
+
+
+# In[137]:
+
+
+supp_y2h.db_gene_category.value_counts()
+
+
+# In[138]:
+
+
+supp_y2h.db_gene_cofactor_type.value_counts()
+
+
+# In[139]:
+
+
+supp_y2h.to_csv("../../supp/SuppTable_PairwiseY2HResults.txt", index=False, sep="\t")
+
+
+# ### M1H results
+
+# In[140]:
+
+
+supp_m1h = m1h.copy()
+supp_m1h["clone_id"] = supp_m1h["clone_acc"].map(clone_acc_map)
+supp_m1h = supp_m1h[["clone_id", "gene_symbol", "M1H_rep1", "M1H_rep2", "M1H_rep3", "M1H_mean"]]
+
+print("NUM ISOS IN SUPP M1H FILE: %s" % (len(supp_m1h.clone_id.unique())))
+print("NUM GENES IN SUPP M1H FILE: %s" % (len(supp_m1h.gene_symbol.unique())))
+supp_m1h.head()
+
+
+# In[141]:
+
+
+supp_m1h.to_csv("../../supp/SuppTable_M1HResults.txt", index=False, sep="\t")
 
 
 # In[ ]:

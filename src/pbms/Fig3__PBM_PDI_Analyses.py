@@ -493,7 +493,7 @@ def get_kmer_ocurrences(row, kmer, kmer_rc):
     kmer_oc = [m.start() for m in re.finditer('(?=%s)' % kmer, row.seq)]
     kmer_rc_oc = [m.start() for m in re.finditer('(?=%s)' % kmer_rc, row.seq)]
     
-    kmer_arr = np.zeros(centered_peak_len)
+    kmer_arr = np.zeros(150)
     for oc in kmer_oc:
         kmer_arr[oc:oc+len(kmer)] += 1
     for oc in kmer_rc_oc:
@@ -517,7 +517,7 @@ chip["sp_motif_arr"] = chip.apply(get_kmer_ocurrences, kmer=sp_motif, kmer_rc=sp
 chip["hd_arr"] = chip.apply(get_kmer_ocurrences, kmer="TAATTA", kmer_rc="TAATTA", axis=1)
 
 
-# In[ ]:
+# In[40]:
 
 
 m = np.sum(np.array(chip["motif_arr"].tolist()), axis=0)
@@ -525,7 +525,7 @@ sm = np.sum(np.array(chip["sp_motif_arr"].tolist()), axis=0)
 h = np.sum(np.array(chip["hd_arr"].tolist()), axis=0)
 
 
-# In[ ]:
+# In[41]:
 
 
 m_av = moving_average(m, 8)
@@ -533,7 +533,7 @@ sm_av = moving_average(sm, 8)
 h_av = moving_average(h, 8)
 
 
-# In[ ]:
+# In[42]:
 
 
 genre["motif_arr"] = genre.apply(get_kmer_ocurrences, kmer=motif, kmer_rc=motif_rc, axis=1)
@@ -541,7 +541,7 @@ genre["sp_motif_arr"] = genre.apply(get_kmer_ocurrences, kmer=sp_motif, kmer_rc=
 genre["hd_arr"] = genre.apply(get_kmer_ocurrences, kmer="TAATTA", kmer_rc="TAATTA", axis=1)
 
 
-# In[ ]:
+# In[43]:
 
 
 m_g = np.sum(np.array(genre["motif_arr"].tolist()), axis=0)
@@ -549,7 +549,7 @@ sm_g = np.sum(np.array(genre["sp_motif_arr"].tolist()), axis=0)
 h_g = np.sum(np.array(genre["hd_arr"].tolist()), axis=0)
 
 
-# In[ ]:
+# In[44]:
 
 
 m_g_av = moving_average(m_g, 8)
@@ -557,7 +557,7 @@ sm_g_av = moving_average(sm_g, 8)
 h_g_av = moving_average(h_g, 8)
 
 
-# In[ ]:
+# In[45]:
 
 
 fig, axarr = plt.subplots(1, 3, figsize=(4.5, 1.5), sharey=True, sharex=True)
@@ -590,7 +590,7 @@ fig.savefig("../../figures/fig3/TBX5_chip_density.pdf", dpi="figure", bbox_inche
 
 # ### 5. fisher test for foreground vs. background rates
 
-# In[ ]:
+# In[46]:
 
 
 def has_motif(row, col):
@@ -606,7 +606,7 @@ chip["has_sp_motif"] = chip.apply(has_motif, col="sp_motif_arr", axis=1)
 chip["has_hd"] = chip.apply(has_motif, col="hd_arr", axis=1)
 
 
-# In[ ]:
+# In[47]:
 
 
 genre["has_motif"] = genre.apply(has_motif, col="motif_arr", axis=1)
@@ -614,7 +614,7 @@ genre["has_sp_motif"] = genre.apply(has_motif, col="sp_motif_arr", axis=1)
 genre["has_hd"] = genre.apply(has_motif, col="hd_arr", axis=1)
 
 
-# In[ ]:
+# In[48]:
 
 
 motif_tab = np.zeros((2, 2))
@@ -622,11 +622,11 @@ sp_motif_tab = np.zeros((2, 2))
 hd_tab = np.zeros((2, 2))
 
 
-# In[ ]:
+# In[49]:
 
 
-n_m_fore = len(chip_filt[chip_filt["has_motif"] == 1])
-n_nom_fore = len(chip_filt[chip_filt["has_motif"] == 0])
+n_m_fore = len(chip[chip["has_motif"] == 1])
+n_nom_fore = len(chip[chip["has_motif"] == 0])
 
 n_m_bg = len(genre[genre["has_motif"] == 1])
 n_nom_bg = len(genre[genre["has_motif"] == 0])
@@ -639,11 +639,11 @@ motif_tab[1, 1] = n_nom_bg
 fisher_exact(motif_tab)
 
 
-# In[ ]:
+# In[50]:
 
 
-n_m_fore = len(chip_filt[chip_filt["has_sp_motif"] == 1])
-n_nom_fore = len(chip_filt[chip_filt["has_sp_motif"] == 0])
+n_m_fore = len(chip[chip["has_sp_motif"] == 1])
+n_nom_fore = len(chip[chip["has_sp_motif"] == 0])
 
 n_m_bg = len(genre[genre["has_sp_motif"] == 1])
 n_nom_bg = len(genre[genre["has_sp_motif"] == 0])
@@ -656,11 +656,11 @@ sp_motif_tab[1, 1] = n_nom_bg
 fisher_exact(sp_motif_tab)
 
 
-# In[ ]:
+# In[51]:
 
 
-n_m_fore = len(chip_filt[chip_filt["has_hd"] == 1])
-n_nom_fore = len(chip_filt[chip_filt["has_hd"] == 0])
+n_m_fore = len(chip[chip["has_hd"] == 1])
+n_nom_fore = len(chip[chip["has_hd"] == 0])
 
 n_m_bg = len(genre[genre["has_hd"] == 1])
 n_nom_bg = len(genre[genre["has_hd"] == 0])
@@ -673,7 +673,7 @@ hd_tab[1, 1] = n_nom_bg
 fisher_exact(hd_tab)
 
 
-# In[ ]:
+# In[52]:
 
 
 motif_df = pd.DataFrame(motif_tab)
@@ -696,10 +696,10 @@ hd_motif_df.reset_index(inplace=True)
 hd_motif_m = pd.melt(hd_motif_df, id_vars="index")
 motif_m = motif_m.append(hd_motif_m)
 
-motif_m["perc"] = motif_m["value"]/len(chip_filt)
+motif_m["perc"] = motif_m["value"]/len(chip)
 
 
-# In[ ]:
+# In[53]:
 
 
 fig = plt.figure(figsize=(2, 1.5))

@@ -560,59 +560,34 @@ fig.savefig('../../figures/fig3/DBD_or_flank_change_vs_PDI_composite_alt_with_di
 # In[34]:
 
 
-len(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['dbd_insertion_n_aa'] == 0)])
+n_full_dbd = len(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & 
+                        (df['dbd_insertion_n_aa'] == 0)])
+n_full_dbd_identical_pdis = len(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & 
+                                       (df['dbd_insertion_n_aa'] == 0) &
+                                       ((df['delta_pdi_trunc'] == 0))])
+
+
+print("NUM ISOS WITH FULL DBD (AND NO INSERTIONS WITHIN DBD): %s" % (n_full_dbd))
+print("NUM ISOS WITH FULL DBD (AND NO INSERTIONS WITHIN DBD) WITH IDENTICAL PDIS: %s" % (n_full_dbd_identical_pdis))
+print("PERCENT ISOS WITH FULL DBD (AND NO INSERTIONS WITHIN DBD) WITH IDENTICAL PDIS: %s" % (n_full_dbd_identical_pdis/
+                                                                                         n_full_dbd*100))
 
 
 # In[35]:
 
 
-len(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['dbd_insertion_n_aa'] == 0) &
-           (df['delta_pdi_trunc'] == 0)])
+n_full_dbd_gain_pdis = len(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & 
+                                       (df['dbd_insertion_n_aa'] == 0) &
+                                       ((df['delta_pdi_trunc'] > 0))])
 
-
-# In[36]:
-
-
-len(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['dbd_insertion_n_aa'] == 0) &
-           (df['delta_pdi_trunc'] < 0)])
-
-
-# In[37]:
-
-
-len(df)
-
-
-# In[38]:
-
-
-df[df['delta_pdi_trunc'] > 0]
-
-
-# In[39]:
-
-
-tf = tfs["RXRG"]
-fig, ax = plt.subplots(1, 1, figsize=(4, 4))
-y1h_pdi_per_tf_gene_plot(tf.name, ax=ax, data=y1h)
-
-
-# In[40]:
-
-
-x = list(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['delta_pdi_trunc'] != 0), 'f_disorder_difference'])
-y = list(df.loc[(df['dbd_affected'] == 'Full DBD in\nalternative isoform') & (df['delta_pdi_trunc'] == 0), 'f_disorder_difference'])
-
-
-# In[41]:
-
-
-stats.mannwhitneyu(x, y)
+print("NUM ISOS WITH FULL DBD (AND NO INSERTIONS WITHIN DBD) THAT GAIN PDIS: %s" % (n_full_dbd_gain_pdis))
+print("PERCENT ISOS WITH FULL DBD (AND NO INSERTIONS WITHIN DBD) THAT GAIN PDIS: %s" % (n_full_dbd_gain_pdis/
+                                                                                         n_full_dbd*100))
 
 
 # ## exon diagrams
 
-# In[42]:
+# In[36]:
 
 
 fig, ax = plt.subplots(figsize=(4, 2))
@@ -621,7 +596,7 @@ tfs["HEY1"].protein_diagram(only_cloned_isoforms=False, draw_legend=False, ax=ax
 fig.savefig("../../figures/fig3/HEY1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[43]:
+# In[37]:
 
 
 fig, ax = plt.subplots(figsize=(4, 0.75))
@@ -630,7 +605,7 @@ tfs["HEY1"].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig3/HEY1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[44]:
+# In[38]:
 
 
 fig, ax = plt.subplots(figsize=(3, 0.5))
@@ -639,7 +614,7 @@ y1h_pdi_per_tf_gene_plot("HEY1", ax=ax, data=y1h, iso_order=["HEY1-2", "HEY1-1"]
 fig.savefig("../../figures/fig3/HEY1_y1h_plot.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[45]:
+# In[39]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1.5))
@@ -648,7 +623,7 @@ tfs["CREB1"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax
 fig.savefig("../../figures/fig3/CREB1_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[46]:
+# In[40]:
 
 
 fig, ax = plt.subplots(figsize=(3, 0.5))
@@ -657,7 +632,7 @@ y1h_pdi_per_tf_gene_plot("CREB1", ax=ax, data=y1h, iso_order=["CREB1-2", "CREB1-
 fig.savefig("../../figures/fig3/CREB1_y1h_plot.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[47]:
+# In[41]:
 
 
 fig, ax = plt.subplots(figsize=(4, 0.5))
@@ -666,7 +641,7 @@ tfs["CREB1"].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig3/CREB1_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[48]:
+# In[42]:
 
 
 fig, ax = plt.subplots(figsize=(4, 0.75))
@@ -675,7 +650,7 @@ tfs["TBX5"].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig3/TBX5_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[49]:
+# In[43]:
 
 
 fig, ax = plt.subplots(figsize=(4, 2))
@@ -684,16 +659,30 @@ tfs["TBX5"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
 fig.savefig("../../figures/fig3/TBX5_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[50]:
+# In[44]:
 
 
-fig, ax = plt.subplots(figsize=(3, 1))
+baits = [x for x in y1h.columns if x not in ["gene_symbol", "clone_acc"]]
 
-y1h_pdi_per_tf_gene_plot("TBX5", ax=ax, data=y1h)
+
+# In[45]:
+
+
+fig, ax = plt.subplots(figsize=(2, 1))
+
+
+# limit tbx5 data to non-NA
+tbx5_y1h = y1h[(y1h["gene_symbol"] == "TBX5")]
+na_baits = np.array(baits)[tbx5_y1h[baits].isnull().values.any(axis=0)]
+non_na_baits = [x for x in baits if x not in na_baits]
+tbx5_y1h = tbx5_y1h[["gene_symbol", "clone_acc"] + non_na_baits]
+
+
+y1h_pdi_per_tf_gene_plot("TBX5", ax=ax, data=tbx5_y1h)
 fig.savefig("../../figures/fig3/TBX5_y1h_plot.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[51]:
+# In[46]:
 
 
 fig, ax = plt.subplots(figsize=(3, 0.75))
@@ -702,7 +691,7 @@ tfs["ZIC3"].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig3/ZIC3_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[52]:
+# In[47]:
 
 
 fig, ax = plt.subplots(figsize=(4, 0.75))
@@ -711,7 +700,7 @@ tfs["ZIC3"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
 fig.savefig("../../figures/fig3/ZIC3_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[53]:
+# In[48]:
 
 
 fig, ax = plt.subplots(figsize=(3, 1))
@@ -720,7 +709,7 @@ y1h_pdi_per_tf_gene_plot("ZIC3", ax=ax, data=y1h, iso_order=["ZIC3-2", "ZIC3-3",
 fig.savefig("../../figures/fig3/ZIC3_y1h_plot.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[56]:
+# In[49]:
 
 
 fig, ax = plt.subplots(figsize=(3, 0.6))
@@ -729,7 +718,7 @@ tfs["RXRG"].exon_diagram(ax=ax)
 fig.savefig("../../figures/fig3/RXRG_exon_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[57]:
+# In[50]:
 
 
 fig, ax = plt.subplots(figsize=(4, 1))
@@ -738,13 +727,32 @@ tfs["RXRG"].protein_diagram(only_cloned_isoforms=True, draw_legend=False, ax=ax)
 fig.savefig("../../figures/fig3/RXRG_protein_diagram.pdf", bbox_inches="tight", dpi="figure")
 
 
-# In[59]:
+# In[51]:
 
 
 fig, ax = plt.subplots(figsize=(5, 2))
 
 y1h_pdi_per_tf_gene_plot("RXRG", ax=ax, data=y1h)
 fig.savefig("../../figures/fig3/RXRG_y1h_plot.pdf", bbox_inches="tight", dpi="figure")
+
+
+# ## CREB1 insertion
+
+# In[52]:
+
+
+first_i = tfs["CREB1"].pairwise_changes_relative_to_reference("CREB1-2", "CREB1-1").find("I")
+num_i = tfs["CREB1"].pairwise_changes_relative_to_reference("CREB1-2", "CREB1-1").count("I")
+last_i = first_i + num_i
+last_i
+
+
+# In[53]:
+
+
+creb1_dom = tfs["CREB1"].aa_feature_disruption("CREB1-2")
+creb1_dom["ins_rel"] = creb1_dom["start_in_ref_iso"] - last_i
+creb1_dom
 
 
 # In[ ]:

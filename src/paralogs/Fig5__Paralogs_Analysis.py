@@ -1523,3 +1523,57 @@ legend = ax.legend(handles, new_labels, loc=2, title="# isoforms", bbox_to_ancho
 fig.savefig('../../figures/fig6/n-ZF_ref-vs-alt_scatter.all.pdf',
             bbox_inches='tight')
 
+
+# ## 7. make supp file
+
+# In[60]:
+
+
+# reload since we over-wrote it earlier
+df = load_paralogs_vs_isoforms_comparison_table()
+df.loc[~((df['n_positive_PPI_a'] >= 1) & (df['n_positive_PPI_b'] >= 1)),
+       'PPI_jaccard'] = np.nan
+df['PPI_Jaccard_d'] = 1 - df['PPI_jaccard']
+df['PDI_Jaccard_d'] = 1 - df['PDI_jaccard']
+df.loc[(df['activation_a'].abs() < 1) &
+       (df['activation_b'].abs() < 1), 
+       'activation_abs_fold_change_log2'] = np.nan
+
+
+# In[61]:
+
+
+# map clone_acc to clone_name
+clone_acc_map = {}
+
+for gene in tfs:
+    for iso in tfs[gene].cloned_isoforms:
+        clone_acc = iso.clone_acc
+        clone_name = iso.name
+        clone_acc_map[clone_acc] = clone_name
+
+
+# In[62]:
+
+
+supp_paralogs = df.copy()
+supp_paralogs["clone_id_a"] = supp_paralogs["clone_acc_a"].apply(lambda x: x.split('|')[0] + '-' + x.split('|')[1].split('/')[0])
+supp_paralogs["clone_id_b"] = supp_paralogs["clone_acc_b"].apply(lambda x: x.split('|')[0] + '-' + x.split('|')[1].split('/')[0])
+
+supp_paralogs = supp_paralogs[["gene_symbol_a", "clone_id_a", "gene_symbol_b", "clone_id_b", "category", 
+                               "aa_seq_pct_identity", "PDI_Jaccard_d", "PPI_Jaccard_d", 
+                               "activation_abs_fold_change_log2"]]
+supp_paralogs.category.value_counts()
+
+
+# In[63]:
+
+
+supp_paralogs.to_csv("../../supp/SuppTable_Paralogs.txt", sep="\t", index=False)
+
+
+# In[ ]:
+
+
+
+
