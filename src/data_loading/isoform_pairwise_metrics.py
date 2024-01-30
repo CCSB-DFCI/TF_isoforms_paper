@@ -203,6 +203,7 @@ def _write_TF_iso_ref_vs_alt_table(outpath):
     dbd = dbd.drop(columns=["gene_symbol", "ref_iso", "alt_iso"])
     df = pd.merge(df, dbd, how="left", on=["clone_acc_ref", "clone_acc_alt"])
     df["dbd_affected"] = df["dbd_pct_lost"] > 0
+    df.loc[df["dbd_pct_lost"].isnull(), "dbd_affected"] = np.nan
 
     aa_ident = load_seq_id_between_cloned_isoforms()
     df = pd.merge(

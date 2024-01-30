@@ -151,7 +151,21 @@ def read_hmmer3_domtab(filepath):
 def _load_pfam_domains(fpath, cutoff_seq=0.01, cutoff_dom=0.01):
     pfam = read_hmmer3_domtab(fpath)
     pfam["pfam_ac"] = pfam["target accession"].str.replace(r"\..*", "", regex=True)
-    pfam = pfam.loc[(pfam["E-value"] < cutoff_seq) & (pfam["c-Evalue"] < cutoff_dom), :]
+
+    # two cloned isoform genuine DBDs get cut off by the E-value cut
+    manual_filter_override = (
+        pfam["query name"].str.contains("ZNF207|")
+        & pfam["target accession"].str.startswith("PF00096")
+    ) | (
+        pfam["query name"].str.contains("HIF1A|")
+        & pfam["target accession"].str.startswith("PF00010")
+    )
+
+    pfam = pfam.loc[
+        ((pfam["E-value"] < cutoff_seq) & (pfam["c-Evalue"] < cutoff_dom))
+        | manual_filter_override,
+        :,
+    ]
     pfam = _remove_overlapping_domains(pfam)
     return pfam
 
@@ -324,7 +338,22 @@ def load_DNA_binding_domains(add_additional_domains=True):
                         "dbd": "BTD",
                         "pfam": "PF09270",
                         "clan": clans.get("PF09270", np.nan),
-                    }
+                    },
+                    {
+                        "dbd": "Homeobox_KN",
+                        "pfam": "PF05920",
+                        "clan": clans.get("PF05920", np.nan),
+                    },
+                    {
+                        "dbd": "Myb_DNA-bind_4",
+                        "pfam": "PF13837",
+                        "clan": clans.get("PF13837", np.nan),
+                    },
+                    {
+                        "dbd": "CBFB_NFYA",
+                        "pfam": "PF02045",
+                        "clan": clans.get("PF02045", np.nan),
+                    },
                 ]
             ),
         ],
@@ -333,6 +362,7 @@ def load_DNA_binding_domains(add_additional_domains=True):
 
     dbd_clans = {
         "CL0361",  # C2H2-ZF
+        "CL0537",  # CCCH-ZF
         "CL0012",  # Histone (mostly DNA binding...)
         "CL0274",  # WRKY-GCM1
         "CL0114",  # HMG-box
@@ -341,8 +371,6 @@ def load_DNA_binding_domains(add_additional_domains=True):
         "CL0407",  # TATA-Binding Protein like
         "CL0018",  # bZIP
     }
-    if not all(c in dbd["clan"].unique() for c in dbd_clans):
-        raise UserWarning()
     pfam_ac_to_name = (
         pd.read_csv(DATA_DIR / "external/Pfam-A.clans.tsv", sep="\t", header=None)
         .set_index(0)[4]
