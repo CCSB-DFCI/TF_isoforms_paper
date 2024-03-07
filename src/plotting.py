@@ -835,7 +835,14 @@ def _validation_plot(
             if (errs[1][i] + fracs[i]) > h and (fracs[i] - errs[0][i]) < (h + 0.04):
                 c = "black"
                 h = fracs[i] + errs[1][i] + 0.02
-            ax.text(i, h, "{}/{}".format(pos[i], pos[i] + neg[i]), color=c, ha="center", fontsize=fontsize)
+            ax.text(
+                i,
+                h,
+                "{}/{}".format(pos[i], pos[i] + neg[i]),
+                color=c,
+                ha="center",
+                fontsize=fontsize,
+            )
     bar_width_pixels = (
         ax.transData.transform((bar_width, 0)) - ax.transData.transform((0, 0))
     )[0]
@@ -1002,7 +1009,7 @@ def mimic_r_boxplot(ax):
 def annotate_pval(ax, x1, x2, y, h, text_y, val, fontsize, text=None):
     from decimal import Decimal
 
-    ax.plot([x1, x1, x2, x2], [y, y + h, y + h, y], lw=1, c="black", linewidth=0.5)
+    ax.plot([x1, x1, x2, x2], [y, y + h, y + h, y], c="black", linewidth=0.5)
     if val < 0.0001:
         s = "{:.2e}".format(Decimal(val))
         # text = "**"
