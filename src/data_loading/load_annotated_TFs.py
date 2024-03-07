@@ -24,7 +24,7 @@ from .sequence_features import (
     load_NLS_and_NES,
 )
 
-
+# From Jolma et al. Cell. 2013 152(1-2):327–339. PMID: 23332764
 DIMERIZING_TF_FAMILIES = {
     "bHLH",
     "bZIP",
