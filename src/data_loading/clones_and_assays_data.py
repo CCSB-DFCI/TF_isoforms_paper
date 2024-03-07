@@ -288,9 +288,9 @@ def _load_y2h_paralogs_additional_data():
     y2h_paralog["at_least_2_partners"] = y2h_paralog["ad_gene_symbol"].isin(
         gte2partner
     ) & y2h_paralog["paired_tf_gene"].apply(
-        lambda x: any(g in gte2partner for g in x.split("|"))
-        if pd.notnull(x)
-        else False
+        lambda x: (
+            any(g in gte2partner for g in x.split("|")) if pd.notnull(x) else False
+        )
     )
 
     return y2h_paralog
@@ -642,12 +642,21 @@ def load_Y1H_DNA_bait_sequences():
     df["seq"] = df["Region amplified"].apply(get_dna_sequence_from_coords)
     baits = {**baits, **df.set_index("Mutation ID")["seq"].to_dict()}
     baits = {k.upper(): v for k, v in baits.items()}
+
+    df = pd.read_excel(DATA_DIR / "internal/cytokine baits for TFIsos paper.xlsx")
+    df.loc[df["Cytokine bait"].duplicated(keep="first"), "Cytokine bait"] += "_2"
+    baits = {
+        **baits,
+        **df.set_index("Cytokine bait")["Sequence in cloning order"].to_dict(),
+    }
+
     with open(cache_path, "w") as f:
         SeqIO.write(
             (SeqRecord(id=k, description="", seq=Seq(v)) for k, v in baits.items()),
             f,
             "fasta",
         )
+
     return baits
 
 
