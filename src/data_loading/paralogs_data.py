@@ -300,6 +300,7 @@ def _write_TF_iso_vs_paralogs_table(fpath):
         raise UserWarning("unexpected missing values")
 
     y2h = load_full_y2h_data_including_controls()
+    y2h = y2h.loc[~y2h["category"].isin(["lit_bm_isoforms", "rrs_isoforms"]), :]
     # need to include tested isoforms that showed no PDI hits
     y1h = load_y1h_pdi_data(add_missing_data=True, include_pY1H_data=False)
     if y1h["clone_acc"].duplicated().any():

@@ -89,12 +89,16 @@ def _pairs_of_ref_vs_alt_isoforms_comparison_table(tfs):
                     tf.tf_family in DIMERIZING_TF_FAMILIES,
                     ref.clone_acc,
                     alt.clone_acc,
-                    "|".join(ref.ensembl_transcript_ids)
-                    if ref.ensembl_transcript_ids is not None
-                    else np.nan,
-                    "|".join(alt.ensembl_transcript_ids)
-                    if alt.ensembl_transcript_ids is not None
-                    else np.nan,
+                    (
+                        "|".join(ref.ensembl_transcript_ids)
+                        if ref.ensembl_transcript_ids is not None
+                        else np.nan
+                    ),
+                    (
+                        "|".join(alt.ensembl_transcript_ids)
+                        if alt.ensembl_transcript_ids is not None
+                        else np.nan
+                    ),
                     ref.is_novel_isoform(),
                     alt.is_novel_isoform(),
                     tf.cloned_MANE_select_isoform,
@@ -549,20 +553,26 @@ def load_condensate_data():
     about condensates, restricted to pairs that were tested in the
     condensates assay.
     """
-    df = pd.read_excel(DATA_DIR / "internal/TFiso_LLPS_scores_20231215.xlsx")
+    df = pd.read_excel(
+        DATA_DIR / "internal/Final localization TFiso_LLPS_scores_FINAL5-2.xlsx"
+    )
     df["gene_symbol"] = df["isoform_acc"].map(lambda x: x.split("|")[0])
-    df["condensates_observed_HEK"] = df["LLPS_HEK293"] != 0
-    df["condensates_observed_U2OS"] = df["LLPS_U2OS"] != 0
+    df["condensates_observed_HEK"] = df["Condensate_HEK_1"] != 0
+    df["condensates_observed_U2OS"] = df["Condensate_U2OS_1"] != 0
     df["is_cloned_reference"] = df["Ref_isoform"].map(
         {"Reference": True, "Alternative": False}
     )
     df = df.rename(
         columns={
-            "LLPS_HEK293": "HEK_Condensate",
-            "LLPS_U2OS": "U2OS_Condensate",
-            "Localization_U2OS": "localization_U2OS",
+            "Condensate_HEK_1": "HEK_Condensate",
+            "Condensate_U2OS_1": "U2OS_Condensate",
+            "localization_HEK_1": "localization_HEK",
+            "Localization_U2OS_1": "localization_U2OS",
         }
     )
+    df.loc[df["localization_U2OS"].isnull(), "U2OS_Condensate"] = (
+        np.nan
+    )  # incorrectly 0 in spreadsheet
     df["HEK_Condensate"] = (
         df["HEK_Condensate"]
         .map(
@@ -587,7 +597,11 @@ def load_condensate_data():
         .str.strip()
         .str.upper()
     )
-    rename_loc = {"mostly in nucleus": "both", "in nucleus": "nucleus"}
+    rename_loc = {
+        "cyto": "cytoplasm",
+        "mostly in nucleus": "both",
+        "in nucleus": "nucleus",
+    }
     for cl in ["HEK", "U2OS"]:
         df[f"localization_{cl}"] = (
             df[f"localization_{cl}"]
@@ -719,9 +733,9 @@ def load_condensate_data():
         pairs.loc[diff_loc & ~diff_cond, c] = "Difference in localization"
         pairs.loc[~diff_loc & diff_cond, c] = "Difference in condensate formation"
         pairs.loc[diff_loc & diff_cond, c] = "Difference in both"
-        pairs.loc[
-            ~diff_loc & ~diff_cond, c
-        ] = "Same localization and condensate formation"
+        pairs.loc[~diff_loc & ~diff_cond, c] = (
+            "Same localization and condensate formation"
+        )
         if pairs[c].isnull().any():
             raise UserWarning("Bug in code")
     pairs["condensate_or_loc_change_both"] = pairs["condensate_or_loc_change_HEK"]
@@ -744,4 +758,22 @@ def load_condensate_data():
             detailed_condensate_cat, cl=cl, axis=1
         )
 
+    # HACK there is some issue with not propagating NA values for 3 isos
+    for var in [
+        "condensates_observed_U2OS_alt",
+        "condensate_cat_U2OS",
+        "condensate_cat_merged_U2OS",
+        "condensate_cat_only_U2OS",
+        "localization_cat_U2OS",
+        "condensate_cat_only_detailed_U2OS",
+        "condensate_or_loc_change_U2OS",
+        "combined_cat_U2OS",
+        "condensate_cat_detailed_U2OS",
+    ]:
+        pairs.loc[
+            pairs["clone_acc_alt"].isin(
+                df.loc[df["localization_U2OS"].isnull(), :].index.values
+            ),
+            var,
+        ] = np.nan
     return pairs, df

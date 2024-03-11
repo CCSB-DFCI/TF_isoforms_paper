@@ -1,130 +1,190 @@
-gene_symbol	clone_id_ref	clone_id_alt	condensates_ref-v-alt_HEK	condensates_ref-v-alt_U2OS	localization_ref_HEK	localization_alt_HEK	localization_ref_U2OS	localization_alt_U2OS
-ZBTB18	ZBTB18-1	ZBTB18-2	Both form condensates	Both form condensates	both	both	both	both
-PRRX1	PRRX1-2	PRRX1-1	Alternative loses condensate	Alternative loses condensate	nucleus	both	nucleus	nucleus
-PRRX1	PRRX1-2	PRRX1-3	Alternative loses condensate	Both form condensates	nucleus	nucleus	nucleus	nucleus
-GRHL3	GRHL3-3	GRHL3-1	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	both
-GRHL3	GRHL3-3	GRHL3-2	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	both
-GRHL3	GRHL3-3	GRHL3-4	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-GRHL3	GRHL3-3	GRHL3-6	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-GRHL3	GRHL3-3	GRHL3-7	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-LHX9	LHX9-1	LHX9-2	Neither form condensates	Neither form condensates	nucleus	nucleus	nucleus	nucleus
-LHX9	LHX9-1	LHX9-3	Neither form condensates	Neither form condensates	nucleus	nucleus	nucleus	nucleus
-PBX1	PBX1-1	PBX1-2	Alternative loses condensate	Alternative loses condensate	both	both	both	both
-RORC	RORC-3	RORC-4	Alernative gains condensate	Alernative gains condensate	both	both	nucleus	both
-RXRG	RXRG-1	RXRG-2	Both form condensates	Both form condensates	both	both	both	nucleus
-CREB1	CREB1-2	CREB1-1	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-DLX1	DLX1-1	DLX1-2	Neither form condensates	Alternative loses condensate	both	both	both	both
-E2F6	E2F6-1	E2F6-2	Both form condensates	Both form condensates	cytoplasm	both	cytoplasm	both
-ATF2	ATF2-1	ATF2-2	Both form condensates	Both form condensates	both	both	both	both
-ATF2	ATF2-1	ATF2-3	Alternative loses condensate	Alternative loses condensate	both	both	both	both
-ATF2	ATF2-1	ATF2-4	Both form condensates	Both form condensates	both	both	both	nucleus
-ATF2	ATF2-1	ATF2-5	Alternative loses condensate	Alternative loses condensate	both	both	both	both
-ATF2	ATF2-1	ATF2-6	Both form condensates	Both form condensates	both	both	both	both
-KLF7	KLF7-1	KLF7-3	Both form condensates	Both form condensates	both	both	both	nucleus
-KLF7	KLF7-1	KLF7-4	Both form condensates	Both form condensates	both	both	both	both
-KLF7	KLF7-1	KLF7-5	Both form condensates	Both form condensates	both	both	both	cytoplasm
-KLF7	KLF7-1	KLF7-6	Both form condensates	Both form condensates	both	both	both	both
-KLF7	KLF7-1	KLF7-7	Both form condensates	Both form condensates	both	both	both	both
-KLF7	KLF7-1	KLF7-8	Both form condensates	Both form condensates	both	both	both	both
-PPARG	PPARG-1	PPARG-2	Alternative loses condensate	Alternative loses condensate	cytoplasm	nucleus	both	nucleus
-PPARG	PPARG-1	PPARG-3	Both form condensates	Both form condensates	cytoplasm	both	both	both
-PPARG	PPARG-1	PPARG-4	Both form condensates	Both form condensates	cytoplasm	nucleus	both	nucleus
-TP63	TP63-1	TP63-2	Neither form condensates	Neither form condensates	nucleus	both	nucleus	nucleus
-TP63	TP63-1	TP63-3	Alernative gains condensate	Alernative gains condensate	nucleus	cytoplasm	nucleus	cytoplasm
-RARB	RARB-1	RARB-2	Both form condensates	Both form condensates	both	both	nucleus	both
-THRB	THRB-2	THRB-1	Both form condensates	Both form condensates	both	nucleus	nucleus	nucleus
-THAP6	THAP6-1	THAP6-2	Both form condensates	Both form condensates	both	both	both	both
-THAP6	THAP6-1	THAP6-3	Both form condensates	Both form condensates	both	nucleus	both	both
-THAP6	THAP6-1	THAP6-4	Both form condensates	Both form condensates	both	both	both	both
-THAP6	THAP6-1	THAP6-5	Both form condensates	Both form condensates	both	both	both	both
-EBF1	EBF1-1	EBF1-2	Both form condensates	Both form condensates	both	both	both	both
-EBF1	EBF1-1	EBF1-3	Both form condensates	Both form condensates	both	both	both	both
-TBPL1	TBPL1-1	TBPL1-2	Alernative gains condensate	Alernative gains condensate	both	both	both	both
-ZSCAN9	ZSCAN9-1	ZSCAN9-2	Both form condensates	Both form condensates	nucleus	both	nucleus	both
-NFYA	NFYA-1	NFYA-2	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-NFYA	NFYA-1	NFYA-3	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-TFAP2A	TFAP2A-2	TFAP2A-1	Both form condensates	Both form condensates	both	both	both	both
-TFAP2A	TFAP2A-2	TFAP2A-3	Both form condensates	Both form condensates	both	cytoplasm	both	both
-TFAP2A	TFAP2A-2	TFAP2A-4	Both form condensates	Both form condensates	both	both	both	both
-CREB5	CREB5-1	CREB5-2	Alternative loses condensate	Alternative loses condensate	both	nucleus	both	nucleus
-FOXP2	FOXP2-2	FOXP2-1	Both form condensates	Both form condensates	both	nucleus	both	both
-FOXP2	FOXP2-2	FOXP2-4	Both form condensates	Both form condensates	both	nucleus	both	both
-FOXP2	FOXP2-2	FOXP2-6	Both form condensates	Both form condensates	both	cytoplasm	both	cytoplasm
-FOXP2	FOXP2-2	FOXP2-7	Both form condensates	Both form condensates	both	cytoplasm	both	cytoplasm
-FOXP2	FOXP2-2	FOXP2-10	Both form condensates	Both form condensates	both	both	both	both
-HOXA1	HOXA1-1	HOXA1-2	Both form condensates	Both form condensates	nucleus	both	both	both
-TFEC	TFEC-1	TFEC-3	Both form condensates	Alternative loses condensate	nucleus	both	nucleus	both
-TFEC	TFEC-1	TFEC-4	Both form condensates	Both form condensates	nucleus	both	nucleus	both
-TFEC	TFEC-1	TFEC-6	Both form condensates	Both form condensates	nucleus	both	nucleus	both
-HMBOX1	HMBOX1-2	HMBOX1-1	Both form condensates	Both form condensates	cytoplasm	cytoplasm	cytoplasm	cytoplasm
-HMBOX1	HMBOX1-2	HMBOX1-3	Both form condensates	Both form condensates	cytoplasm	both	cytoplasm	both
-HMBOX1	HMBOX1-2	HMBOX1-4	Both form condensates	Both form condensates	cytoplasm	cytoplasm	cytoplasm	cytoplasm
-HEY1	HEY1-2	HEY1-1	Neither form condensates	Neither form condensates	nucleus	nucleus	nucleus	nucleus
-RFX3	RFX3-2	RFX3-3	Alernative gains condensate	Alernative gains condensate	nucleus	both	nucleus	cytoplasm
-RFX3	RFX3-2	RFX3-4	Neither form condensates	Neither form condensates	nucleus	both	nucleus	both
-FLI1	FLI1-1	FLI1-2	Both form condensates	Both form condensates	both	nucleus	both	nucleus
-FLI1	FLI1-1	FLI1-3	Both form condensates	Both form condensates	both	both	both	both
-FLI1	FLI1-1	FLI1-4	Both form condensates	Both form condensates	both	both	both	both
-CREBZF	CREBZF-1	CREBZF-2	Alernative gains condensate	Alernative gains condensate	both	both	both	both
-ZBTB44	ZBTB44-1	ZBTB44-2	Alternative loses condensate	Alternative loses condensate	both	both	both	both
-ZBTB44	ZBTB44-1	ZBTB44-3	Alternative loses condensate	Alternative loses condensate	both	both	both	both
-ZBTB44	ZBTB44-1	ZBTB44-4	Alternative loses condensate	Alternative loses condensate	both	both	both	both
-ZBTB44	ZBTB44-1	ZBTB44-5	Alternative loses condensate	Alternative loses condensate	both	both	both	both
-ZBTB44	ZBTB44-1	ZBTB44-6	Both form condensates	Both form condensates	both	cytoplasm	both	cytoplasm
-FOXJ2	FOXJ2-1	FOXJ2-2	Alernative gains condensate	Alernative gains condensate	nucleus	both	nucleus	both
-NR4A1	NR4A1-3	NR4A1-1	Both form condensates	Both form condensates	both	both	nucleus	nucleus
-NR4A1	NR4A1-3	NR4A1-2	Both form condensates	Both form condensates	both	both	nucleus	nucleus
-NR4A1	NR4A1-3	NR4A1-4	Both form condensates	Both form condensates	both	both	nucleus	nucleus
-GLI1	GLI1-1	GLI1-2	Both form condensates	Both form condensates	cytoplasm	cytoplasm	cytoplasm	cytoplasm
-GLI1	GLI1-1	GLI1-3	Both form condensates	Both form condensates	cytoplasm	cytoplasm	cytoplasm	cytoplasm
-RFX4	RFX4-1	RFX4-2	Both form condensates	Both form condensates	both	both	both	both
-RFX4	RFX4-1	RFX4-3	Both form condensates	Both form condensates	both	both	both	both
-TBX5	TBX5-1	TBX5-2	Alernative gains condensate	Both form condensates	both	both	both	both
-TBX5	TBX5-1	TBX5-3	Alernative gains condensate	Both form condensates	both	cytoplasm	both	both
-FOXN4	FOXN4-1	FOXN4-2	Both form condensates	Both form condensates	both	both	both	both
-DDIT3	DDIT3-2	DDIT3-1	Alternative loses condensate	Alternative loses condensate	nucleus	both	both	both
-FOS	FOS-1	FOS-2	Both form condensates	Both form condensates	both	cytoplasm	nucleus	cytoplasm
-FOS	FOS-1	FOS-3	Both form condensates	Both form condensates	both	nucleus	nucleus	nucleus
-MAX	MAX-1	MAX-2	Alernative gains condensate	Both form condensates	nucleus	nucleus	both	nucleus
-MAX	MAX-1	MAX-3	Alernative gains condensate	Both form condensates	nucleus	both	both	cytoplasm
-MAX	MAX-1	MAX-4	Alernative gains condensate	Both form condensates	nucleus	both	both	both
-MAX	MAX-1	MAX-5	Alernative gains condensate	Both form condensates	nucleus	both	both	both
-MAX	MAX-1	MAX-6	Alernative gains condensate	Both form condensates	nucleus	both	both	both
-TCF12	TCF12-1	TCF12-2	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-TCF12	TCF12-1	TCF12-3	Both form condensates	Both form condensates	nucleus	both	nucleus	nucleus
-MEIS2	MEIS2-1	MEIS2-2	Both form condensates	Both form condensates	both	both	cytoplasm	cytoplasm
-MEIS2	MEIS2-1	MEIS2-3	Both form condensates	Both form condensates	both	both	cytoplasm	cytoplasm
-ZNF778	ZNF778-1	ZNF778-2	Both form condensates	Both form condensates	nucleus	nucleus	both	both
-CTCF	CTCF-1	CTCF-2	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-ZNF263	ZNF263-1	ZNF263-3	Both form condensates	Both form condensates	nucleus	both	nucleus	both
-E4F1	E4F1-1	E4F1-2	Both form condensates	Both form condensates	both	both	both	both
-DLX4	DLX4-1	DLX4-2	Alternative loses condensate	Both form condensates	nucleus	nucleus	both	nucleus
-DLX4	DLX4-1	DLX4-3	Both form condensates	Both form condensates	nucleus	nucleus	both	both
-MLX	MLX-1	MLX-3	Both form condensates	Both form condensates	cytoplasm	both	cytoplasm	both
-THRA	THRA-2	THRA-1	Alternative loses condensate	Neither form condensates	both	both	nucleus	both
-STAT3	STAT3-1	STAT3-2	Both form condensates	Both form condensates	cytoplasm	cytoplasm	both	cytoplasm
-STAT3	STAT3-1	STAT3-3	Both form condensates	Both form condensates	cytoplasm	cytoplasm	both	cytoplasm
-TP53	TP53-1	TP53-2	Both form condensates	Both form condensates	both	both	both	both
-MEOX1	MEOX1-1	MEOX1-2	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-MEOX1	MEOX1-1	MEOX1-3	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-TCF4	TCF4-1	TCF4-2	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-TCF4	TCF4-1	TCF4-3	Both form condensates	Both form condensates	nucleus	nucleus	nucleus	nucleus
-TCF4	TCF4-1	TCF4-4	Both form condensates	Both form condensates	nucleus	both	nucleus	cytoplasm
-TCF4	TCF4-1	TCF4-5	Both form condensates	Both form condensates	nucleus	both	nucleus	both
-TCF4	TCF4-1	TCF4-6	Both form condensates	Both form condensates	nucleus	cytoplasm	nucleus	both
-TCF4	TCF4-1	TCF4-7	Both form condensates	Both form condensates	nucleus	both	nucleus	both
-TCF4	TCF4-1	TCF4-8	Both form condensates	Both form condensates	nucleus	cytoplasm	nucleus	both
-FOSB	FOSB-1	FOSB-2	Alternative loses condensate	Alternative loses condensate	both	both	both	both
-FOSB	FOSB-1	FOSB-3	Both form condensates	Both form condensates	both	nucleus	both	nucleus
-ZNF473	ZNF473-1	ZNF473-2	Alternative loses condensate	Both form condensates	nucleus	both	nucleus	both
-NFIX	NFIX-1	NFIX-2	Neither form condensates	Alternative loses condensate	both	both	nucleus	nucleus
-NFIX	NFIX-1	NFIX-3	Neither form condensates	Alternative loses condensate	both	both	nucleus	both
-NFIX	NFIX-1	NFIX-4	Alernative gains condensate	Both form condensates	both	both	nucleus	both
-HNF4A	HNF4A-1	HNF4A-2	Alternative loses condensate	Alternative loses condensate	nucleus	nucleus	nucleus	nucleus
-HNF4A	HNF4A-1	HNF4A-3	Alternative loses condensate	Alternative loses condensate	nucleus	nucleus	nucleus	nucleus
-HNF4A	HNF4A-1	HNF4A-4	Alternative loses condensate	Both form condensates	nucleus	nucleus	nucleus	both
-PKNOX1	PKNOX1-1	PKNOX1-2	Both form condensates	Neither form condensates	both	both	both	both
-PKNOX1	PKNOX1-1	PKNOX1-3	Both form condensates	Alernative gains condensate	both	both	both	both
-PKNOX1	PKNOX1-1	PKNOX1-4	Both form condensates	Alernative gains condensate	both	both	both	both
-ZIC3	ZIC3-2	ZIC3-1	Alernative gains condensate	Neither form condensates	nucleus	nucleus	nucleus	nucleus
-ZIC3	ZIC3-2	ZIC3-3	Alernative gains condensate	Alernative gains condensate	nucleus	both	nucleus	both
+isoform_acc	cloned_reference_or_alternative	condensates_HEK293T_r1	localization_HEK293T_r1	condensates_HEK293T_r2	localization_HEK293T_r2	condensates_U2OS_r1	localization_U2OS_r1	condensates_U2OS_r2	localization_U2OS_r2
+ATF2|1/6|12H04	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+ATF2|2/6|09E05	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+ATF2|3/6|09C05	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+ATF2|4/6|09B05	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	nuclear condensates	cytoplasm	nuclear condensates	cytoplasm
+ATF2|5/6|09A05	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+ATF2|6/6|09H03	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+CREB1|2/2|01F12	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+CREB1|1/2|02E01	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+CREB5|1/3|08E11	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+CREB5|2/3|08A12	Alternative	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+CREBZF|1/2|04B03	Reference	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+CREBZF|2/2|04C04	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+CTCF|1/2|10F11	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+CTCF|2/2|01E10	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+DDIT3|2/2|05G05	Reference	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+DDIT3|1/2|05B05	Alternative	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+DLX1|1/2|07A12	Reference	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+DLX1|2/2|07E09	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	cytoplasm	no condensates	cytoplasm
+DLX4|1/3|11A04	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+DLX4|2/3|10A03	Alternative	no condensates	nucleus	no condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+DLX4|3/3|10B05	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+E2F6|1/2|10C02	Reference	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+E2F6|2/2|01A04	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+E4F1|1/2|02G03	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+E4F1|2/2|12A09	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+EBF1|1/3|12C07	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+EBF1|2/3|06D12	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+EBF1|3/3|06B12	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+FLI1|1/4|05A01	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+FLI1|2/4|04B12	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+FLI1|3/4|05A02	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+FLI1|4/4|05E02	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+FOS|1/4|03D05	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	nuclear condensates	nucleus	nuclear condensates	nucleus
+FOS|2/4|03E05	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+FOS|3/4|03B04	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+FOSB|1/3|05D03	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+FOSB|2/3|05E04	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+FOSB|3/3|05G04	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+FOXJ2|1/2|06F10	Reference	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+FOXJ2|2/2|06B11	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+FOXN4|1/2|10F06	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+FOXN4|2/2|10A07	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+FOXP2|2/10|07B01	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+FOXP2|1/10|07C01	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+FOXP2|10/10|06A10	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+FOXP2|4/10|12A06	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+FOXP2|6/10|06F12	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+FOXP2|7/10|06G10	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+GLI1|1/3|10F09	Reference	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+GLI1|2/3|10E09	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+GLI1|3/3|10E08	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+GRHL3|3/7|08G09	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+GRHL3|1/7|08E10	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+GRHL3|2/7|08A10	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+GRHL3|4/7|08F09	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+GRHL3|6/7|08G10	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+GRHL3|7/7|08A11	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+HEY1|2/2|04E03	Reference	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+HEY1|1/2|04A03	Alternative	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+HMBOX1|2/5|03C07	Reference	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+HMBOX1|1/5|03A07	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+HMBOX1|3/5|03E06	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+HMBOX1|4/5|03E07	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+HNF4A|1/6|10D08	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+HNF4A|2/6|10H07	Alternative	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+HNF4A|3/6|10C08	Alternative	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+HNF4A|4/6|10A10	Alternative	no condensates	nucleus	no condensates	nucleus	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+HOXA1|1/2|04F04	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+HOXA1|2/2|04F05	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+KLF7|1/8|01E06	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+KLF7|3/8|10B10	Alternative	both nuclear and cytoplasmic condensates	nucleus	both nuclear and cytoplasmic condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+KLF7|4/8|10E10	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+KLF7|5/8|11H02	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+KLF7|6/8|01D06	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+KLF7|7/8|10H08	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+KLF7|8/8|10D09	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+LHX9|1/3|06C10	Reference	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+LHX9|2/3|06D10	Alternative	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+LHX9|3/3|07A01	Alternative	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+MAX|1/6|08G02	Reference	no condensates	nucleus	no condensates	nucleus	both nuclear and cytoplasmic condensates	nucleus	both nuclear and cytoplasmic condensates	nucleus
+MAX|2/6|07F12	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+MAX|3/6|08E02	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+MAX|4/6|08A03	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+MAX|5/6|10H11	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+MAX|6/6|08C03	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+MEIS2|1/4|08H09	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+MEIS2|2/4|12A07	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+MEIS2|3/4|11H09	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+MEOX1|1/3|08C05	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+MEOX1|2/3|08G04	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+MEOX1|3/3|08G03	Alternative	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	nucleus	nuclear condensates	nucleus
+MLX|1/4|11G02	Reference	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+MLX|3/4|02G01	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+NFIX|1/4|08H03	Reference	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	nuclear condensates	nucleus	nuclear condensates	nucleus
+NFIX|2/4|08G06	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+NFIX|3/4|08F05	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+NFIX|4/4|08D05	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+NFYA|1/3|07H01	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+NFYA|2/3|07G01	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+NFYA|3/3|11D05	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+NR4A1|3/5|03G02	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm
+NR4A1|1/5|03A04	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	nuclear condensates	nucleus	nuclear condensates	nucleus
+NR4A1|2/5|03G05	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+NR4A1|4/5|03A03	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm
+PBX1|1/2|02A05	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+PBX1|2/2|02C05	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+PKNOX1|1/4|11H11	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+PKNOX1|2/4|06H05	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+PKNOX1|3/4|06H03	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+PKNOX1|4/4|06G03	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+PPARG|1/4|10G02	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+PPARG|2/4|10F03	Alternative	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+PPARG|3/4|01H02	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+PPARG|4/4|10H03	Alternative	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	nucleus	nuclear condensates	nucleus
+PRRX1|2/3|09F06	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+PRRX1|1/3|09C07	Alternative	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+PRRX1|3/3|09H08	Alternative	no condensates	nucleus	no condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+RARB|1/2|12H03	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm
+RARB|2/2|08B05	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+RFX3|2/5|10F10	Reference	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+RFX3|3/5|08G08	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+RFX3|4/5|11D09	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+RFX4|1/3|10C04	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+RFX4|2/3|10D02	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+RFX4|3/3|12B07	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+RORC|3/6|12D07	Reference	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+RORC|4/6|05B09	Alternative	both nuclear and cytoplasmic condensates	nucleus	both nuclear and cytoplasmic condensates	nucleus	both nuclear and cytoplasmic condensates	nucleus	both nuclear and cytoplasmic condensates	nucleus
+RXRG|1/2|11F12	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm
+RXRG|2/2|09F07	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	nuclear condensates	nucleus	nuclear condensates	nucleus
+STAT3|1/3|08B06	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	cytoplasm	both nuclear and cytoplasmic condensates	cytoplasm
+STAT3|2/3|08A06	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+STAT3|3/3|08C06	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+TBPL1|1/2|04H06	Reference	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+TBPL1|2/2|04A07	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+TBX5|1/3|08E01	Reference	no condensates	nucleus	no condensates	nucleus	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+TBX5|2/3|08C02	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+TBX5|3/3|08H01	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+TCF12|1/3|07D07	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+TCF12|2/3|07A09	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+TCF12|3/3|07B07	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+TCF4|1/9|07E01	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+TCF4|2/9|07E03	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+TCF4|3/9|07C04	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+TCF4|4/9|07G02	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+TCF4|5/9|07C02	Alternative	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm
+TCF4|6/9|07H03	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+TCF4|7/9|07G03	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+TCF4|8/9|07A05	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+TFAP2A|2/4|09G07	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+TFAP2A|1/4|09D09	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+TFAP2A|3/4|09D06	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+TFAP2A|4/4|11C09	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+TFEC|1/6|03F07	Reference	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	nucleus	nuclear condensates	nucleus
+TFEC|3/6|03C11	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm				
+TFEC|4/6|03H11	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+TFEC|6/6|03E11	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+THAP6|1/6|11H03	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+THAP6|2/6|05C05	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+THAP6|3/6|05B04	Alternative	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+THAP6|4/6|05E05	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+THAP6|5/6|05D05	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm
+THRA|2/3|09H09	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+THRA|1/3|09H07	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+THRB|2/2|07E08	Reference	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	nuclear condensates	nucleus	nuclear condensates	nucleus
+THRB|1/2|07E05	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+TP53|1/2|11G10	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+TP53|2/2|02F03	Alternative	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+TP63|1/3|07F10	Reference	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+TP63|2/3|01D01	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	nucleus	no condensates	nucleus
+TP63|3/3|07D09	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+ZBTB18|1/2|04E08	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+ZBTB18|2/2|12E05	Alternative	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+ZBTB44|1/9|12B06	Reference	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+ZBTB44|2/9|10F05	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm				
+ZBTB44|3/9|10B06	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm				
+ZBTB44|4/9|10H06	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+ZBTB44|5/9|10H05	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm
+ZBTB44|6/9|12H02	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
+ZIC3|2/3|12F04	Reference	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+ZIC3|1/3|09F05	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	no condensates	nucleus	no condensates	nucleus
+ZIC3|3/3|09C04	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+ZNF263|1/3|11C01	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+ZNF263|3/3|05A08	Alternative	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm	cytoplasmic condensates	both nucleus and cytoplasm
+ZNF473|1/2|10F12	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus	nuclear condensates	nucleus
+ZNF473|2/2|01B08	Alternative	no condensates	both nucleus and cytoplasm	no condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm
+ZNF778|1/2|05B07	Reference	nuclear condensates	nucleus	nuclear condensates	nucleus	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+ZNF778|2/2|12G05	Alternative	nuclear condensates	nucleus	nuclear condensates	nucleus	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm	both nuclear and cytoplasmic condensates	both nucleus and cytoplasm
+ZSCAN9|1/3|11H08	Reference	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm	nuclear condensates	both nucleus and cytoplasm
+ZSCAN9|2/3|08H02	Alternative	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm	cytoplasmic condensates	cytoplasm
