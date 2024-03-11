@@ -307,7 +307,7 @@ def _add_PPI_columns(df, y2h, suffixes=("_ref", "_alt")):
     n_ppi = y2h.loc[(y2h["Y2H_result"] == True), :].groupby("ad_clone_acc").size()
     df[f"n_positive_PPI{suffixes[0]}"] = df[f"clone_acc{suffixes[0]}"].map(n_ppi)
     df[f"n_positive_PPI{suffixes[1]}"] = df[f"clone_acc{suffixes[1]}"].map(n_ppi)
-    # BUG MISSING 0's here!
+    # Fix missing 0's
     df.loc[
         df[f"n_positive_PPI{suffixes[0]}"].isnull()
         & df[f"clone_acc{suffixes[0]}"].isin(

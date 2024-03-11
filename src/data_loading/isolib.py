@@ -1,6 +1,7 @@
 """
 authors: Gloria Sheynkman, Luke Lambourne
 """
+
 import itertools
 import random
 import collections
@@ -1234,6 +1235,7 @@ class Gene(GenomicFeature):
                     )  # only show domains for top isoform unless domain not already displayed
 
         if remove_overlapping_domains:  # BUG: THIS NO LONGER WORKS
+            print("WARNING remove_overlapping_domains doensn't work anymore")
             domains_to_draw = _remove_overlapping_domains(domains_to_draw)
         for i, isoform in enumerate(isoforms):
             ax = plt.subplot(gs.new_subplotspec((i, 0), rowspan=1, colspan=1))
@@ -1389,9 +1391,11 @@ class Gene(GenomicFeature):
                     ax.text(
                         x=x_max + 0.5 + (ax.get_xlim()[1] - ax.get_xlim()[0]) * 0.05,
                         y=ax.get_ylim()[1] - i * 0.5,
-                        s=d.name + " – " + d.description
-                        if d.description is not None
-                        else d.name,
+                        s=(
+                            d.name + " – " + d.description
+                            if d.description is not None
+                            else d.name
+                        ),
                         va="top",
                         ha="left",
                         fontsize=7,
