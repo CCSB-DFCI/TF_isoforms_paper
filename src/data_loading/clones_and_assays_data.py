@@ -606,6 +606,12 @@ def load_y1h_pdi_data(add_missing_data=False, include_pY1H_data=True):
         raise UserWarning("unexpected missing values")
     # HACK GATA2|3/4|12A02 & GATA2|4/4|11A12 have duplicate rows with no hits
     df = df.drop_duplicates()
+
+    # Remove some DNA baits which had no hits
+    id_cols = df.columns[:2]
+    data_cols = df.columns[2:]
+    df = df.loc[:, list(id_cols) + list(data_cols[df[data_cols].sum() > 0])]
+
     if df["clone_acc"].duplicated().any():
         raise UserWarning("unexpected duplicates")
     return df

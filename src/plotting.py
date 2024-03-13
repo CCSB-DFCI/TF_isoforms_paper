@@ -19,6 +19,7 @@ PAPER_PRESET = {
     "context": "paper",
     "rc": {
         "font.size": 7,
+        "pdf.fonttype": 42,
         "axes.titlesize": 7,
         "axes.labelsize": 7,
         "axes.linewidth": 0.5,

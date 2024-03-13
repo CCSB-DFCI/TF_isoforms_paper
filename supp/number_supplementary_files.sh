@@ -6,7 +6,7 @@ cp SuppTable_eY1HResults.txt Table_S3.tsv
 cp SuppTable_M1HResults.txt Table_S4.tsv
 cp SuppTable_PairwiseY2HResults.txt Table_S5.tsv
 cp SuppTable_N2HResults.txt Table_S6.tsv
-cp SuppTable_PDI_validation Table_S7.tsv
+cp SuppTable_PDI_validation.txt Table_S7.tsv
 cp SuppTable_CREB1-PBM.txt Table_S8.tsv
 cp SuppTable_TBX5-PBM.txt Table_S9.tsv
 cp SuppTable_SinglesCloneList.txt Table_S10.tsv
