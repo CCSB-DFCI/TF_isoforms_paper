@@ -1,0 +1,79 @@
+body {
+    min-height: 100vh;
+}
+
+h1 {
+    text-align: center;
+}
+
+p {
+    text-align: center;
+}
+
+a {
+    text-align: center;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+summary {
+    text-align: center;
+}
+
+details {
+    text-align: center;
+}
+
+img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+object {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+video {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+input {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+button {
+    display: inline-block;
+    margin-left: 0px;
+}
+
+/* by default chrome has a horrible semi-transparent black block on the bottom of the video */
+/* https://stackoverflow.com/questions/51719642/html5-video-player-remove-black-shadow-at-bottom-of-controls-section */
+video::-webkit-media-controls-panel {
+    background-image: linear-gradient(transparent, transparent) !important;
+    color: grey !important;
+}
+
+#myViewer {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 500px;
+    height: 500px;
+    position: relative;
+}
+
+#gene-name-title {
+    text-align: center;
+}
+
+#home-link {
+    text-align: left;
+}

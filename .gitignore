@@ -1,0 +1,33 @@
+# directory of large data files
+data
+figures
+misc
+tmp*
+cache
+output
+website/media
+website/pages
+website
+
+# ignore gloria's auxiliary analysis folder for now
+analysis2
+
+# ignore these other data files
+gencode.v25.annotation.gtf
+!tfiso2k_starlong.gtf
+!misc_files
+*.fa
+*.fasta
+*.gff3
+*.vcf
+*.csv
+*.tsv
+#.txt
+
+.DS_Store
+.vscode/
+*.pyc
+.ipynb_checkpoints
+
+.Rproj.user
+venv

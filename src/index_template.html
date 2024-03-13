@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf8" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="gene_summary.css">
+    <title>TF isoform summary pages</title>
+</head>
+<body>
+    <h1>TF isoforms – gene summary pages</h1>
+
+    <datalist id="TF genes">
+        {tf_gene_name_list}
+    </datalist>
+    <div class="container mx-auto" style="width: 300px;">
+        <div class="input-group input-group-lg my-5">
+            <input type="text" class="form-control" list="TF genes" id="TF gene" name="TF gene" autocomplete="off"/>
+            <button class="btn btn-primary" onclick="myFunction()">Go</button>
+        </div>
+    </div>
+    <script>
+        function myFunction() {{
+          window.location.href="pages/" + document.getElementById("TF gene").value + ".html";
+        }}
+      </script>
+      <div align="center">
+        <a href="https://docs.google.com/document/d/1WFEo9Otf2yUe651Gp6x5-VcOpEqElbTL3VzHtQ4roGk/edit">
+         Google doc for sharing notes
+        </a>
+       </div>
+</body>

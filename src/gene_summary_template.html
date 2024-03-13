@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+     <meta charset="utf-8" />
+
+     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+          crossorigin="anonymous"></script>
+
+     <!-- Required for IE11 -->
+     <script src="https://cdn.jsdelivr.net/npm/babel-polyfill/dist/polyfill.min.js"></script>
+     <!-- Web component polyfill (only loads what it needs) -->
+     <script src="https://cdn.jsdelivr.net/npm/@webcomponents/webcomponentsjs/webcomponents-lite.js"
+          charset="utf-8"></script>
+     <!-- Required to polyfill modern browsers as code is ES5 for IE... -->
+     <script src="https://cdn.jsdelivr.net/npm/@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js"
+          charset="utf-8"></script>
+     <link rel="stylesheet" type="text/css"
+          href="https://www.ebi.ac.uk/pdbe/pdb-component-library/css/pdbe-molstar-light-3.1.0.css">
+     <script type="text/javascript"
+          src="https://www.ebi.ac.uk/pdbe/pdb-component-library/js/pdbe-molstar-component-3.1.0.js"></script>
+
+     <link rel="stylesheet" href="../gene_summary.css">
+     <title>{gene_name} isoforms summary</title>
+
+
+     <script>
+          function changeToExonDiagram() {{
+                    var img = document.getElementById("exon-diagram");
+                    img.src = "../media/{gene_name}_cloned-isoforms_exon-diagram.svg";
+                    return false;
+          }}
+          function includeUnclonedIsoforms() {{
+                    var img = document.getElementById("exon-diagram");
+                    img.src = "../media/{gene_name}_cloned-plus-ensembl-isoforms_exon-diagram.svg";
+                    return false;
+          }}
+          function changeToProteinDiagram() {{
+                    var img = document.getElementById("exon-diagram");
+                    img.src = "../media/{gene_name}_cloned-isoforms_protein-diagram.svg";
+                    return false;
+          }}
+          function disableY1H() {{
+                    var nav = document.getElementById("y1h-link");
+                    nav.classList.add("disabled");
+                    var img = document.getElementById("y1h-profile");
+                    img.style.display = "none";
+          }}
+          function disableY2H() {{
+                    var nav = document.getElementById("y2h-link");
+                    nav.classList.add("disabled");
+                    var img = document.getElementById("y2h-profile");
+                    img.style.display = "none";
+          }}
+          function disableM1H() {{
+                    var nav = document.getElementById("m1h-link");
+                    nav.classList.add("disabled");
+                    var img = document.getElementById("m1h-profile");
+                    img.style.display = "none";
+          }}
+     </script>
+     <!--TODO add cleanup for Y2h etc figures not there-->
+
+</head>
+
+<body style="height: 100vh; margin: 0;">
+
+     <nav id="topbar" class="navbar navbar-expand-lg bg-light fixed-top" style="height: 60px;">
+          <ul class="navbar-nav justify-content-left">
+               <li class="nav-item">
+                    <a id="home-link" class="navbar-brand justify-content-start" href="../index.html">TFisoDB</a>
+               </li>
+          </ul>
+          <ul class="navbar-nav justify-content-center mx-auto">
+               <li class="nav-item">
+                    <h1 id="gene-name-title">{gene_name}</h1>
+               </li>
+               <li class="nav-item">
+                    <p>(family: {tf_family})</p>
+               </li>
+          </ul>
+     </nav>
+
+     <div id="content" class="d-flex flex-column"
+          style="margin-left: 250px; margin-top: 60px; position: relative; height: 100%;" data-bs-spy="scroll"
+          data-bs-target="#sidebar-bottom" data-bs-offset="0" tabindex="0">
+
+          <div id="top-content" class="container fixed-top"
+               style="margin-top: 60px; max-height: 250px; flex-grow: 1; overflow-y: auto;">
+
+               <nav id="sidebar-top" class="navbar d-flex flex-column flex-shrink-0 p-3 bg-light sticky-top"
+                    style="width: 250px; left: 0%; position: fixed; margin-top: 60px; margin-left: 0px">
+                    <ul class="nav nav-pills flex-column mb-auto">
+                         <li class="nav-item">
+                              <button id="exon-diagram-button" class="navbar-toggler"
+                                   onclick="changeToExonDiagram();">Exon diagram</button>
+                         </li>
+                         <li class="nav-item">
+                              <button id="uncloned-button" class="navbar-toggler"
+                                   onclick="includeUnclonedIsoforms();">Show uncloned isoforms</button>
+                         </li>
+                         <li class="nav-item">
+                              <button id="protein-diagram-button" class="navbar-toggler"
+                                   onclick="changeToProteinDiagram();">Protein diagram</button>
+                         </li>
+                         <hr>
+                    </ul>
+               </nav>
+
+               <img id='exon-diagram' src='../media/{gene_name}_cloned-isoforms_exon-diagram.svg'
+                    style="max-height: 250px;" alt='exon digram missing'>
+          </div>
+
+          <hr class="fixed-top border" style="margin-top: 310px; margin-left 250px"><!--TODO make this thicker-->
+
+          <div id="bottom-content" class="container" style="margin-top: 310px; flex-grow: 1; overflow-y: auto;">
+
+               <nav id="sidebar-bottom" class="navbar d-flex flex-column flex-shrink-0 p-3 bg-light sticky-top"
+                    style="width: 250px; position: fixed; left: 0%; margin-top: 310px;">
+                    <ul class="nav nav-pills flex-column mb-auto">
+                         <li class="nav-item">
+                              <a href="#structure-interactive" class="nav-link">Predicted structures</a>
+                         </li>
+                         <li class="nav-item">
+                              <a href="#y1h-profile" class="nav-link" id="y1h-link">Protein-DNA interactions</a>
+                         </li>
+                         <li class="nav-item">
+                              <a href="#y2h-profile" class="nav-link" id="y2h-link">Protein-protein interactions</a>
+                         </li>
+                         <li class="nav-item">
+                              <a href="#m1h-profile" class="nav-link" id="m1h-link">Transcriptional activation</a>
+                         </li>
+                         <li class="nav-item">
+                              <a href="#gtex" class="nav-link">Tissue expression</a>
+                         </li>
+                         <li class="nav-item">
+                              <a href="#development" class="nav-link">Developmental expression</a>
+                         </li>
+                         <li class="nav-item">
+                              <a href="#links" class="nav-link">Links</a>
+                         </li>
+                    </ul>
+               </nav>
+
+               <!--
+     <details open>
+          <summary>Predicted structures - side-by-side video</summary>
+          <video controls width=1080px loop autoplay muted>
+               <source src='../media/{gene_name}_alphafold2_cloned-isoforms.mp4' type='video/mp4'>
+               Video of predicted structures is missing
+          </video>
+     </details>
+     -->
+               <div id="structure-interactive">
+                    <div id="structureButtons">
+                         <!-- filled by js -->
+                    </div>
+                    <div id="myViewer">
+                         <script type="text/javascript" src="{gene_name}-molstar.js"></script>
+                    </div>
+               </div>
+
+               <img id='y1h-profile' src='../media/{gene_name}_y1h-profile.svg' alt='Y1H figure file missing'
+                    onerror="disableY1H();">
+
+               <img id="y2h-profile" src='../media/{gene_name}_y2h-profile.svg' alt='Y2H figure file missing' 
+                    onerror="disableY2H();">
+
+               <img id="m1h-profile" src='../media/{gene_name}_m1h-profile.svg' alt='M1H figure file missing'
+                    onerror="disableM1H();">
+
+
+               <!--Using object for this SVG since it has a link in it, which does not work with img-->
+               <!--
+          <object id="pathogenic-mutations" type='image/svg+xml' data='../media/{gene_name}_clinvar-pathogenic-SNPs_exon-diagram.svg'
+               alt='mutations diagram missing'>
+          </object>
+     -->
+
+               <img id='gtex' src='../media/{gene_name}_tissue-expression.svg' alt='GTEx figure file missing'>
+
+               <img id='development' src='../media/{gene_name}_developmental-tissue-expression.svg'
+                    alt='GTEx figure file missing'>
+               <!--
+          <details open>
+               <summary>Developmental tissue expression profile (interactive)</summary>
+               <embed type='text/html' src='../media/{gene_name}_developmental-tissue-expression_interactive.html'
+                    width='3000' height='500' alt='GTEx figure file missing'>
+          </details>
+          -->
+
+               <div id="links" style="text-align:center">
+                    <a href="https://useast.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g={ensembl_gene_id};"
+                         target="_blank" rel="noopener noreferrer">Ensembl: {ensembl_gene_id}</a>
+                    <a href="https://www.uniprot.org/uniprot/{uniprot_ac}" target="_blank"
+                         rel="noopener noreferrer">UniProt:
+                         {uniprot_ac}</a>
+                    <a href="http://humantfs.ccbr.utoronto.ca/myTFPageUniversal.php?user=&eID={ensembl_gene_id}&dbd=&submit_param=submit_value"
+                         target="_blank" rel="noopener noreferrer">Human TF DB (motifs)</a>
+                    <a href="https://www.huber.embl.de/pub/DEUprimates/allPages/{ensembl_gene_id}.html" target="_blank"
+                         rel="noopener noreferrer">Expression across primates and tissues (Reyes et al. PNAS 2013)</a>
+                    <a href="https://vastdb.crg.eu/gene/{ensembl_gene_id}@hg38" target="_blank"
+                         rel="noopener noreferrer">VastDB</a>
+                    <a href="https://apps.kaessmannlab.org/alternative-splicing/" target="_blank"
+                         rel="noopener noreferrer">Expression across species and tissues (Mazin et al Nature Genetics
+                         2021)</a>
+               </div>
+          </div>
+     </div>
+
+</body>
+
+</html>
