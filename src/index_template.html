@@ -5,28 +5,73 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="gene_summary.css">
-    <title>TF isoform summary pages</title>
+    <title>TFisoDB</title>
 </head>
 <body>
-    <h1>TF isoforms – gene summary pages</h1>
-
     <datalist id="TF genes">
         {tf_gene_name_list}
     </datalist>
+
+  
+    <nav id="topbar" class="navbar navbar-expand-lg bg-light fixed-top" style="height: 60px;">
+        <ul class="navbar-nav justify-content-left">
+            <li class="nav-item">
+                <div class="input-group my-5 d-flex">
+                    <input type="text" class="form-control" list="TF genes" id="TF gene" name="TF gene" autocomplete="off" placeholder="TF gene name"/>
+                    <button class="btn btn-primary" onclick="go_to_gene_page()">Go</button>
+                </div>
+            </li>
+        </ul>
+        <ul class="navbar-nav justify-content-center mx-auto column-gap-3">
+            <li class="nav-item">
+                <a id="home-link" class="navbar-brand justify-content-start" href="index.html">Home</a>
+          </li>
+          <li class="nav-item">
+            <a id="about-link" class="navbar-brand justify-content-start" href="about.html">About</a>
+      </li>
+      <li class="nav-item">
+        <a id="download-link" class="navbar-brand justify-content-start" href="download.html">Downloads</a>
+  </li>
+  <li class="nav-item">
+    <a id="download-link" class="navbar-brand justify-content-start" href="contact.html">Contact</a>
+    </li>
+        </ul>
+    </nav>
+    <script>
+        function go_to_gene_page() {{
+          window.location.href="pages/" + document.getElementById("TF gene").value + ".html";
+        }}
+      </script>
+
+
+    <div class="container-xl" style="margin-top: 80px;">
+    <h1 class="display-1">TFisoDB</h1>
+    </div>
+
+
     <div class="container mx-auto" style="width: 300px;">
         <div class="input-group input-group-lg my-5">
-            <input type="text" class="form-control" list="TF genes" id="TF gene" name="TF gene" autocomplete="off"/>
+            <input type="text" class="form-control" list="TF genes" id="TF gene big" name="TF gene" autocomplete="off" placeholder="TF gene name"/>
             <button class="btn btn-primary" onclick="myFunction()">Go</button>
         </div>
     </div>
     <script>
         function myFunction() {{
-          window.location.href="pages/" + document.getElementById("TF gene").value + ".html";
+          window.location.href="pages/" + document.getElementById("TF gene big").value + ".html";
         }}
       </script>
-      <div align="center">
-        <a href="https://docs.google.com/document/d/1WFEo9Otf2yUe651Gp6x5-VcOpEqElbTL3VzHtQ4roGk/edit">
-         Google doc for sharing notes
-        </a>
-       </div>
+
+      <div class="container mx-auto" style="max-width: 1000px;">
+        <p class="lead" style="margin-bottom: 60px;">
+            TFisoDB is a database of the molecular properties of alternative isoforms
+            of transcription factors. We have systematically tested a clone 
+            collection of 693 isoforms of 246 TF genes in assays assessing
+            DNA binding, protein-protein interactions, transcriptional activation,
+            localization, and condensate formation. Read the preprint describing
+            our findings <a href="https://www.biorxiv.org/content/10.1101/2024.03.12.584681" style="display: inline-block;">here</a>.
+        </p>
+        <p>
+            TFisoDB is a collaboration between the <a href="https://www.fuxmanlab.com/" style="display: inline-block;">Fuxman Bass</a>, <a href="http://the_brain.bwh.harvard.edu/" style="display: inline-block;">Bulyk</a>, <a href="https://faculty.mdanderson.org/profiles/nidhi_sahni.html" style="display: inline-block;">Sahni</a>, and <a href="https://www.cincinnatichildrens.org/research/divisions/b/bmi/labs/salomonis" style="display: inline-block;">Salomonis</a>, and <a href="https://ccsb.dana-farber.org/" style="display: inline-block;">Vidal</a> labs
+        </p>
+      </div>
 </body>

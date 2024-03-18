@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf8" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="gene_summary.css">
+    <title>TFisoDB</title>
+</head>
+<body>
+
+  <datalist id="TF genes">
+      {tf_gene_name_list}
+  </datalist>
+
+  <nav id="topbar" class="navbar navbar-expand-lg bg-light fixed-top" style="height: 60px;">
+    <ul class="navbar-nav justify-content-left">
+        <li class="nav-item">
+          <div class="input-group my-5 d-flex">
+            <input type="text" class="form-control" list="TF genes" id="TF gene" name="TF gene" autocomplete="off" placeholder="TF gene name"/>
+            <button class="btn btn-primary" onclick="go_to_gene_page()">Go</button>
+        </div>
+        </li>
+    </ul>
+    <ul class="navbar-nav justify-content-center mx-auto column-gap-3">
+        <li class="nav-item">
+            <a id="home-link" class="navbar-brand justify-content-start" href="index.html">Home</a>
+      </li>
+      <li class="nav-item">
+        <a id="about-link" class="navbar-brand justify-content-start" href="about.html">About</a>
+  </li>
+  <li class="nav-item">
+    <a id="download-link" class="navbar-brand justify-content-start" href="download.html">Downloads</a>
+</li>
+<li class="nav-item">
+<a id="download-link" class="navbar-brand justify-content-start" href="contact.html">Contact</a>
+</li>
+    </ul>
+</nav>
+<script>
+  function go_to_gene_page() {{
+    window.location.href="pages/" + document.getElementById("TF gene").value + ".html";
+  }}
+</script>
+
+
+
+  <div class="container text-align-center" style="margin-top: 60px; max-width: 1000px;">
+    <h1 class="mx-auto">About</h1>
+
+    <h3 class="mx-auto" style="text-align: center;">Citation</h3>
+    <p class="text-start">
+      Our manuscript is available as a preprint here: <a href="https://www.biorxiv.org/content/10.1101/2024.03.12.584681" style="display: inline-block;">https://www.biorxiv.org/content/10.1101/2024.03.12.584681</a>
+    </p>
+    <p class="text-start">
+      Lambourne L, Mattioli K, Santoso C, Sheynkman G, Inukai S, Kaundal B, Berenson A, Spirohn-Fitzgerald K, Bhattacharjee A, Rothman E, Shrestha S, Laval F, Yang Z, Bisht D, Sewell JA, Li G, Prasad A, Phanor S, Lane R, Campbell DM, Hunt T, Balcha D, Gebbia M, Twizere JC, Hao T, Frankish A, Riback J, Salomonis N, Calderwood MA, Hill DE, Sahni N, Vidal M, Bulyk ML, Fuxman Bass JI. Widespread variation in molecular interactions and regulatory properties among transcription factor isoforms. bioRxiv. 2024  p. 2024.03.12.584681
+    </p>
+
+    <h3 class="mx-auto" style="text-align: center;">The project</h3>
+    <p class="text-start">
+      There are ~1,600 human transcription factor (TFs) genes which play crucial
+      roles in development and disease. However, through alternative splicing, 
+      alternative transcription start sites, and alternative polyadenylation,
+      most TF genes encode at least one alternative protein isoform, resulting
+      in a total of at least 4,000 different TF isoforms. Outside of a few well-studied
+      examples, very little is known about the molecular functions of 
+      the vast majority of these alternative TF isoforms.
+      To address this, we systematically cloned and tested the molecular properties
+      of hundreds of TF isoforms. Our overall findings are presented in our
+      manuscript and we have built this web portal to allow anyone interested
+      to browse our data for every individual TF.    
+    </p>
+
+    <h3 class="mx-auto" style="text-align: center;">Cloned isoforms</h3>
+    <p class="text-start">
+      We used a PCR-based cloning strategy on human fetal and adult heart, brain, and liver tissues.
+      After extensive quality filtering, the resulting TFiso1.0 clone collection contains 693 isoforms
+      of 246 TF genes.
+    </p>
+
+    <h3 class="mx-auto" style="text-align: center;">Protein-DNA interactions</h3>
+      <p class="text-start">
+        PDIs were assessed with the enhanced yeast one-hybrid (eY1H) assay.
+        Data quality was confirmed by testing a large random sample in a
+        luciferase PDI assay. We also (see the preprint for more details).
+      </p>
+
+      <h3 class="mx-auto" style="text-align: center;">Protein-protein interactions</h3>
+      <p class="text-start">
+        PPIs were assessed with the yeast two-hybrid (Y2H) assay.
+        Our PPI data was confirmed to be high-quality through testing of
+        a large random sample in the mamalian nanoluc two-hybrid (mN2H) PPI assay,
+        and comparing to positive and negative controls.
+      </p>
+
+      <h3 class="mx-auto" style="text-align: center;">Transcriptional activation</h3>
+      <p class="text-start">
+        Was assessed in the M1H assay where full-length TF isoforms are tethered 
+        to a Gal4 DBD and transcriptional activity is then measured by co-transfecting 
+        with a plasmid containing four arrayed Gal4 upstream activation sequences 
+        (UAS) upstream of the firefly luciferase gene.
+      </p>
+
+      <h3 class="mx-auto" style="text-align: center;">Predicted structures</h3>
+      <p class="text-start">
+        Were generated with AlphaFold 2.3.
+      </p>
+
+      <h3 class="mx-auto" style="text-align: center;">Localization and condensates</h3>
+      <p class="text-start">
+        We expressed monomeric, enhanced green fluorescent protein (mEGFP)-tagged 
+        isoforms in HEK293T and U2OS cells and
+        evaluated both their subcellular localization and ability to form condensates 
+        using high-throughput confocal fluorescence microscopy.
+      </p>
+
+      <h3 class="mx-auto" style="text-align: center;">Tissue expression</h3>
+      <p class="text-start">
+        Is short-read data from GTEx data re-mapped to include the novel isoforms we cloned discovered.
+      </p>
+
+      <h3 class="mx-auto" style="text-align: center;">Developmental expression</h3>
+      <p class="text-start">
+        Is short-read data from Cardoso-Moreira et al. Nature 2019 re-mapped to include the novel isoforms we cloned discovered.
+      </p>
+
+
+    <h3 class="mx-auto" style="text-align: center;">Funding</h3>
+      <p class="text-start">
+        The data generated in TFisoDB was primarily supported by NCI U01CA232161 and NHGRI U24HG011451
+      </p>
+
+      <h3 class="mx-auto" style="text-align: center;">Related projects</h3>
+      <p class="text-start">
+       We used of PPIs from the <a href="http://www.interactome-atlas.org/" style="display: inline-block;">Human Reference Interactome (HuRI)</a> 
+       and effector domains from <a href="https://tfregdb.bu.edu/tfregdb/" style="display: inline-block;">TFRegDB</a>.
+      </p>
+      </div>
+    </div>
+
+
+</body>
