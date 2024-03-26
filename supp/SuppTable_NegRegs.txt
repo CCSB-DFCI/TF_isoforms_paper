@@ -335,7 +335,7 @@ MLX	ENSG00000108788	bHLH	MLX-1	MLX-3	0.0	NA	PPI rewire	NA	localization change	NA
 MLX	ENSG00000108788	bHLH	MLX-1	MLX-2	0.0	NA	PPI loss: all	activation loss	NA	negative regulator	negative regulator (activ,PPIs)
 THRA	ENSG00000126351	Nuclear receptor	THRA-2	THRA-1	0.0	PDI rewire	NA	rewire	no localization change	rewirer	rewirer
 STAT3	ENSG00000168610	STAT	STAT3-1	STAT3-2	0.0	PDI loss	PPI loss: cofactor	NA	localization loss	negative regulator	negative regulator (PDIs,PPIs, loc loss)
-STAT3	ENSG00000168610	STAT	STAT3-1	STAT3-3	0.0	PDI loss	PPI loss: cofactor,signalling	similar	localization change	negative regulator	negative regulator (PDIs,PPIs)
+STAT3	ENSG00000168610	STAT	STAT3-1	STAT3-3	0.0	PDI loss	PPI loss: cofactor,signalling	similar	no localization change	negative regulator	negative regulator (PDIs,PPIs)
 TP53	ENSG00000141510	p53	TP53-1	TP53-2	0.0	NA	PPI loss: all	NA	no localization change	negative regulator	negative regulator (PPIs)
 ZNF18	ENSG00000154957	C2H2 ZF	ZNF18-2	ZNF18-3	0.0	no PDI change	no PPI change (all PPIs)	similar	NA	similar to ref.	similar to ref.
 ZNF18	ENSG00000154957	C2H2 ZF	ZNF18-2	ZNF18-1	0.0	no PDI change	PPI rewire	similar	NA	rewirer	rewirer
