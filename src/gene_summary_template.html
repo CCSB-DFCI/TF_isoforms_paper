@@ -24,49 +24,49 @@
           src="https://www.ebi.ac.uk/pdbe/pdb-component-library/js/pdbe-molstar-component-3.1.0.js"></script>
 
      <link rel="stylesheet" href="../gene_summary.css">
-     <title>{gene_name} isoforms summary</title>
+     <title>{{gene_name}} isoforms summary</title>
 
 
      <script>
-          function changeToExonDiagram() {{
-                    var img = document.getElementById("exon-diagram");
-                    img.src = "../media/{gene_name}_cloned-isoforms_exon-diagram.svg";
-                    return false;
-          }}
-          function includeUnclonedIsoforms() {{
-                    var img = document.getElementById("exon-diagram");
-                    img.src = "../media/{gene_name}_cloned-plus-ensembl-isoforms_exon-diagram.svg";
-                    return false;
-          }}
-          function changeToProteinDiagram() {{
-                    var img = document.getElementById("exon-diagram");
-                    img.src = "../media/{gene_name}_cloned-isoforms_protein-diagram.svg";
-                    return false;
-          }}
-          function disableY1H() {{
-                    var nav = document.getElementById("y1h-link");
-                    nav.classList.add("disabled");
-                    var img = document.getElementById("y1h-profile");
-                    img.style.display = "none";
-          }}
-          function disableY2H() {{
-                    var nav = document.getElementById("y2h-link");
-                    nav.classList.add("disabled");
-                    var img = document.getElementById("y2h-profile");
-                    img.style.display = "none";
-          }}
-          function disableM1H() {{
-                    var nav = document.getElementById("m1h-link");
-                    nav.classList.add("disabled");
-                    var img = document.getElementById("m1h-profile");
-                    img.style.display = "none";
-          }}
-          function disableCondensates() {{
-                    var nav = document.getElementById("condensates-link");
-                    nav.classList.add("disabled");
-                    var img = document.getElementById("condensates-profile");
-                    img.style.display = "none";
-          }}
+          function changeToExonDiagram() {
+               var img = document.getElementById("exon-diagram");
+               img.src = "../media/{{gene_name}}_cloned-isoforms_exon-diagram.svg";
+               return false;
+          }
+          function includeUnclonedIsoforms() {
+               var img = document.getElementById("exon-diagram");
+               img.src = "../media/{{gene_name}}_cloned-plus-ensembl-isoforms_exon-diagram.svg";
+               return false;
+          }
+          function changeToProteinDiagram() {
+               var img = document.getElementById("exon-diagram");
+               img.src = "../media/{{gene_name}}_cloned-isoforms_protein-diagram.svg";
+               return false;
+          }
+          function disableY1H() {
+               var nav = document.getElementById("y1h-link");
+               nav.classList.add("disabled");
+               var img = document.getElementById("y1h-profile");
+               img.style.display = "none";
+          }
+          function disableY2H() {
+               var nav = document.getElementById("y2h-link");
+               nav.classList.add("disabled");
+               var img = document.getElementById("y2h-profile");
+               img.style.display = "none";
+          }
+          function disableM1H() {
+               var nav = document.getElementById("m1h-link");
+               nav.classList.add("disabled");
+               var img = document.getElementById("m1h-profile");
+               img.style.display = "none";
+          }
+          function disableCondensates() {
+               var nav = document.getElementById("condensates-link");
+               nav.classList.add("disabled");
+               var img = document.getElementById("condensates-profile");
+               img.style.display = "none";
+          }
      </script>
 
 </head>
@@ -74,8 +74,8 @@
 <body style="height: 100vh; margin: 0; padding-bottom: 100px;">
 
      <datalist id="TF genes">
-          {tf_gene_name_list}
-      </datalist>
+          {{tf_gene_name_list}}
+     </datalist>
 
      <nav id="topbar" class="navbar navbar-expand-lg bg-light fixed-top" style="height: 60px;">
           <ul class="navbar-nav justify-content-left">
@@ -84,32 +84,32 @@
                </li>
                <li class="nav-item">
                     <div class="input-group d-flex">
-                         <input type="text" class="form-control" list="TF genes" id="TF gene" name="TF gene" autocomplete="off" placeholder="TF gene name"/>
+                         <input type="text" class="form-control" list="TF genes" id="TF gene" name="TF gene"
+                              autocomplete="off" placeholder="TF gene name" />
                          <button class="btn btn-primary" onclick="go_to_gene_page()">Go</button>
-                     </div>
+                    </div>
                </li>
           </ul>
           <ul class="navbar-nav justify-content-center mx-auto column-gap-3">
                <li class="nav-item">
-                    <h1 id="gene-name-title">{gene_name}</h1>
+                    <h1 id="gene-name-title">{{gene_name}}</h1>
                </li>
                <li class="nav-item navbar-text">
-                    <h3>(family: {tf_family})</h3>
+                    <h3>(family: {{tf_family}})</h3>
                </li>
           </ul>
      </nav>
      <script>
-          function go_to_gene_page() {{
-            window.location.href=document.getElementById("TF gene").value + ".html";
-          }}
-        </script>
+          function go_to_gene_page() {
+               window.location.href = document.getElementById("TF gene").value + ".html";
+          }
+     </script>
 
      <div id="content" class="d-flex flex-column"
           style="margin-left: 250px; margin-top: 60px; position: relative; height: 100%;" data-bs-spy="scroll"
           data-bs-target="#sidebar-bottom" data-bs-offset="0" tabindex="0">
 
-          <div id="top-content" class="container fixed-top"
-               style="margin-top: 60px; flex-grow: 1; overflow-y: auto;">
+          <div id="top-content" class="container fixed-top" style="margin-top: 60px; flex-grow: 1; overflow-y: auto;">
 
                <nav id="sidebar-top" class="navbar d-flex flex-column flex-shrink-0 p-3 bg-light sticky-top"
                     style="width: 250px; min-height: 250px; left: 0%; position: fixed; margin-top: 60px; margin-left: 0px">
@@ -130,8 +130,9 @@
                </nav>
 
                <div class="container">
-                    <div style="background-color: white; z-index: -999; position: fixed; height: 250px; width: 100%;"></div>
-                    <img id='exon-diagram' src='../media/{gene_name}_cloned-isoforms_exon-diagram.svg'
+                    <div style="background-color: white; z-index: -999; position: fixed; height: 250px; width: 100%;">
+                    </div>
+                    <img id='exon-diagram' src='../media/{{gene_name}}_cloned-isoforms_exon-diagram.svg'
                          style="max-height: 250px; margin-left: 250px;" alt='exon digram missing'>
                </div>
           </div>
@@ -153,7 +154,8 @@
                               <a href="#m1h-profile" class="nav-link" id="m1h-link">Transcriptional activation</a>
                          </li>
                          <li class="nav-item">
-                              <a href="#condensates-profile" class="nav-link" id="condensates-link">Localization and condensates</a>
+                              <a href="#condensates-profile" class="nav-link" id="condensates-link">Localization and
+                                   condensates</a>
                          </li>
                          <li class="nav-item">
                               <a href="#structure-interactive" class="nav-link">Predicted structures</a>
@@ -170,61 +172,63 @@
                     </ul>
                </nav>
 
-               <img id='y1h-profile' src='../media/{gene_name}_y1h-profile.svg' alt='Y1H figure file missing'
+               <img id='y1h-profile' src='../media/{{gene_name}}_y1h-profile.svg' alt='Y1H figure file missing'
                     onerror="disableY1H();">
 
-               <img id="y2h-profile" src='../media/{gene_name}_y2h-profile.svg' alt='Y2H figure file missing' 
+               <img id="y2h-profile" src='../media/{{gene_name}}_y2h-profile.svg' alt='Y2H figure file missing'
                     onerror="disableY2H();">
 
-               <img id="m1h-profile" src='../media/{gene_name}_m1h-profile.svg' alt='M1H figure file missing'
+               <img id="m1h-profile" src='../media/{{gene_name}}_m1h-profile.svg' alt='M1H figure file missing'
                     onerror="disableM1H();">
 
                <div id="condensates-profile">
-               {condensate_images}
+                    {{condensate_images}}
                </div>
 
-                    <div id="structure-interactive">
-                         <div id="structureButtons" class="mx-auto" style="width: 500px;">
-                              <!-- filled by js -->
-                         </div>
-                         <div id="myViewer">
-                              <script type="text/javascript" src="{gene_name}-molstar.js"></script>
-                         </div>
+               <div id="structure-interactive">
+                    <div id="structureButtons" class="mx-auto" style="width: 500px;">
+                         <!-- filled by js -->
                     </div>
-     
+                    <div id="myViewer">
+                         <script type="text/javascript" src="{{gene_name}}-molstar.js"></script>
+                    </div>
+               </div>
+
                <!--Using object for this SVG since it has a link in it, which does not work with img-->
                <!--
-          <object id="pathogenic-mutations" type='image/svg+xml' data='../media/{gene_name}_clinvar-pathogenic-SNPs_exon-diagram.svg'
+          <object id="pathogenic-mutations" type='image/svg+xml' data='../media/{{gene_name}}_clinvar-pathogenic-SNPs_exon-diagram.svg'
                alt='mutations diagram missing'>
           </object>
      -->
 
-               <img id='gtex' src='../media/{gene_name}_tissue-expression.svg' alt='GTEx figure file missing'>
+               <img id='gtex' src='../media/{{gene_name}}_tissue-expression.svg' alt='GTEx figure file missing'>
 
-               <img id='development' src='../media/{gene_name}_developmental-tissue-expression.svg'
+               <img id='development' src='../media/{{gene_name}}_developmental-tissue-expression.svg'
                     alt='GTEx figure file missing'>
                <!--
           <details open>
                <summary>Developmental tissue expression profile (interactive)</summary>
-               <embed type='text/html' src='../media/{gene_name}_developmental-tissue-expression_interactive.html'
+               <embed type='text/html' src='../media/{{gene_name}}_developmental-tissue-expression_interactive.html'
                     width='3000' height='500' alt='GTEx figure file missing'>
           </details>
           -->
 
                <div id="links" style="text-align:center">
-                    <a href="https://useast.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g={ensembl_gene_id};"
-                         target="_blank" rel="noopener noreferrer">Ensembl: {ensembl_gene_id}</a>
-                    <a href="https://www.uniprot.org/uniprot/{uniprot_ac}" target="_blank"
+                    <a href="https://useast.ensembl.org/Homo_sapiens/Gene/Summary?db=core;g={{ensembl_gene_id}};"
+                         target="_blank" rel="noopener noreferrer">Ensembl: {{ensembl_gene_id}}</a>
+                    <a href="https://www.uniprot.org/uniprot/{{uniprot_ac}}" target="_blank"
                          rel="noopener noreferrer">UniProt:
-                         {uniprot_ac}</a>
-                    <a href="http://humantfs.ccbr.utoronto.ca/myTFPageUniversal.php?user=&eID={ensembl_gene_id}&dbd=&submit_param=submit_value"
+                         {{uniprot_ac}}</a>
+                    <a href="http://humantfs.ccbr.utoronto.ca/myTFPageUniversal.php?user=&eID={{ensembl_gene_id}}&dbd=&submit_param=submit_value"
                          target="_blank" rel="noopener noreferrer">Human TF DB (motifs)</a>
-                    <a href="https://www.huber.embl.de/pub/DEUprimates/allPages/{ensembl_gene_id}.html" target="_blank"
-                         rel="noopener noreferrer">Expression across primates and tissues (Reyes et al. PNAS 2013)</a>
-                    <a href="https://vastdb.crg.eu/gene/{ensembl_gene_id}@hg38" target="_blank"
+                    <a href="https://www.huber.embl.de/pub/DEUprimates/allPages/{{ensembl_gene_id}}.html"
+                         target="_blank" rel="noopener noreferrer">Expression across primates and tissues (Reyes et al.
+                         PNAS 2013)</a>
+                    <a href="https://vastdb.crg.eu/gene/{{ensembl_gene_id}}@hg38" target="_blank"
                          rel="noopener noreferrer">VastDB</a>
                     <a href="https://apps.kaessmannlab.org/alternative-splicing/" target="_blank"
-                         rel="noopener noreferrer" class="pb-5">Expression across species and tissues (Mazin et al Nature Genetics
+                         rel="noopener noreferrer" class="pb-5">Expression across species and tissues (Mazin et al
+                         Nature Genetics
                          2021)</a>
                </div>
           </div>
