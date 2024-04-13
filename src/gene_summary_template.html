@@ -79,6 +79,7 @@
 
      <nav id="topbar" class="navbar navbar-expand-sm navbar-light bg-light fixed-top" style="height: 60px;">
           <div class="container-fluid">
+               <a id="home-link" class="navbar-brand" href="../index.html">TFisoDB</a>
                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topbarcontent"
                     aria-controls="topbarcontent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -95,23 +96,17 @@
                     </ul>
                     <ul class="navbar-nav justify-content-center mx-auto column-gap-3">
                          <li class="nav-item">
-                              <a id="home-link" class="navbar-brand justify-content-start" href="index.html">Home</a>
+                              <h1 id="gene-name-title">{{gene_name}}</h1>
                          </li>
-                         <li class="nav-item">
-                              <a id="about-link" class="navbar-brand justify-content-start" href="about.html">About</a>
-                         </li>
-                         <li class="nav-item">
-                              <a id="download-link" class="navbar-brand justify-content-start"
-                                   href="download.html">Downloads</a>
-                         </li>
-                         <li class="nav-item">
-                              <a id="download-link" class="navbar-brand justify-content-start"
-                                   href="contact.html">Contact</a>
+                         <li class="nav-item navbar-text">
+                              <h3>(family: {{tf_family}})</h3>
                          </li>
                     </ul>
                </div>
           </div>
      </nav>
+
+
      <script>
           function go_to_gene_page() {
                window.location.href = document.getElementById("TF gene").value + ".html";
