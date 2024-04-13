@@ -77,27 +77,40 @@
           {{tf_gene_name_list}}
      </datalist>
 
-     <nav id="topbar" class="navbar navbar-expand-lg bg-light fixed-top" style="height: 60px;">
-          <ul class="navbar-nav justify-content-left">
-               <li class="nav-item">
-                    <a id="home-link" class="navbar-brand justify-content-start" href="../index.html">TFisoDB</a>
-               </li>
-               <li class="nav-item">
-                    <div class="input-group d-flex">
-                         <input type="text" class="form-control" list="TF genes" id="TF gene" name="TF gene"
-                              autocomplete="off" placeholder="TF gene name" />
-                         <button class="btn btn-primary" onclick="go_to_gene_page()">Go</button>
-                    </div>
-               </li>
-          </ul>
-          <ul class="navbar-nav justify-content-center mx-auto column-gap-3">
-               <li class="nav-item">
-                    <h1 id="gene-name-title">{{gene_name}}</h1>
-               </li>
-               <li class="nav-item navbar-text">
-                    <h3>(family: {{tf_family}})</h3>
-               </li>
-          </ul>
+     <nav id="topbar" class="navbar navbar-expand-sm navbar-light bg-light fixed-top" style="height: 60px;">
+          <div class="container-fluid">
+               <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topbarcontent"
+                    aria-controls="topbarcontent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+               </button>
+               <div class="collapse navbar-collapse bg-light" id="topbarcontent" style="height: 60px;">
+                    <ul class="navbar-nav justify-content-left">
+                         <li class="nav-item">
+                              <div class="input-group my-5 d-flex">
+                                   <input type="text" class="form-control" list="TF genes" id="TF gene" name="TF gene"
+                                        autocomplete="off" placeholder="TF gene name" />
+                                   <button class="btn btn-primary" onclick="go_to_gene_page()">Go</button>
+                              </div>
+                         </li>
+                    </ul>
+                    <ul class="navbar-nav justify-content-center mx-auto column-gap-3">
+                         <li class="nav-item">
+                              <a id="home-link" class="navbar-brand justify-content-start" href="index.html">Home</a>
+                         </li>
+                         <li class="nav-item">
+                              <a id="about-link" class="navbar-brand justify-content-start" href="about.html">About</a>
+                         </li>
+                         <li class="nav-item">
+                              <a id="download-link" class="navbar-brand justify-content-start"
+                                   href="download.html">Downloads</a>
+                         </li>
+                         <li class="nav-item">
+                              <a id="download-link" class="navbar-brand justify-content-start"
+                                   href="contact.html">Contact</a>
+                         </li>
+                    </ul>
+               </div>
+          </div>
      </nav>
      <script>
           function go_to_gene_page() {
