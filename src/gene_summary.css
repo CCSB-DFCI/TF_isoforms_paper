@@ -75,6 +75,31 @@ video::-webkit-media-controls-panel {
     text-align: center;
 }
 
+.microscopy-image {
+    width: 200px;
+    display: inline-block;
+    /*margin-left: auto;
+    margin-right: auto;*/
+    margin: 0 5px;
+}
+
+.image-row {
+    width: 100%;
+    height: 200px;
+    overflow-x: auto;
+    white-space: nowrap;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.microscopy-label {
+    display: inline-block;
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    vertical-align: middle;
+}
+
 /*#home-link {
     text-align: left;
 }*/
