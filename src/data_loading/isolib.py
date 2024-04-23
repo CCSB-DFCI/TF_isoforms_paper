@@ -918,27 +918,33 @@ class Gene(GenomicFeature):
             ax = plt.gca()
 
         isoforms = self.isoforms if show_uncloned_isoforms else self.cloned_isoforms
-        merged_exon_bounds = [(exon.start, exon.end) for exon in self.exons]
+        expanded_exon_bounds = [(exon.start, exon.end) for exon in self.exons]
+        ref_exon_bounds = []
+        for start, end in expanded_exon_bounds:
+            for exon in [exon for iso in isoforms for exon in iso.exons]:
+                if exon.start >= start and exon.end <= end:
+                    ref_exon_bounds.append((exon.start, exon.end))
+                    break
+            else:
+                ref_exon_bounds.append((start, end))
         diff_exon_ends = {}
         for iso in isoforms:
             for exon in iso.exons:
-                merged_start, merged_end = merged_exon_bounds[
-                    exon.exon_number_on_gene - 1
-                ]
+                merged_start, merged_end = ref_exon_bounds[exon.exon_number_on_gene - 1]
                 if exon.start != merged_start:
-                    diff_exon_ends[exon.start] = exon.start - merged_start
+                    diff_exon_ends[exon.start] = merged_start - exon.start
                 if exon.end != merged_end:
-                    diff_exon_ends[exon.end] = merged_end - exon.end
+                    diff_exon_ends[exon.end] = exon.end - merged_end
         if self.strand == "-":
-            merged_exon_bounds = merged_exon_bounds[::-1]
-        mapped_exon_bounds = [merged_exon_bounds[0]]
-        for i in range(1, len(merged_exon_bounds)):
+            expanded_exon_bounds = expanded_exon_bounds[::-1]
+        mapped_exon_bounds = [expanded_exon_bounds[0]]
+        for i in range(1, len(expanded_exon_bounds)):
             a = mapped_exon_bounds[i - 1][1] + intron_nt_space
-            b = a + (merged_exon_bounds[i][1] - merged_exon_bounds[i][0])
+            b = a + (expanded_exon_bounds[i][1] - expanded_exon_bounds[i][0])
             mapped_exon_bounds.append((a, b))
 
         def _map_position(
-            pos, bounds_in=merged_exon_bounds, bounds_out=mapped_exon_bounds
+            pos, bounds_in=expanded_exon_bounds, bounds_out=mapped_exon_bounds
         ):
             if len(bounds_in) != len(bounds_out):
                 raise ValueError("Invalid boundary mapping")
@@ -952,8 +958,8 @@ class Gene(GenomicFeature):
             raise ValueError(msg)
 
         exon_colors = self._get_exon_colors()
-        xmin = _map_position(merged_exon_bounds[0][0])
-        xmax = _map_position(merged_exon_bounds[-1][1] - 1)
+        xmin = _map_position(expanded_exon_bounds[0][0])
+        xmax = _map_position(expanded_exon_bounds[-1][1] - 1)
         for i, iso in enumerate(isoforms):
             for exon in iso.exons:
                 x_start = _map_position(exon.start)
@@ -972,22 +978,26 @@ class Gene(GenomicFeature):
                 # draw number of NT for small exon boundary changes
                 if exon.start in diff_exon_ends:
                     num_nt_diff = diff_exon_ends[exon.start]
-                    if num_nt_diff <= subtle_splice_threshold:
+                    if abs(num_nt_diff) <= subtle_splice_threshold:
                         ax.text(
                             _map_position(exon.start),
                             i + height + 0.03,
-                            "{} nt".format(num_nt_diff),
+                            "{}{} nt".format(
+                                "+" if num_nt_diff > 0 else "Δ", abs(num_nt_diff)
+                            ),
                             ha="left",
                             va="top",
                             fontsize=subtle_splice_font_size,
                         )
                 if exon.end in diff_exon_ends:
                     num_nt_diff = diff_exon_ends[exon.end]
-                    if num_nt_diff <= subtle_splice_threshold:
+                    if abs(num_nt_diff) <= subtle_splice_threshold:
                         ax.text(
                             _map_position(exon.end - 1),
                             i + height + 0.03,
-                            "{} nt".format(num_nt_diff),
+                            "{}{} nt".format(
+                                "+" if num_nt_diff > 0 else "Δ", abs(num_nt_diff)
+                            ),
                             ha="left",
                             va="top",
                             fontsize=subtle_splice_font_size,
