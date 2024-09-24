@@ -621,7 +621,7 @@ def load_Y1H_DNA_bait_sequences():
     cache_path = DATA_DIR / "processed/Y1H_DNA_baits.fa"
     if cache_path.exists():
         return {rec.id: str(rec.seq) for rec in SeqIO.parse(cache_path, format="fasta")}
-    df = pd.read_excel("../data/external/Fuxman-Bass-et-al_Cell_2015_Table-S8.xlsx")
+    df = pd.read_excel(DATA_DIR / "external/Fuxman-Bass-et-al_Cell_2015_Table-S8.xlsx")
     if df["Vista Enhancer ID"].duplicated().any():
         raise UserWarning("unexpected duplicate enhancer IDs")
     if df["Sequence"].duplicated().any():
@@ -629,7 +629,7 @@ def load_Y1H_DNA_bait_sequences():
     baits = df.set_index("Vista Enhancer ID")["Sequence"].to_dict()
 
     df = pd.read_excel(
-        "../data/external/Fuxman-Bass-et-al_Cell_2015_Table-S10.xlsx",
+        DATA_DIR / "external/Fuxman-Bass-et-al_Cell_2015_Table-S10.xlsx",
         sheet_name="Noncoding mutations",
     )
     # reference genome version: GRCh37.p12

@@ -1,4 +1,5 @@
 import functools
+import pandas as pd
 import pickle
 from pathlib import Path
 import inspect
@@ -40,7 +41,10 @@ def cache_with_pickle(func):
         if cached_file.exists() and use_cache:
             with open(cached_file, "rb") as f:
                 print("reading from cache")
-                ret = pickle.load(f)
+                try:
+                    ret = pickle.load(f)
+                except:
+                    ret = pd.read_pickle(f)
             return ret
         else:
             ret = func(*args, **kwargs)
