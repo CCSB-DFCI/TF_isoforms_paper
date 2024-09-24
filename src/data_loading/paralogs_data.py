@@ -4,7 +4,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from Bio import pairwise2
-from Bio.SubsMat.MatrixInfo import blosum62
+from Bio.Align import substitution_matrices
+blosum62 = substitution_matrices.load('BLOSUM62')
 import tqdm
 
 from .clones_and_assays_data import (
