@@ -1868,9 +1868,115 @@ ax.plot([left_spine_in_data_coords[0], left_spine_in_data_coords[0]], [0.5, 1],
 fig.savefig("../../figures/fig7/DN_GTExDsTau_Gene_Boxplot.pdf", dpi="figure", bbox_inches="tight")
 
 
-# ## 7. make supplemental tables
+# ## 7. CREB1 vignette: expression
 
 # In[84]:
+
+
+def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim, means, cols, fig_suffix, shorten_x=False):
+    n_isos = len(means.loc[genes_gtex == gene_name])
+    palette = sns.color_palette(palette_name, as_cmap=False, n_colors=n_isos)
+    fig, axes = plt.subplots(2, 1, sharex=True)
+    fig.set_size_inches(figsize)
+    ### bar chart ###
+    (means.loc[genes_gtex == gene_name, cols]
+          .T
+          .plot.bar(ax=axes[0],
+                    legend=False,
+                    width=0.7,
+                    color=list(palette)))
+    ### percentages ###
+    raw_means = 2 ** means.loc[genes_gtex == gene_name, cols] - 1.
+    (raw_means.div(raw_means.sum(axis=0))
+              .T.plot.bar(ax=axes[1], 
+                          stacked=True,
+                          legend=False,
+                          color=list(palette)))
+    
+    if shorten_x:
+        xticks = list(axes[1].get_xticklabels())
+        xticks_short = [x.get_text().split("-")[0].strip() for x in xticks]
+        axes[1].set_xticklabels(xticks_short, rotation=90, va="top", ha="center")
+        
+    axes[0].set_ylabel('log2(TPM + 1)\n')
+    axes[0].set_ylim(ylim)
+    axes[1].set_ylabel('Percentage of gene expression')
+    axes[1].set_yticklabels(['{:.0%}'.format(t) for t in axes[1].get_yticks()])
+    axes[1].legend(loc='lower left', bbox_to_anchor=(1, 0), frameon=False)
+    axes[0].axhline(y=1, color='black', linewidth=0.5, linestyle="dashed")
+    axes[1].tick_params(axis='x', which='major', labelsize=PAPER_FONTSIZE-1.5)
+    
+    for spine in ['right', 'top']:
+        axes[0].spines[spine].set_visible(False)
+        axes[1].spines[spine].set_visible(False)
+    
+    plt.subplots_adjust(hspace=0.25)
+    plt.savefig('../../figures/fig7/expression_' + gene_name + '_' + fig_suffix + '.pdf',
+                bbox_inches='tight')
+
+
+# In[85]:
+
+
+rename_for_viz = {"Adipose - Subcutaneous": "Adipose - Subcutaneous",
+                  "Adipose - Visceral (Omentum)": "Adipose - Visceral",
+                  "Adrenal Gland": "Adrenal Gland",
+                  "Artery - Aorta": "Artery - Aorta",
+                  "Artery - Coronary": "Artery - Coronary",
+                  "Artery - Tibial": "Artery - Tibial",
+                  "Bladder": "Bladder",
+                  "Brain - Amygdala": "Brain - Amygdala",
+                  "Brain - Anterior cingulate cortex (BA24)": "Brain - Anterior cortex",
+                  "Brain - Caudate (basal ganglia)": "Brain - Caudate",
+                  "Brain - Cerebellar Hemisphere": "Brain - Cerebellar hemisphere",
+                  "Brain - Cerebellum": "Brain - Cerebellum",
+                  "Brain - Cortex": "Brain - Cortex",
+                  "Brain - Frontal Cortex (BA9)": "Brain - Frontal cortex",
+                  "Brain - Hippocampus": "Brain - Hippocampus",
+                  "Brain - Hypothalamus": "Brain - Hypothalamus",
+                  "Brain - Nucleus accumbens (basal ganglia)": "Brain - Nucleus accumbens",
+                  "Brain - Putamen (basal ganglia)": "Brain - Putamen",
+                  "Brain - Spinal cord (cervical c-1)": "Brain - Spinal cord",
+                  "Brain - Substantia nigra": "Brain - Substantia nigra",
+                  "Breast - Mammary Tissue": "Breast",
+                  "Cervix - Ectocervix": "Cervix - Ectocervix",
+                  "Cervix - Endocervix": "Cervix - Endocervix",
+                  "Colon - Sigmoid": "Colon - Sigmoid",
+                  "Colon - Transverse": "Colon - Transverse",
+                  "Esophagus - Gastroesophageal Junction": "Esophagus - Junction",
+                  "Esophagus - Mucosa": "Esophagus - Mucosa",
+                  "Esophagus - Muscularis": "Esophagus - Muscularis",
+                  "Fallopian Tube": "Fallopian tube",
+                  "Heart - Atrial Appendage": "Heart - Atrial appendage",
+                  "Heart - Left Ventricle": "Heart - Left ventricle",
+                  "Kidney - Cortex": "Kidney",
+                  "Liver": "Liver",
+                  "Lung": "Lung",
+                  "Minor Salivary Gland": "Salivery gland",
+                  "Muscle - Skeletal": "Muscle",
+                  "Nerve - Tibial": "Nerve",
+                  "Ovary": "Ovary",
+                  "Pancreas": "Pancreas",
+                  "Pituitary": "Pituitary",
+                  "Prostate": "Prostate",
+                  "Skin - Not Sun Exposed (Suprapubic)": "Skin - not sun exposed",
+                  "Skin - Sun Exposed (Lower leg)": "Skin - sun exposed",
+                  "Small Intestine - Terminal Ileum": "Small intestine",
+                  "Spleen": "Spleen",
+                  "Testis": "Testis",
+                  "Uterus": "Uterus",
+                  "Vagina": "Vagina",
+                  "Whole Blood": "Whole Blood"}
+
+means_gtex_renamed = means_gtex.rename(columns=rename_for_viz)
+developmental_tissue_expression_plot("CREB1", "husl", (4.2, 1.25), (0, 5), means_gtex_renamed, 
+                                     means_gtex_renamed.columns, 
+                                     "means_gtex_all_renamed")
+
+
+# ## 8. make supplemental tables
+
+# In[86]:
 
 
 # supp table: DN classifications
@@ -1879,7 +1985,7 @@ supp_negregs = pairs[["gene_symbol", "Ensembl_gene_ID", "family", "ref_iso",
 supp_negregs.dn_short.value_counts()
 
 
-# In[85]:
+# In[87]:
 
 
 supp_negregs.columns = ["gene_symbol", "Ensembl_gene_ID", "family", "reference_isoform",
@@ -1907,13 +2013,13 @@ supp_negregs["detailed_alt_iso_classification"].replace("likely", "likely non-fu
 supp_negregs[supp_negregs["alt_iso_classification"] == "negative regulator"].sample(5)
 
 
-# In[86]:
+# In[88]:
 
 
 supp_negregs.alt_iso_classification.value_counts()
 
 
-# In[87]:
+# In[89]:
 
 
 supp_negregs.to_csv("../../supp/SuppTable_NegRegs.txt", sep="\t", index=False)
