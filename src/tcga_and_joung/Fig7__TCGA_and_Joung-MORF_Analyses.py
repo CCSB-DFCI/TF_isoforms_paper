@@ -960,9 +960,215 @@ print(np.asarray(use_labels)[idx])
 g.savefig("../../figures/fig7/PanCan_Heatmap.Alt_Only_EffectSize.pdf", dpi="figure", bbox_inches="tight")
 
 
-# ## 7. import joung et al DEGs + target status
+# ## 7. CREB1 vignette
 
 # In[51]:
+
+
+to_plot_brca = res_dfs['BRCA'].reset_index()
+
+paired_ctrls = list(paired_dfs['BRCA']["tcga_id_ctrl"])
+paired_tumors = list(paired_dfs['BRCA']["tcga_id_tumor"])
+    
+brca_isos_paired = to_plot_brca[["iso_id"] + paired_ctrls + paired_tumors]
+new_ctrl_cols = ["normal - %s" % (i+1) for i, x in enumerate(paired_ctrls)]
+new_tumor_cols = ["tumor - %s" % (i+1) for i, x in enumerate(paired_tumors)]
+brca_isos_paired.columns = ["iso_id"] + new_ctrl_cols + new_tumor_cols
+brca_isos_paired = brca_isos_paired.merge(pancan[['iso_id', 'gene_name']], on='iso_id')
+
+
+# In[52]:
+
+
+creb1 = pancan[pancan['gene_name'] == 'CREB1']
+creb1
+
+
+# In[53]:
+
+
+f_brca_paired_melt = pd.melt(brca_isos_paired, id_vars=["gene_name", "iso_id"])
+f_brca_paired_melt["samp"] = f_brca_paired_melt["variable"].str.split(" ", expand=True)[0]
+
+
+# In[54]:
+
+
+fig = plt.figure(figsize=(1, 1.5))
+
+# plot alt isoform only
+tmp = f_brca_paired_melt[f_brca_paired_melt["gene_name"] == "CREB1"]
+alt = tmp[tmp["iso_id"] == "CREB1-1"]
+
+ax = sns.swarmplot(data=alt, x="samp", y="value", s=2,
+                   palette={"normal": "gray", "tumor": sns.color_palette("Set2")[3]},
+                   alpha=0.75, linewidth=0.5, edgecolor="black",
+                   order=["normal", "tumor"])
+
+norm_paths = ax.collections[0].get_offsets()
+norm_x, norm_y = norm_paths[:, 0], norm_paths[:, 1]
+
+tumor_paths = ax.collections[1].get_offsets()
+tumor_x, tumor_y = tumor_paths[:, 0], tumor_paths[:, 1]
+
+for i in range(norm_x.shape[0]):
+    x = [norm_x[i], tumor_x[i]]
+    y = [norm_y[i], tumor_y[i]]
+    ax.plot(x, y, linestyle="dashed", color="darkgrey", linewidth=0.25)
+
+# annotate w p-vals
+padj = creb1[creb1['iso_id'] == 'CREB1-1']['padj_brca'].iloc[0]
+print(padj)
+annotate_pval(ax, 0, 1, 0.95, 0, 0.95, padj, fontsize-1)
+
+ax.set_xlabel("")
+ax.set_ylim((0.5, 1.))
+ax.set_yticks([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
+ax.set_yticklabels("%s%%" % x for x in [50, 60, 70, 80, 90, 100])
+ax.set_ylabel("Isoform percentage\nof gene expression")
+#ax.set_title("CREB1 alternative isoform\nin paired BRCA samples")
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.xaxis.set_tick_params(length=0)
+
+#fig.savefig("../../figures/fig7/BRCA_CREB1_swarmplot_paired.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[55]:
+
+
+paired_ratio_cols = [x for x in to_plot_brca.columns if x.startswith('paired-diff')]
+
+
+# In[56]:
+
+
+creb1_iso_diff = to_plot_brca[to_plot_brca["iso_id"] == "CREB1-1"][paired_ratio_cols]
+creb1_iso_diff = pd.melt(creb1_iso_diff)
+creb1_iso_diff = creb1_iso_diff[~pd.isnull(creb1_iso_diff["value"])]
+
+fig = plt.figure(figsize=(1.5, 1.4))
+ax = sns.histplot(data=creb1_iso_diff, x="value", color="slategrey")
+ax.axvline(x=0, linestyle="dashed", color="black", linewidth=0.5)
+ax.set_xlabel("Isoform difference\n(tumor - normal)")
+ax.set_ylabel("Number of paired samples")
+
+print(len(creb1_iso_diff[creb1_iso_diff["value"] < 0]))
+print(len(creb1_iso_diff[creb1_iso_diff["value"] > 0]))
+print(len(creb1_iso_diff))
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+
+fig.savefig("../../figures/fig7/BRCA_CREB1_iso_diff_hist.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[57]:
+
+
+to_plot_brca_gene = gene_dfs['BRCA'].reset_index()
+
+brca_genes_paired = to_plot_brca_gene[["iso_id"] + paired_ctrls + paired_tumors]
+brca_genes_paired.columns = ["iso_id"] + new_ctrl_cols + new_tumor_cols
+brca_genes_paired = brca_genes_paired.merge(pancan[['iso_id', 'gene_name']], on='iso_id')
+brca_genes_paired = brca_genes_paired[['gene_name'] + new_ctrl_cols + new_tumor_cols].drop_duplicates()
+
+
+# In[58]:
+
+
+brca_genes_paired["wilcox_pval"] = brca_genes_paired.apply(paired_pval, ctrl_cols=new_ctrl_cols, tumor_cols=new_tumor_cols, axis=1)
+brca_genes_paired["wilcox_n_samps"] = brca_genes_paired.apply(paired_samps, ctrl_cols=new_ctrl_cols, tumor_cols=new_tumor_cols, axis=1)
+print(len(brca_genes_paired))
+
+brca_genes_paired_filt = brca_genes_paired[(~pd.isnull(brca_genes_paired["wilcox_pval"])) & (brca_genes_paired["wilcox_n_samps"] >= 20)]
+print(len(brca_genes_paired_filt))
+
+brca_genes_paired_filt["wilcox_padj"] = smt.multipletests(list(brca_genes_paired_filt["wilcox_pval"]), alpha=0.05, method="fdr_bh")[1]
+
+
+# In[59]:
+
+
+brca_genes_paired_melt = pd.melt(brca_genes_paired_filt, id_vars=["gene_name"])
+brca_genes_paired_melt["samp"] = brca_genes_paired_melt["variable"].str.split(" ", expand=True)[0]
+
+
+# In[60]:
+
+
+fig = plt.figure(figsize=(1.2, 1.5))
+
+# plot alt isoform only
+creb1 = brca_genes_paired_melt[brca_genes_paired_melt["gene_name"] == "CREB1"]
+
+ax = sns.swarmplot(data=creb1, x="samp", y="value", s=2,
+                   palette={"normal": "gray", "tumor": sns.color_palette("Set2")[3]},
+                   alpha=0.75, linewidth=0.5, edgecolor="black",
+                   order=["normal", "tumor"])
+
+norm_paths = ax.collections[0].get_offsets()
+norm_x, norm_y = norm_paths[:, 0], norm_paths[:, 1]
+
+tumor_paths = ax.collections[1].get_offsets()
+tumor_x, tumor_y = tumor_paths[:, 0], tumor_paths[:, 1]
+
+for i in range(norm_x.shape[0]):
+    x = [norm_x[i], tumor_x[i]]
+    y = [norm_y[i], tumor_y[i]]
+    ax.plot(x, y, linestyle="dashed", color="darkgrey", linewidth=0.25)
+
+# annotate w p-vals
+padj = brca_genes_paired_filt[brca_genes_paired_filt["gene_name"]== "CREB1"]["wilcox_padj"].iloc[0]
+print(padj)
+annotate_pval(ax, 0, 1, 30, 0, 30, padj, fontsize-1)
+
+ax.set_xlabel("")
+ax.set_ylabel("Gene expression (TPM)")
+#ax.set_title("CREB1 alternative isoform\nin paired BRCA samples")
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.xaxis.set_tick_params(length=0)
+
+fig.savefig("../../figures/fig7/BRCA_CREB1_gene_expression_swarmplot_paired.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[61]:
+
+
+paired_diff_cols = [x for x in to_plot_brca_gene.columns if x.startswith('paired-l2fc')]
+
+
+# In[62]:
+
+
+# using iso_id but this df is gene level
+creb1_gene_diff = to_plot_brca_gene[to_plot_brca_gene["iso_id"] == "CREB1-1"][paired_diff_cols]
+creb1_gene_diff = pd.melt(creb1_gene_diff)
+
+fig = plt.figure(figsize=(1.5, 1.4))
+ax = sns.histplot(data=creb1_gene_diff, x="value", color="slategrey")
+ax.axvline(x=0, linestyle="dashed", color="black", linewidth=0.5)
+ax.set_xlabel("Gene TPM difference\n(l2fc tumor/normal)")
+ax.set_ylabel("Number of paired samples")
+
+print(len(creb1_gene_diff[creb1_gene_diff["value"] < 0]))
+print(len(creb1_gene_diff[creb1_gene_diff["value"] > 0]))
+print(len(creb1_gene_diff))
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+
+fig.savefig("../../figures/fig7/BRCA_CREB1_gene_diff_hist.pdf", dpi="figure", bbox_inches="tight")
+
+
+# ## 8. import joung et al DEGs + target status
+
+# In[63]:
 
 
 gfp_degs = {}
@@ -1000,7 +1206,7 @@ for i, item in enumerate(os.listdir(gfp_deg_dir)):
     gfp_degs[comp1] = df
 
 
-# In[52]:
+# In[64]:
 
 
 # load ref vs. alt degs
@@ -1035,7 +1241,7 @@ for i, item in enumerate(os.listdir(ref_deg_dir)):
     ref_degs[comp1] = df
 
 
-# In[53]:
+# In[65]:
 
 
 tgts_dict = {}
@@ -1073,7 +1279,7 @@ for iso in ref_degs:
     n_degs_df[iso] = {"n_degs": n_degs, "n_tgts": n_tgts, "n_deg_tgts": n_deg_tgts}
 
 
-# In[54]:
+# In[66]:
 
 
 n_degs_df = pd.DataFrame.from_dict(n_degs_df, orient="index").reset_index()
@@ -1081,7 +1287,7 @@ n_degs_df["pct_tgts_deg"] = (n_degs_df["n_deg_tgts"]/n_degs_df["n_tgts"])*100
 n_degs_df[n_degs_df["index"].str.contains("CREB1")]
 
 
-# In[55]:
+# In[67]:
 
 
 print("TOT # REF/ALT PAIRS: %s" % len(n_degs_df))
@@ -1092,7 +1298,7 @@ print("NUM REF/ALT PAIRS WITH ≥100 DEGs: %s" % (len(n_degs_df[n_degs_df["n_deg
 
 # ## 8. plot CREB1 DEGs
 
-# In[56]:
+# In[68]:
 
 
 creb1 = tgts_dict["TFORF3026-CREB1"]
@@ -1100,7 +1306,7 @@ creb1_sub = creb1[creb1["known_target"] == True]
 creb1_sub["cancer_status"].fillna("none", inplace=True)
 
 
-# In[57]:
+# In[69]:
 
 
 cancer_pal = {"Oncogene": "hotpink",
@@ -1109,14 +1315,14 @@ cancer_pal = {"Oncogene": "hotpink",
               "none": "lightgrey"}
 
 
-# In[58]:
+# In[70]:
 
 
 cmap = sns.light_palette("lightgrey", reverse=True, as_cmap=True)
 cmap
 
 
-# In[59]:
+# In[71]:
 
 
 fig = plt.figure(figsize=(2, 2))
@@ -1181,13 +1387,13 @@ fig.savefig("../../figures/fig7/CREB1_joung_scatter.all_genes_pq.pdf", dpi="figu
 
 # ## 9. heatmap of gene set enrichments
 
-# In[60]:
+# In[72]:
 
 
 grns = grns_up.merge(grns_down, on="Comparison (pairwise)", suffixes=("_up", "_down"))
 
 
-# In[61]:
+# In[73]:
 
 
 print(len(grns))
@@ -1196,7 +1402,7 @@ grns["dn_cat"] = grns["dn_cat"].fillna("NA")
 print(len(grns))
 
 
-# In[62]:
+# In[74]:
 
 
 # one-sided p-val of 0.05 is a z-score of 1.645
@@ -1211,7 +1417,7 @@ grns_sig = grns[(grns["Oncogene_up"] >= 1.645) |
 len(grns_sig)
 
 
-# In[63]:
+# In[75]:
 
 
 sig_cancer = pancan[pancan['sig_status_simple'] == 'sig. in ≥1']
@@ -1221,7 +1427,7 @@ grns_filt = grns_filt.merge(pancan[['clone_acc', 'isoform', 'sig_status_simple',
 print(len(grns_filt))
 
 
-# In[64]:
+# In[76]:
 
 
 elitego_cols = ['Mitotic M-M/G1 phases_up', 'S Phase_up', 'Tumor Suppressor_up',
@@ -1233,13 +1439,13 @@ elitego_cols = ['Mitotic M-M/G1 phases_up', 'S Phase_up', 'Tumor Suppressor_up',
                 'Oncogene.1_down']
 
 
-# In[65]:
+# In[77]:
 
 
 grns_filt = grns_filt.merge(oncots_mrg, left_on="gene_name", right_on="gene_name", how="left")
 
 
-# In[66]:
+# In[78]:
 
 
 dn_pal = {"ref": sns.color_palette("Set2")[0],
@@ -1253,7 +1459,7 @@ dn_pal = {"ref": sns.color_palette("Set2")[0],
           "likely non-functional": "darkgray"}
 
 
-# In[67]:
+# In[79]:
 
 
 # calculate diffs only when at least 1 of the 2 paired columns is significantly enriched
@@ -1275,13 +1481,13 @@ grns_filt['Tumor Suppressor_down_diff'] = np.where((grns_filt['Tumor Suppressor_
                                           np.nan)
 
 
-# In[68]:
+# In[80]:
 
 
 grns_filt["cancer_status"].fillna("none", inplace=True)
 
 
-# In[69]:
+# In[81]:
 
 
 cancer_pal = {"Oncogene": "hotpink",
@@ -1290,7 +1496,7 @@ cancer_pal = {"Oncogene": "hotpink",
               "none": "ghostwhite"}
 
 
-# In[70]:
+# In[82]:
 
 
 # filter to those with at least 2-fold enrichment
@@ -1312,7 +1518,7 @@ print(to_plot.shape)
 print(to_plot.min().min())
 
 
-# In[71]:
+# In[83]:
 
 
 cmap = sns.diverging_palette(145, 300, s=60, as_cmap=True)
@@ -1357,7 +1563,7 @@ g.savefig("../../figures/fig7/EliteGo_Heatmap.Ref_Minus_Alt.filtered.pdf", dpi="
 
 # ## 10. write supplemental files
 
-# In[72]:
+# In[84]:
 
 
 # supp table: paired samples used in TCGA analysis
@@ -1371,13 +1577,13 @@ supp_tcgasamps = pd.concat([supp_brcasamps, supp_luadsamps, supp_hnsccsamps])
 supp_tcgasamps.cancer_type.value_counts()
 
 
-# In[73]:
+# In[85]:
 
 
 supp_tcgasamps.to_csv("../../supp/SuppTable_TCGASamps.txt", sep="\t", index=False)
 
 
-# In[74]:
+# In[86]:
 
 
 # supp table: TCGA results for cloned isoforms
@@ -1390,13 +1596,13 @@ supp_tcgares = pancan_lib[["isoform", 'mean_tumor_iso_pct_brca', 'mean_normal_is
 len(supp_tcgares)
 
 
-# In[75]:
+# In[87]:
 
 
 supp_tcgares.to_csv("../../supp/SuppTable_TCGAResults.txt", sep="\t", index=False)
 
 
-# In[76]:
+# In[88]:
 
 
 # supp table: joung et al summary
@@ -1423,8 +1629,129 @@ supp_joung = supp_joung[['alt_iso', 'ref_iso_morf_id', 'alt_iso_morf_id',
 supp_joung[supp_joung['alt_iso'].str.contains('CREB1')]
 
 
-# In[77]:
+# In[89]:
 
 
 supp_joung.to_csv("../../supp/SuppTable_JoungResults.txt", sep="\t", index=False)
+
+
+# # create TCGA plots for website
+# takes a while so comment out when done
+
+# In[90]:
+
+
+def paired_swarmplot(df, iso_id, cancer, padj, l2fc, fig_filename):
+    fig = plt.figure(figsize=(1.5, 1.5))
+
+    sub_melt = df[(df["iso_id"] == iso_id)]
+    
+    # only include vals which are not NA in both tumor and normal
+    norm_nonan = list(sub_melt[(sub_melt['samp'] == 'normal') &
+                          ~(pd.isnull(sub_melt['value']))]['patient'])
+    tumor_nonan = list(sub_melt[(sub_melt['samp'] == 'tumor') &
+                          ~(pd.isnull(sub_melt['value']))]['patient'])
+    norm_tumor_nonan = list(set(norm_nonan).intersection(set(tumor_nonan)))
+    sub_melt = sub_melt[sub_melt['patient'].isin(norm_tumor_nonan)]
+    
+    sub_melt = sub_melt.sort_values(by=['samp', 'patient'])
+    if len(sub_melt) == 0:
+        return None
+
+    ax = sns.swarmplot(data=sub_melt, x="samp", y="value", s=2,
+                       palette={"normal": "gray", "tumor": sns.color_palette("Set2")[3]},
+                       alpha=0.75, linewidth=0.5, edgecolor="black",
+                       order=["normal", "tumor"])
+
+
+    norm_paths = ax.collections[0].get_offsets()
+    norm_x, norm_y = norm_paths[:, 0], norm_paths[:, 1]
+
+    tumor_paths = ax.collections[1].get_offsets()
+    tumor_x, tumor_y = tumor_paths[:, 0], tumor_paths[:, 1]
+
+    for i in range(norm_x.shape[0]):
+        x = [norm_x[i], tumor_x[i]]
+        y = [norm_y[i], tumor_y[i]]
+        ax.plot(x, y, linestyle="dashed", color="darkgrey", linewidth=0.25)
+
+    # add padj + l2fc to title
+    ax.set_title("%s in paired %s samples\npadj: %s | mean l2fc: %s" % (iso_id, cancer, padj, l2fc))
+    
+
+    ax.set_xlabel("")
+    
+    # set the ylimits based on the max/min value
+    max_val = sub_melt['value'].max()
+    yceil = math.ceil(max_val * 10) / 10
+    
+    min_val = sub_melt['value'].min()
+    yfloor = math.floor(min_val * 10)/10
+    if yfloor == 0:
+        yfloor = -0.01
+
+    ax.set_ylim((yfloor, yceil))
+    
+    if yfloor == -0.01:
+        yticks = np.linspace(0, yceil, 5)
+    else:
+        yticks = np.linspace(yfloor, yceil, 5)
+        
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(["%s%%" % int(x*100) for x in yticks])
+    ax.set_ylabel("Isoform percentage\nof gene expression")
+
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.xaxis.set_tick_params(length=0)
+    fig.savefig(fig_filename, dpi="figure", bbox_inches="tight")
+    plt.close()
+    return fig
+
+
+# In[91]:
+
+
+def format_number(num):
+    if abs(num) < 0.001 and num != 0:
+        return f"{num:.1e}"  # Format in scientific notation
+    else:
+        return f"{num:.3f}"  # Otherwise, return as a float with 2 decimal places
+
+
+# In[92]:
+
+
+# for cancer in ['BRCA', 'LUAD', 'HNSCC']:
+#     print(cancer)
+#     tcga = res_dfs[cancer].reset_index()
+#     tcga["gene_name"] = tcga.iso_id.map(gene_dict)
+    
+#     paired_df = paired_dfs[cancer]
+#     paired_ctrls = list(paired_df["tcga_id_ctrl"])
+#     paired_tumors = list(paired_df["tcga_id_tumor"])
+    
+#     tcga = tcga[["gene_name", "iso_id"] + paired_ctrls + paired_tumors]
+#     new_ctrl_cols = ["normal - %s" % (i+1) for i, x in enumerate(paired_ctrls)]
+#     new_tumor_cols = ["tumor - %s" % (i+1) for i, x in enumerate(paired_tumors)]
+#     tcga.columns = ["gene_name", "iso_id"] + new_ctrl_cols + new_tumor_cols
+    
+#     tcga_melt = pd.melt(tcga, id_vars=["gene_name", "iso_id"])
+#     tcga_melt["samp"] = tcga_melt["variable"].str.split(" ", expand=True)[0]
+#     tcga_melt["patient"] = tcga_melt["variable"].str.split(" - ", expand=True)[1].astype(int)
+    
+#     # now plot per iso
+#     for i, row in pancan_lib.iterrows():
+#         print('  %s' % row.iso_id)
+#         iso_id = row.iso_id
+#         gene_name = row.gene_name
+#         padj = format_number(row['padj_%s' % cancer.lower()])
+#         l2fc = format_number(row["mean_iso_pct_diff_%s" % cancer.lower()])
+#         fig_dir = "../../figures/for_website/tcga/%s" % gene_name
+        
+#         !mkdir -p $fig_dir
+        
+#         fig_filename = "%s/%s.%s.pdf" % (fig_dir, iso_id, cancer)
+#         _ = paired_swarmplot(tcga_melt, iso_id, cancer, padj, l2fc, fig_filename)
 
