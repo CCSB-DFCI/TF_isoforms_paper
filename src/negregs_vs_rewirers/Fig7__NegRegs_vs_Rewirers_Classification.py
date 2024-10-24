@@ -620,6 +620,14 @@ pairs[pairs['dn_cat'] == 'DN (activ,PDIs,PPIs,DBD loss)']
 # In[26]:
 
 
+pairs[pairs['clone_acc_alt'] == 'TCF12|3/3|07B07'][['clone_acc_ref', 'clone_acc_alt', 
+                                                    'y1h_cat', 'y2h_cat', 'm1h_cat',
+                                                    'loc_cat', 'dbd_pct_lost']]
+
+
+# In[27]:
+
+
 # now update anything based on localization calls
 # but only if we were initially able to categorize it as DN/sim/rw
 # (NAs stay NAs as loc is not evidence of function on its own)
@@ -653,13 +661,13 @@ pairs["dn_cat_plus_loc"] = pairs.apply(dn_loc, axis=1)
 pairs["dn_cat_plus_loc"].value_counts()
 
 
-# In[27]:
+# In[28]:
 
 
 pairs["dn_cat"] = pairs["dn_cat_plus_loc"]
 
 
-# In[28]:
+# In[29]:
 
 
 pairs[pairs["dn_cat"] == "DN (loc loss)"][["gene_symbol", "clone_acc_ref", "clone_acc_alt",
@@ -667,13 +675,13 @@ pairs[pairs["dn_cat"] == "DN (loc loss)"][["gene_symbol", "clone_acc_ref", "clon
                                            "loc_cat_U2OS", "loc_cat", "dn_cat"]]
 
 
-# In[29]:
+# In[30]:
 
 
 # double check that rewirers aren't all the same across axes
 
 
-# In[30]:
+# In[31]:
 
 
 to_plot = pairs[pairs["dn_cat"].isin(["rewire", "similar"])][["gene_symbol", "clone_acc_ref", "clone_acc_alt",
@@ -697,7 +705,7 @@ def loc_quant(row):
 to_plot["loc_quant"] = to_plot.apply(loc_quant, axis=1)
 
 
-# In[31]:
+# In[32]:
 
 
 isos = to_plot.copy()
@@ -715,7 +723,7 @@ isos = pd.concat([isos, pd.DataFrame.from_dict(theoretical_iso)])
 isos
 
 
-# In[32]:
+# In[33]:
 
 
 columns_to_plot = ["level_0", "PPI_jaccard", "PDI_jaccard", "fc_abs_activ", "1m_dbd_pct", "loc_quant"]
@@ -731,7 +739,7 @@ colors = sns.color_palette("husl", n_colors=len(isos_rw))
 
 # ### similar first
 
-# In[33]:
+# In[34]:
 
 
 # Creating the figure and axes (subplots) aligned in a single row without shared y-axis
@@ -864,7 +872,7 @@ axs[0].set_yticks(tickpos)
 #_ = axs[0].set_yticklabels(ticklabels)
 
 
-# In[34]:
+# In[35]:
 
 
 # Creating the figure and axes (subplots) aligned in a single row without shared y-axis
@@ -999,33 +1007,33 @@ axs[0].set_yticks(tickpos)
 
 # ## 4. summary plots of DN categorization
 
-# In[35]:
+# In[36]:
 
 
 pairs["dn_short"] = pairs["dn_cat"].str.split(" ", expand=True)[0]
 pairs.dn_short.value_counts()
 
 
-# In[36]:
+# In[37]:
 
 
 pairs[pairs["dn_short"] == "likely"]
 
 
-# In[37]:
+# In[38]:
 
 
 pairs[pairs["dn_cat"] == "DN (loc loss)"]
 
 
-# In[38]:
+# In[39]:
 
 
 pairs[pairs["gene_symbol"] == "FOXP2"][["gene_symbol", "clone_acc_alt", "clone_acc_ref",
                                         "m1h_cat", "y1h_cat", "y2h_cat", "loc_cat", "dn_cat_plus_loc"]]
 
 
-# In[39]:
+# In[40]:
 
 
 def mech_bool(row, mech_col):
@@ -1045,7 +1053,7 @@ pairs["dn_loc"] = pairs.apply(mech_bool, mech_col="loc loss", axis=1)
 pairs[pairs["dn_short"] == "DN"].sample(5)
 
 
-# In[40]:
+# In[41]:
 
 
 fig = plt.figure(figsize=(1.5, 1.75))
@@ -1059,7 +1067,7 @@ ax.set_ylabel("Number of alternative isoforms")
 fig.savefig("../../figures/fig7/DN_countplot.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[41]:
+# In[42]:
 
 
 ppis = list(set(list(pairs[pairs["dn_ppi"] == True]["clone_acc_alt"])))
@@ -1078,14 +1086,14 @@ print(len(all_dn))
 fig = plt.figure(figsize=(3, 2))
 d = plot(contents, fig=fig, sort_by="cardinality", show_counts=True, element_size=12, 
      intersection_plot_elements=4, totals_plot_elements=3)
-d["intersections"].set_ylabel("Number of\nalternative isoforms")
+d["intersections"].set_ylabel("# isoforms")
 d["intersections"].grid(False)
 d["totals"].grid(False)
 
 fig.savefig("../../figures/fig7/DN_negreg_upset.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[42]:
+# In[43]:
 
 
 rw = pairs[pairs["dn_cat"] == "rewire"]
@@ -1108,7 +1116,7 @@ d["totals"].grid(False)
 fig.savefig("../../figures/fig7/DN_rewire_upset.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[43]:
+# In[44]:
 
 
 ppis = list(set(list(pairs[pairs["y2h_cat"] != "NA"]["clone_acc_alt"])))
@@ -1132,7 +1140,7 @@ d["totals"].grid(False)
 fig.savefig("../../figures/fig7/DN_pairs_assessed_upset.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[44]:
+# In[45]:
 
 
 y = np.array([len(pairs[pairs["dn_short"] == "rewire"]), 
@@ -1154,7 +1162,7 @@ ns[4].set_color("white")
 fig.savefig("../../figures/fig7/dn_pie.incl_NA.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[45]:
+# In[46]:
 
 
 ys = np.array([len(pairs[pairs["dn_short"] == "similar"]),
@@ -1177,7 +1185,7 @@ ns[3].set_text("")
 fig.savefig("../../figures/fig7/dn_pie.no_NA.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[46]:
+# In[47]:
 
 
 outer_ys = np.array([len(pairs[(pairs["dn_short"] == "similar")]),
@@ -1220,7 +1228,7 @@ ax.set_title("alternative TF isoform categories\n(%s reference-alternative pairs
 fig.savefig("../../figures/fig7/dn_pie.novel_nested.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[47]:
+# In[48]:
 
 
 outer_ys = np.array([len(pairs[(pairs["dn_short"] == "similar")]),
@@ -1262,7 +1270,7 @@ ax.set_title("alternative TF isoform categories\n(%s reference-alternative pairs
 fig.savefig("../../figures/fig7/dn_pie.novel_nested.no_labels.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[48]:
+# In[49]:
 
 
 # create df that contains info about why alt isos were sorted into a particular category
@@ -1313,21 +1321,21 @@ df = df.reset_index()
 df
 
 
-# In[49]:
+# In[50]:
 
 
 colors = met_brewer.met_brew(name="Hokusai3", n=5, brew_type="discrete")
 sns.palplot(colors)
 
 
-# In[50]:
+# In[51]:
 
 
 to_plot = pd.melt(df, id_vars="index")
 to_plot
 
 
-# In[51]:
+# In[52]:
 
 
 fig = plt.figure(figsize=(2, 1))
@@ -1367,7 +1375,7 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/dn_function_unstacked_bar.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[52]:
+# In[53]:
 
 
 genes_w_dn = pairs[pairs["dn_short"] == "DN"][["gene_symbol", "family"]].drop_duplicates()
@@ -1397,14 +1405,14 @@ family_cats.sort_values(by="tot", ascending=False).head(11)
 family_cats
 
 
-# In[53]:
+# In[54]:
 
 
 colors = met_brewer.met_brew(name="Renoir", n=11, brew_type="discrete")
 sns.palplot(colors)
 
 
-# In[54]:
+# In[55]:
 
 
 fig, ax = plt.subplots(figsize=(1.5, 1.75))
@@ -1435,7 +1443,7 @@ fig.savefig("../../figures/fig7/dn_families_stacked_bar.pdf", dpi="figure", bbox
 
 # ## 5. are there differences in condensate formation between categories?
 
-# In[55]:
+# In[56]:
 
 
 def condensate_cat_either(row):
@@ -1452,7 +1460,7 @@ pairs["condensate_cat_either"] = pairs.apply(condensate_cat_either, axis=1)
 pairs.condensate_cat_either.value_counts()
 
 
-# In[56]:
+# In[57]:
 
 
 def condensate_cat_both(row):
@@ -1467,13 +1475,13 @@ pairs["condensate_cat_both"] = pairs.apply(condensate_cat_both, axis=1)
 pairs.condensate_cat_both.value_counts()
 
 
-# In[57]:
+# In[58]:
 
 
 from scipy.stats import fisher_exact
 
 
-# In[58]:
+# In[59]:
 
 
 fe = np.zeros((2, 2))
@@ -1491,14 +1499,14 @@ fe[1, 1] = len(tmp_nonan[(tmp_nonan["dn_short"] != "DN") &
 fe
 
 
-# In[59]:
+# In[60]:
 
 
 p = fisher_exact(fe)[1]
 print(p)
 
 
-# In[60]:
+# In[61]:
 
 
 tots = pd.DataFrame(tmp_nonan.dn_short.value_counts())
@@ -1510,7 +1518,7 @@ con_st.fillna(0, inplace=True)
 con_st
 
 
-# In[61]:
+# In[62]:
 
 
 fig, ax = plt.subplots(figsize=(0.4, 1.5))
@@ -1549,7 +1557,7 @@ ax.xaxis.set_tick_params(length=0)
 fig.savefig("../../figures/fig7/dn_stacked_bar_condensates.either.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[62]:
+# In[63]:
 
 
 fe = np.zeros((2, 2))
@@ -1567,14 +1575,14 @@ fe[1, 1] = len(tmp_nonan[(tmp_nonan["dn_short"] != "DN") &
 fe
 
 
-# In[63]:
+# In[64]:
 
 
 p = fisher_exact(fe)[1]
 print(p)
 
 
-# In[64]:
+# In[65]:
 
 
 tots = pd.DataFrame(tmp_nonan.dn_short.value_counts())
@@ -1586,7 +1594,7 @@ con_st.fillna(0, inplace=True)
 con_st
 
 
-# In[65]:
+# In[66]:
 
 
 fig, ax = plt.subplots(figsize=(0.4, 1.5))
@@ -1627,14 +1635,14 @@ fig.savefig("../../figures/fig7/dn_stacked_bar_condensates.both.pdf", dpi="figur
 
 # ## 6. plot expression profiles of isoform categories
 
-# In[66]:
+# In[67]:
 
 
 # use same downsample as prev figs
 means_gtex_downsample = df_gtex.groupby(df_gtex.columns.map(metadata_gtex_dummy['body_site']), axis=1).mean()
 
 
-# In[67]:
+# In[68]:
 
 
 # calculate expression ratios - dev
@@ -1653,7 +1661,7 @@ f_dev = f_dev * ((per_gene_dev.groupby(df_dev.columns.map(metadata_dev['organism
 f_dev = f_dev * 100
 
 
-# In[68]:
+# In[69]:
 
 
 # calculate expression ratios - gtex
@@ -1668,7 +1676,7 @@ f_gtex = f_gtex * (per_gene_gtex.groupby(df_gtex.columns.map(metadata_gtex['body
 f_gtex = f_gtex * 100
 
 
-# In[69]:
+# In[70]:
 
 
 # calculate expression ratios -gtex downsampled
@@ -1684,7 +1692,7 @@ f_gtex_downsample = f_gtex_downsample * (per_gene_gtex.groupby(df_gtex.columns.m
 f_gtex_downsample = f_gtex_downsample * 100
 
 
-# In[70]:
+# In[71]:
 
 
 # calculate gene-level tissue specificities
@@ -1693,7 +1701,7 @@ gene_gtex_nonan_taus, gene_gtex_nan_taus, gene_gtex_array_max = calculate_tau(pe
 gene_gtex_ds_nonan_taus, gene_gtex_ds_nan_taus, gene_gtex_ds_array_max = calculate_tau(per_gene_gtex_ds.drop_duplicates())
 
 
-# In[71]:
+# In[72]:
 
 
 gene_taus = pd.DataFrame()
@@ -1705,7 +1713,7 @@ gene_taus["gene_name"] = gene_taus["UID"].str.split("|", expand=True)[0]
 gene_taus.sample(5)
 
 
-# In[72]:
+# In[73]:
 
 
 # join w pairs table
@@ -1715,7 +1723,7 @@ dev_ratios = dev_ratios[dev_ratios["clone_acc"] != "noclone"]
 len(dev_ratios)
 
 
-# In[73]:
+# In[74]:
 
 
 gtex_ratios = f_gtex.reset_index()
@@ -1724,7 +1732,7 @@ gtex_ratios = gtex_ratios[gtex_ratios["clone_acc"] != "noclone"]
 len(gtex_ratios)
 
 
-# In[74]:
+# In[75]:
 
 
 gtex_ds_ratios = f_gtex_downsample.reset_index()
@@ -1733,7 +1741,7 @@ gtex_ds_ratios = gtex_ds_ratios[gtex_ds_ratios["clone_acc"] != "noclone"]
 len(gtex_ds_ratios)
 
 
-# In[75]:
+# In[76]:
 
 
 dn_ref = pairs[["gene_symbol", "family", "clone_acc_ref", "is_ref_novel_isoform", "is_MANE_select_isoform_cloned",
@@ -1743,7 +1751,7 @@ dn_ref["dn_cat"] = "ref"
 dn_ref["iso_status"] = "ref"
 
 
-# In[76]:
+# In[77]:
 
 
 dn_alt = pairs[["gene_symbol", "family", "clone_acc_alt", "is_alt_novel_isoform", "is_MANE_select_isoform_cloned",
@@ -1753,13 +1761,13 @@ dn_alt["is_MANE_select"] = False # assuming none of the alts are the MANE select
 dn_alt["iso_status"] = "alt"
 
 
-# In[77]:
+# In[78]:
 
 
 dn_cats = pd.concat([dn_ref, dn_alt]).drop_duplicates()
 
 
-# In[78]:
+# In[79]:
 
 
 dev_ratios = dev_ratios.merge(dn_cats, left_on="clone_acc", right_on="tf1p0_id")
@@ -1770,7 +1778,7 @@ print(len(gtex_ratios))
 print(len(gtex_ds_ratios))
 
 
-# In[79]:
+# In[80]:
 
 
 dn_cats = dn_cats.merge(gene_taus, on="gene_name")
@@ -1778,7 +1786,7 @@ print(len(dn_cats))
 dn_cats.head()
 
 
-# In[80]:
+# In[81]:
 
 
 ref_expr = dn_cats.groupby(["gene_name", "family", "dn_cat", "dev_tau",
@@ -1788,7 +1796,7 @@ ref_expr = ref_expr.pivot(index="gene_name",
 ref_expr.fillna(0, inplace=True)
 
 
-# In[81]:
+# In[82]:
 
 
 def categorize_gene(row):
@@ -1811,16 +1819,17 @@ print(len(ref_expr))
 ref_expr.sample(5)
 
 
-# In[82]:
+# In[89]:
 
 
 fig, ax = nice_boxplot(ref_expr, "dev_tau", "gene_cat", dn_pal, ["rewire", "DN", "similar", "combination", "NA"], 
             [1.01, 1.045, 1.08, 0.99], 0.35, "", ["rewirer", "negative regulator", "similar", "combination", "NA"], 
             "gene-level tissue specificity (tau)", False, (0.3, 1.23), 
-            "developmental gene expression\nclassified TF genes")
+            "developmental gene expression\nclassified TF genes", figsize=(1.3, 2))
 
 ax.spines['right'].set_visible(False)
 ax.spines['top'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
 ax.set_xticklabels(["rewirer", "negative regulator", "similar", "combination", "NA"], rotation=30, 
                    ha="right", va="top")
 ax.set_yticks([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
@@ -1837,19 +1846,21 @@ ax.plot([left_spine_in_data_coords[0], left_spine_in_data_coords[0]], [0.45, 1],
          color=ax.spines['bottom'].get_edgecolor(), linewidth=ax.spines['bottom'].get_linewidth())
 
 
+ax.tick_params(axis='x', length=0)
 fig.savefig("../../figures/fig7/DN_DevTau_Gene_Boxplot.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[83]:
+# In[88]:
 
 
 fig, ax = nice_boxplot(ref_expr, "gtex_ds_tau", "gene_cat", dn_pal, ["rewire", "DN", "similar", "combination", "NA"], 
             [1.01, 1.045, 1.08, 0.999], 0.35, "", ["rewirer", "negative regulator", "similar", "combination", "NA"], 
             "gene-level tissue specificity (tau)", False, (0.3, 1.23), 
-            "developmental gene expression\nclassified TF genes")
+            "GTEx gene expression\nclassified TF genes", figsize=(1.3, 2.5))
 
 ax.spines['right'].set_visible(False)
 ax.spines['top'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
 ax.set_xticklabels(["rewirer", "negative regulator", "similar", "combination", "NA"], rotation=30, 
                    ha="right", va="top")
 ax.set_yticks([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
@@ -1865,12 +1876,13 @@ left_spine_in_data_coords = axes_to_data.transform((0, 0))
 ax.plot([left_spine_in_data_coords[0], left_spine_in_data_coords[0]], [0.5, 1],
          color=ax.spines['bottom'].get_edgecolor(), linewidth=ax.spines['bottom'].get_linewidth())
 
+ax.tick_params(axis='x', length=0)
 fig.savefig("../../figures/fig7/DN_GTExDsTau_Gene_Boxplot.pdf", dpi="figure", bbox_inches="tight")
 
 
 # ## 7. CREB1 vignette: expression
 
-# In[84]:
+# In[85]:
 
 
 def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim, means, cols, fig_suffix, shorten_x=False):
@@ -1915,7 +1927,7 @@ def developmental_tissue_expression_plot(gene_name, palette_name, figsize, ylim,
                 bbox_inches='tight')
 
 
-# In[85]:
+# In[86]:
 
 
 rename_for_viz = {"Adipose - Subcutaneous": "Adipose - Subcutaneous",
@@ -1976,7 +1988,7 @@ developmental_tissue_expression_plot("CREB1", "husl", (4.2, 1.25), (0, 5), means
 
 # ## 8. make supplemental tables
 
-# In[86]:
+# In[87]:
 
 
 # supp table: DN classifications
@@ -1985,7 +1997,7 @@ supp_negregs = pairs[["gene_symbol", "Ensembl_gene_ID", "family", "ref_iso",
 supp_negregs.dn_short.value_counts()
 
 
-# In[87]:
+# In[88]:
 
 
 supp_negregs.columns = ["gene_symbol", "Ensembl_gene_ID", "family", "reference_isoform",
@@ -2013,14 +2025,20 @@ supp_negregs["detailed_alt_iso_classification"].replace("likely", "likely non-fu
 supp_negregs[supp_negregs["alt_iso_classification"] == "negative regulator"].sample(5)
 
 
-# In[88]:
+# In[89]:
 
 
 supp_negregs.alt_iso_classification.value_counts()
 
 
-# In[89]:
+# In[90]:
 
 
 supp_negregs.to_csv("../../supp/SuppTable_NegRegs.txt", sep="\t", index=False)
+
+
+# In[91]:
+
+
+supp_negregs[supp_negregs['alt_iso_classification'] == 'rewirer'].sort_values(by='alternative_isoform')
 

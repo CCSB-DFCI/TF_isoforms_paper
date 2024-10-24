@@ -1050,8 +1050,9 @@ def nice_boxplot(
     log_scale,
     ylim,
     title,
+    figsize=(2,2.5),
 ):
-    fig = plt.figure(figsize=(2, 2.5))
+    fig = plt.figure(figsize=figsize)
 
     ax = sns.boxplot(data=df, y=ycat, x=xcat, order=xorder, palette=pal, fliersize=0)
     mimic_r_boxplot(ax)
