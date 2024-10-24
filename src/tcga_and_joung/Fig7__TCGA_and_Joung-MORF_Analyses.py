@@ -16,6 +16,7 @@ warnings.filterwarnings('ignore')
 # In[2]:
 
 
+import gseapy as gp
 import math
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -29,6 +30,7 @@ import upsetplot
 
 from adjustText import adjust_text
 from Bio.Seq import Seq
+from itertools import combinations
 from scipy.stats import fisher_exact
 from scipy.stats import mannwhitneyu
 from scipy.stats import wilcoxon
@@ -67,6 +69,7 @@ fontsize = PAPER_FONTSIZE
 
 
 np.random.seed(2023)
+seed = 2023
 
 
 # ## variables
@@ -112,7 +115,7 @@ brca_tx_f = "../../data/processed/Nathans_analysis/Breast_cancer/transcript.Brea
 # In[10]:
 
 
-oncots_f = "../../data/processed/Nathans_analysis/Joung_Reanalysis/DEGs-metacell/Ensembl-OnogeneTS.txt"
+oncokb_f = "../../data/external/OncoKB_CancerGenes_Downloaded07042024.tsv"
 
 
 # In[11]:
@@ -158,8 +161,8 @@ brca.shape
 # In[16]:
 
 
-oncots = pd.read_table(oncots_f, sep="\t")
-len(oncots)
+oncokb = pd.read_table(oncokb_f, sep="\t")
+len(oncokb)
 
 
 # In[17]:
@@ -346,13 +349,13 @@ for tcga, cancer_type in zip([hnscc, luad, brca], ["HNSCC", "LUAD", "BRCA"]):
     paired_tumors = list(paired_df["tcga_id_tumor"])
     
     tcga_isos["mean_paired-%s_tpm" % cancer_type] = tcga_isos[paired_tumors].mean(axis=1)
-    tcga_isos["mean_paired-ctrls_tpm"] = tcga_isos[paired_ctrls].median(axis=1)
+    tcga_isos["mean_paired-ctrls_tpm"] = tcga_isos[paired_ctrls].mean(axis=1)
     
     tcga_gene_sum["mean_paired-%s_tpm" % cancer_type] = tcga_gene_sum[paired_tumors].mean(axis=1)
-    tcga_gene_sum["mean_paired-ctrls_tpm"] = tcga_gene_sum[paired_ctrls].median(axis=1)
+    tcga_gene_sum["mean_paired-ctrls_tpm"] = tcga_gene_sum[paired_ctrls].mean(axis=1)
     
     f_tcga["mean_paired-%s_ratio" % cancer_type] = f_tcga[paired_tumors].mean(axis=1)
-    f_tcga["mean_paired-ctrls_ratio"] = f_tcga[paired_ctrls].median(axis=1)
+    f_tcga["mean_paired-ctrls_ratio"] = f_tcga[paired_ctrls].mean(axis=1)
     
     f_tcga["wilcox_pval"] = f_tcga.apply(paired_pval, ctrl_cols=paired_ctrls, tumor_cols=paired_tumors, axis=1)
     f_tcga["wilcox_n_samps"] = f_tcga.apply(paired_samps, ctrl_cols=paired_ctrls, tumor_cols=paired_tumors, axis=1)
@@ -487,38 +490,28 @@ print(len(pancan))
 # In[33]:
 
 
-oncots_mrg = oncots.groupby("UID")["Group"].agg(list).reset_index()
+# add oncogene/ts status
+oncokb_mrg = oncokb[["Hugo Symbol", "Is Oncogene", "Is Tumor Suppressor Gene"]].drop_duplicates()
 
-# fix the excel date issues
-def fix_excel_date(row):
-    if row.UID == "1-Dec":
-        return "DEC1"
-    elif row.UID == "4-Sep":
-        return "SEPT4"
-    elif row.UID == "9-Sep":
-        return "SEPT9"
+def cancer_status(row):
+    if row["Is Oncogene"] == "Yes" and row["Is Tumor Suppressor Gene"] == "Yes":
+        return "cancer-associated"
+    elif row["Is Oncogene"] == "Yes":
+        return "oncogene"
+    elif row["Is Tumor Suppressor Gene"] == "Yes":
+        return "tumor suppressor"
     else:
-        return row.UID
-
-oncots_mrg["gene_name"] = oncots_mrg.apply(fix_excel_date, axis=1)
-
-# categorize as oncogene/tumor suppressor
-def categorize_onco_ts(row):
-    if "Oncogene" in row["Group"] and "Tumor Suppressor" not in row["Group"]:
-        return "Oncogene"
-    elif "Tumor Suppressor" in row["Group"] and "Oncogene" not in row["Group"]:
-        return "Tumor Suppressor"
-    else:
-        return "Cancer-associated"
+        return "cancer-associated"
     
-oncots_mrg["cancer_status"] = oncots_mrg.apply(categorize_onco_ts, axis=1)
-oncots_mrg.cancer_status.value_counts()
+oncokb_mrg["cancer_status"] = oncokb_mrg.apply(cancer_status, axis=1)
+oncokb_mrg.columns = ["gene_name", "oncogene", "tumor_suppressor", "cancer_status"]
+oncokb_mrg.cancer_status.value_counts()
 
 
 # In[34]:
 
 
-pancan = pancan.merge(oncots_mrg[["gene_name", "cancer_status"]], on="gene_name", how="left")
+pancan = pancan.merge(oncokb_mrg[["gene_name", "cancer_status"]], on="gene_name", how="left")
 pancan["cancer_status"] = pancan["cancer_status"].fillna("none")
 pancan.cancer_status.value_counts()
 
@@ -767,10 +760,23 @@ sig = pd.DataFrame(nonan[nonan["sig_status"] != "not sig. in any"].dn_cat.value_
 st = tots.join(sig, lsuffix="_not_sig", rsuffix="_sig")
 st = st.loc[["negative regulator", "rewirer", "similar to ref.", "NA"]]
 st = st/st.sum(axis=0)
+st.columns = ['count_not_sig', 'count_sig']
 st
 
 
 # In[45]:
+
+
+tots
+
+
+# In[46]:
+
+
+nonan[nonan["sig_status"] == "not sig. in any"].dn_cat.value_counts()
+
+
+# In[47]:
 
 
 fe = np.zeros((2, 2))
@@ -789,7 +795,7 @@ print(fisher_exact(fe))
 p = fisher_exact(fe)[1]
 
 
-# In[46]:
+# In[48]:
 
 
 fig, ax = plt.subplots(figsize=(0.4, 1.5))
@@ -828,13 +834,71 @@ ax.xaxis.set_tick_params(length=0)
 fig.savefig("../../figures/fig7/PanCan_DN_Stacked.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[47]:
+# In[49]:
+
+
+pc_hm = pancan_lib[(pancan_lib["dn_cat"] != "ref") &
+                   (pancan_lib["sig_status_simple"] == "sig. in ≥1")][["isoform", "mean_iso_pct_diff_brca", 
+                                                                       "mean_iso_pct_diff_luad", 
+                                                                       "mean_iso_pct_diff_hnscc",
+                                                                       "dn_cat",
+                                                                       "cancer_status"]].set_index("isoform")
+
+print(len(pc_hm))
+pc_hm = pc_hm.dropna()
+print(len(pc_hm))
+
+
+row_colors1 = pc_hm.dn_cat.map(dn_pal)
+row_colors2 = pc_hm.cancer_status.map({"oncogene": "hotpink",
+                                       "tumor suppressor": "gold",
+                                       "cancer-associated": "rosybrown",
+                                       "none": "ghostwhite"})
+to_plot = pc_hm.drop(["dn_cat", "cancer_status"], axis=1)
+
+# flip fig so it fits in composite better
+to_plot = to_plot.T
+
+g = sns.clustermap(data=to_plot, cmap="vlag", linewidth=0, figsize=(3.5, 1.75), xticklabels=False,
+                   yticklabels=False,
+                   vmin=-0.15, vmax=0.15, dendrogram_ratio=(0, 0.2),
+                   metric='euclidean', method='complete', row_cluster=False, row_linkage=None,
+                   cbar_pos=(1.1, 0.3, 0.02, 0.25), 
+                   cbar_kws={"label": "mean ∆ isoform ratio\n(paired tumor - control)",
+                             "ticks": [-0.15, 0, 0.15],
+                             "orientation": "vertical"},
+                   col_colors=[row_colors1, row_colors2], colors_ratio=0.07)
+_ = g.cax.set_yticklabels(["≤-15%", "0%", "≥15%"])
+g.ax_col_colors.set_yticklabels('')
+g.ax_col_colors.set_yticks([])
+g.ax_col_colors.set_xticks([])
+g.ax_heatmap.set_xlabel('')
+
+
+# label specific genes
+use_labels = list(pc_hm[(pc_hm['cancer_status'].isin(["oncogene", "tumor suppressor"])) &
+                        (pc_hm['dn_cat'] == 'negative regulator')].index)
+reordered_labels = pc_hm.index[g.dendrogram_col.reordered_ind].tolist()
+use_ticks = [reordered_labels.index(label) + .5 for label in use_labels]
+g.ax_heatmap.set(xticks=use_ticks, xticklabels=use_labels)
+g.ax_heatmap.set_xticklabels(use_labels, rotation=30, va='top', ha='right')
+g.ax_heatmap.xaxis.set_tick_params(width=0.5)
+
+# print the labels to make more clear in illustrator
+idx = np.argsort(use_ticks)
+print(np.asarray(use_labels)[idx])
+
+
+g.savefig("../../figures/fig7/PanCan_Heatmap.Alt_Only_EffectSize.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[50]:
 
 
 tots = pd.DataFrame(nonan[nonan["cancer_status"] == "none"].dn_cat.value_counts())
-onc = pd.DataFrame(nonan[nonan["cancer_status"] == "Oncogene"].dn_cat.value_counts())
-ts = pd.DataFrame(nonan[nonan["cancer_status"] == "Tumor Suppressor"].dn_cat.value_counts())
-other = pd.DataFrame(nonan[nonan["cancer_status"].isin(["Cancer-associated"])].dn_cat.value_counts())
+onc = pd.DataFrame(nonan[nonan["cancer_status"] == "oncogene"].dn_cat.value_counts())
+ts = pd.DataFrame(nonan[nonan["cancer_status"] == "tumor suppressor"].dn_cat.value_counts())
+other = pd.DataFrame(nonan[nonan["cancer_status"].isin(["cancer-associated"])].dn_cat.value_counts())
 
 st = tots.join(onc, lsuffix="_none", rsuffix="_onc")
 st2 = ts.join(other, lsuffix="_ts", rsuffix="_other")
@@ -845,7 +909,7 @@ st.fillna(0, inplace=True)
 st
 
 
-# In[48]:
+# In[51]:
 
 
 fig, ax = plt.subplots(figsize=(0.9, 1.5))
@@ -882,87 +946,9 @@ ax.xaxis.set_tick_params(length=0)
 #fig.savefig("../../figures/fig7/PanCan_DN_Stacked.OncoKB.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[49]:
-
-
-fe = np.zeros((2, 2))
-
-print(len(nonan))
-alts = nonan[nonan["dn_cat"].isin(["negative regulator", "rewirer", "similar to ref.", "NA"])]
-
-fe[0, 0] = len(alts[(alts["dn_cat"] == "negative regulator") & 
-                    (alts["cancer_status"].isin(["Oncogene"]))].isoform.unique())
-fe[1, 0] = len(alts[(alts["dn_cat"] != "negative regulator") & 
-                    (alts["cancer_status"].isin(["Oncogene"]))].isoform.unique())
-fe[0, 1] = len(alts[(alts["dn_cat"] == "negative regulator") & 
-                    (alts["cancer_status"] == "none")].isoform.unique())
-fe[1, 1] = len(alts[(alts["dn_cat"] != "negative regulator") & 
-                    (alts["cancer_status"] == "none")].isoform.unique())
-print(fisher_exact(fe))
-p = fisher_exact(fe)[1]
-
-
-# In[50]:
-
-
-pc_hm = pancan_lib[(pancan_lib["dn_cat"] != "ref") &
-                   (pancan_lib["sig_status_simple"] == "sig. in ≥1")][["isoform", "mean_iso_pct_diff_brca", 
-                                                                       "mean_iso_pct_diff_luad", 
-                                                                       "mean_iso_pct_diff_hnscc",
-                                                                       "dn_cat",
-                                                                       "cancer_status"]].set_index("isoform")
-
-print(len(pc_hm))
-pc_hm = pc_hm.dropna()
-print(len(pc_hm))
-
-
-row_colors1 = pc_hm.dn_cat.map(dn_pal)
-row_colors2 = pc_hm.cancer_status.map({"Oncogene": "hotpink",
-                                       "Tumor Suppressor": "gold",
-                                       "Cancer-associated": "rosybrown",
-                                       "none": "ghostwhite"})
-to_plot = pc_hm.drop(["dn_cat", "cancer_status"], axis=1)
-
-# flip fig so it fits in composite better
-to_plot = to_plot.T
-
-g = sns.clustermap(data=to_plot, cmap="vlag", linewidth=0, figsize=(3.5, 1.75), xticklabels=False,
-                   yticklabels=False,
-                   vmin=-0.15, vmax=0.15, dendrogram_ratio=(0, 0.2),
-                   metric='euclidean', method='complete', row_cluster=False, row_linkage=None,
-                   cbar_pos=(1.1, 0.3, 0.02, 0.25), 
-                   cbar_kws={"label": "mean ∆ isoform ratio\n(paired tumor - control)",
-                             "ticks": [-0.15, 0, 0.15],
-                             "orientation": "vertical"},
-                   col_colors=[row_colors1, row_colors2], colors_ratio=0.07)
-_ = g.cax.set_yticklabels(["≤-15%", "0%", "≥15%"])
-g.ax_col_colors.set_yticklabels('')
-g.ax_col_colors.set_yticks([])
-g.ax_col_colors.set_xticks([])
-g.ax_heatmap.set_xlabel('')
-
-
-# label specific genes
-use_labels = list(pc_hm[(pc_hm['cancer_status'].isin(["Oncogene", "Tumor Suppressor"])) &
-                        (pc_hm['dn_cat'] == 'negative regulator')].index) + ['SMAD3-3']
-reordered_labels = pc_hm.index[g.dendrogram_col.reordered_ind].tolist()
-use_ticks = [reordered_labels.index(label) + .5 for label in use_labels]
-g.ax_heatmap.set(xticks=use_ticks, xticklabels=use_labels)
-g.ax_heatmap.set_xticklabels(use_labels, rotation=30, va='top', ha='right')
-g.ax_heatmap.xaxis.set_tick_params(width=0.5)
-
-# print the labels to make more clear in illustrator
-idx = np.argsort(use_ticks)
-print(np.asarray(use_labels)[idx])
-
-
-g.savefig("../../figures/fig7/PanCan_Heatmap.Alt_Only_EffectSize.pdf", dpi="figure", bbox_inches="tight")
-
-
 # ## 7. CREB1 vignette
 
-# In[51]:
+# In[52]:
 
 
 to_plot_brca = res_dfs['BRCA'].reset_index()
@@ -977,21 +963,21 @@ brca_isos_paired.columns = ["iso_id"] + new_ctrl_cols + new_tumor_cols
 brca_isos_paired = brca_isos_paired.merge(pancan[['iso_id', 'gene_name']], on='iso_id')
 
 
-# In[52]:
+# In[53]:
 
 
 creb1 = pancan[pancan['gene_name'] == 'CREB1']
 creb1
 
 
-# In[53]:
+# In[54]:
 
 
 f_brca_paired_melt = pd.melt(brca_isos_paired, id_vars=["gene_name", "iso_id"])
 f_brca_paired_melt["samp"] = f_brca_paired_melt["variable"].str.split(" ", expand=True)[0]
 
 
-# In[54]:
+# In[55]:
 
 
 fig = plt.figure(figsize=(1, 1.5))
@@ -1036,13 +1022,13 @@ ax.xaxis.set_tick_params(length=0)
 #fig.savefig("../../figures/fig7/BRCA_CREB1_swarmplot_paired.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[55]:
+# In[56]:
 
 
 paired_ratio_cols = [x for x in to_plot_brca.columns if x.startswith('paired-diff')]
 
 
-# In[56]:
+# In[57]:
 
 
 creb1_iso_diff = to_plot_brca[to_plot_brca["iso_id"] == "CREB1-1"][paired_ratio_cols]
@@ -1065,7 +1051,7 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/BRCA_CREB1_iso_diff_hist.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[57]:
+# In[58]:
 
 
 to_plot_brca_gene = gene_dfs['BRCA'].reset_index()
@@ -1076,7 +1062,7 @@ brca_genes_paired = brca_genes_paired.merge(pancan[['iso_id', 'gene_name']], on=
 brca_genes_paired = brca_genes_paired[['gene_name'] + new_ctrl_cols + new_tumor_cols].drop_duplicates()
 
 
-# In[58]:
+# In[59]:
 
 
 brca_genes_paired["wilcox_pval"] = brca_genes_paired.apply(paired_pval, ctrl_cols=new_ctrl_cols, tumor_cols=new_tumor_cols, axis=1)
@@ -1089,14 +1075,14 @@ print(len(brca_genes_paired_filt))
 brca_genes_paired_filt["wilcox_padj"] = smt.multipletests(list(brca_genes_paired_filt["wilcox_pval"]), alpha=0.05, method="fdr_bh")[1]
 
 
-# In[59]:
+# In[60]:
 
 
 brca_genes_paired_melt = pd.melt(brca_genes_paired_filt, id_vars=["gene_name"])
 brca_genes_paired_melt["samp"] = brca_genes_paired_melt["variable"].str.split(" ", expand=True)[0]
 
 
-# In[60]:
+# In[61]:
 
 
 fig = plt.figure(figsize=(1.2, 1.5))
@@ -1137,13 +1123,13 @@ ax.xaxis.set_tick_params(length=0)
 fig.savefig("../../figures/fig7/BRCA_CREB1_gene_expression_swarmplot_paired.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[61]:
+# In[62]:
 
 
 paired_diff_cols = [x for x in to_plot_brca_gene.columns if x.startswith('paired-l2fc')]
 
 
-# In[62]:
+# In[63]:
 
 
 # using iso_id but this df is gene level
@@ -1168,7 +1154,7 @@ fig.savefig("../../figures/fig7/BRCA_CREB1_gene_diff_hist.pdf", dpi="figure", bb
 
 # ## 8. import joung et al DEGs + target status
 
-# In[63]:
+# In[64]:
 
 
 gfp_degs = {}
@@ -1206,7 +1192,7 @@ for i, item in enumerate(os.listdir(gfp_deg_dir)):
     gfp_degs[comp1] = df
 
 
-# In[64]:
+# In[65]:
 
 
 # load ref vs. alt degs
@@ -1241,7 +1227,7 @@ for i, item in enumerate(os.listdir(ref_deg_dir)):
     ref_degs[comp1] = df
 
 
-# In[65]:
+# In[66]:
 
 
 tgts_dict = {}
@@ -1250,7 +1236,7 @@ n_degs_df = {}
 for iso in ref_degs:
     refvsalt_df = ref_degs[iso]
     refvsalt_df["neglog_adjp"] = -np.log10(refvsalt_df["adjp"])
-    refvsalt_df = refvsalt_df.merge(oncots_mrg, left_on="Symbol", right_on="gene_name",
+    refvsalt_df = refvsalt_df.merge(oncokb_mrg, left_on="Symbol", right_on="gene_name",
                                     how="left")
     
     # now get the ref iso degs
@@ -1272,22 +1258,39 @@ for iso in ref_degs:
     
     tgts_dict[iso] = full_df
     
+    # uniquely up and down-regulated genes
+    ref_up = set(full_df[(full_df['adjp_ref_vs_gfp'] < 0.05) & (full_df['LogFold_ref_vs_gfp'] > 0.1)]['Symbol'])
+    ref_down = set(full_df[(full_df['adjp_ref_vs_gfp'] < 0.05) & (full_df['LogFold_ref_vs_gfp'] < -0.1)]['Symbol'])
+    alt_up = set(full_df[(full_df['adjp_alt_vs_gfp'] < 0.05) & (full_df['LogFold_alt_vs_gfp'] > 0.1)]['Symbol'])
+    alt_down = set(full_df[(full_df['adjp_alt_vs_gfp'] < 0.05) & (full_df['LogFold_alt_vs_gfp'] < -0.1)]['Symbol'])
+
+    n_shared_up = len(ref_up.intersection(alt_up))
+    n_ref_uniq_up = len(ref_up.difference(alt_up))
+    n_alt_uniq_up = len(alt_up.difference(ref_up))
+    
+    n_shared_down = len(ref_down.intersection(alt_down))
+    n_ref_uniq_down = len(ref_down.difference(alt_down))
+    n_alt_uniq_down = len(alt_down.difference(ref_down))
+
     # summary stats
     n_degs = len(full_df[(full_df["adjp_vs"] < 0.05)])
     n_tgts = len(full_df[(full_df["known_target"] == True)])
-    n_deg_tgts = len(full_df[(full_df["adjp_vs"] < 0.05) & (full_df["known_target"] == True)])
-    n_degs_df[iso] = {"n_degs": n_degs, "n_tgts": n_tgts, "n_deg_tgts": n_deg_tgts}
+    n_deg_tgts = len(full_df[((full_df["adjp_vs"] < 0.05) & (full_df["known_target"] == True))])
+    
+    n_degs_df[iso] = {"n_degs": n_degs, "n_tgts": n_tgts, "n_deg_tgts": n_deg_tgts,
+                      "n_shared_up": n_shared_up, "n_ref_uniq_up": n_ref_uniq_up, "n_alt_uniq_up": n_alt_uniq_up}
 
 
-# In[66]:
+# In[67]:
 
 
 n_degs_df = pd.DataFrame.from_dict(n_degs_df, orient="index").reset_index()
 n_degs_df["pct_tgts_deg"] = (n_degs_df["n_deg_tgts"]/n_degs_df["n_tgts"])*100
+n_degs_df["pct_tgts_deg"].fillna(0, inplace=True)
 n_degs_df[n_degs_df["index"].str.contains("CREB1")]
 
 
-# In[67]:
+# In[68]:
 
 
 print("TOT # REF/ALT PAIRS: %s" % len(n_degs_df))
@@ -1296,153 +1299,99 @@ print("MEDIAN # DEGs: %s" % (n_degs_df.n_degs.median()))
 print("NUM REF/ALT PAIRS WITH ≥100 DEGs: %s" % (len(n_degs_df[n_degs_df["n_degs"] >= 100])))
 
 
-# ## 8. plot CREB1 DEGs
-
-# In[68]:
-
-
-creb1 = tgts_dict["TFORF3026-CREB1"]
-creb1_sub = creb1[creb1["known_target"] == True]
-creb1_sub["cancer_status"].fillna("none", inplace=True)
-
-
 # In[69]:
 
 
-cancer_pal = {"Oncogene": "hotpink",
-              "Tumor Suppressor": "darkorange",
-              "Cancer-associated": "rosybrown",
-              "none": "lightgrey"}
+print("AVG # UNIQ UP REF: %s" % (n_degs_df.n_ref_uniq_up.mean()))
+print("AVG # UNIQ UP ALT: %s" % (n_degs_df.n_alt_uniq_up.median()))
+print("NUM REF/ALT PAIRS WITH ≥100 UNIQUE ALTs: %s" % (len(n_degs_df[n_degs_df["n_alt_uniq_up"] >= 100])))
 
+
+# ## 8. heatmap of gene set enrichments
 
 # In[70]:
 
 
-cmap = sns.light_palette("lightgrey", reverse=True, as_cmap=True)
-cmap
+gene_set = "MSigDB_Hallmark_2020"
 
 
 # In[71]:
 
 
-fig = plt.figure(figsize=(2, 2))
-
-ax = sns.histplot(data=creb1, x="LogFold_ref_vs_gfp", y="LogFold_alt_vs_gfp", bins=50,
-                  cmap=cmap)
-sns.scatterplot(data=creb1[(creb1["cancer_status"].isin(["Oncogene", "Tumor Suppressor", "Cancer-associated"])) &
-                           (creb1["adjp_vs"] < 0.05)], 
-                x="LogFold_ref_vs_gfp", y="LogFold_alt_vs_gfp", ax=ax, s=5, alpha=0.5,
-                hue="cancer_status", palette=cancer_pal)
-
-sns.scatterplot(data=creb1[(creb1["cancer_status"].isin(["Oncogene", "Tumor Suppressor", "Cancer-associated"])) &
-                           (creb1["adjp_vs"] < 0.05) &
-                           (creb1["known_target"] == True)], 
-                x="LogFold_ref_vs_gfp", y="LogFold_alt_vs_gfp", ax=ax, s=10, alpha=1,
-                hue="cancer_status", palette=cancer_pal, edgecolor="black")
-
-ax.set_xlabel("Expression induced by\nCREB1-2 reference")
-ax.set_ylabel("Expression induced by\nCREB1-1 alternative")
-plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
-ax.set_xlim((-1.5, 1.1))
-ax.set_ylim((-1.5, 1.1))
-ax.plot([-1.5, 1.1], [-1.5, 1.1], color="gray", linestyle="dashed", linewidth=0.5)
-ax.axhline(y=0, color="gray", linestyle="dashed", linewidth=0.5)
-ax.axvline(x=0, color="gray", linestyle="dashed", linewidth=0.5)
-
-# labels
-sub = creb1[(creb1["cancer_status"].isin(["Oncogene", "Tumor Suppressor", "Cancer-associated"])) &
-            (creb1["adjp_vs"] < 0.05) & (creb1["known_target"] == True) &
-            ((creb1["LogFold_ref_vs_gfp"] > 0.2) | (creb1["LogFold_alt_vs_gfp"] > 0.2))]
-# sub2 = creb1[creb1["Symbol"] == "KDM5B"]
-# sub = pd.concat([sub, sub2])
-
-
-offsets = [(0.3, -0.1), (0.05, -0.4), (-0.1, 0.3), (0.3, -0.1), (-0.1, 0.3), (0.3, 0)]
-havas = [("left", "center"), ("center", "top"), ("right", "bottom"), ("left", "center"), ("right", "bottom"),
-         ("left", "center")]
-c = 0
-for i, row in sub.iterrows():
-    print(row['Symbol'])
-    offset = offsets[c]
-    hava = havas[c]
-    cs = row["cancer_status"]
-    if cs == "none":
-        color = "grey"
-    else:
-        color = cancer_pal[cs]
-    text = plt.annotate(row["Symbol"], xy=(row["LogFold_ref_vs_gfp"], row["LogFold_alt_vs_gfp"]), 
-                    xytext=(row["LogFold_ref_vs_gfp"]+offset[0], row["LogFold_alt_vs_gfp"]+offset[1]), 
-                    ha=hava[0], va=hava[1],
-                    fontsize=PAPER_FONTSIZE-2, color=color,
-                    zorder=100, fontweight="bold", arrowprops=dict(arrowstyle='->',
-                                                                   color='black', linewidth=0.5),
-                     bbox=dict(pad=0.1, facecolor='none', edgecolor='none'))
-    c += 1
+gsea_res = pd.DataFrame()
+res_objs = {}
+for tf in ref_degs:
+    print(tf)
+    rnk = ref_degs[tf][["Symbol", "LogFold"]]
+    rnk = rnk.sort_values(by="LogFold", ascending=False).set_index("Symbol")
+    pre_res = gp.prerank(rnk=rnk,
+                             gene_sets=gene_set,
+                             threads=4,
+                             min_size=5,
+                             max_size=1000,
+                             permutation_num=1000,
+                             outdir=None,
+                             seed=seed,
+                             verbose=False)
     
-ax.spines['right'].set_visible(False)
-ax.spines['top'].set_visible(False)
-ax.set_title("Effect of CREB1 isoform over-expression")
-fig.savefig("../../figures/fig7/CREB1_joung_scatter.all_genes_pq.pdf", dpi="figure", bbox_inches="tight")
+    res = pre_res.res2d
+    res["TF ORF"] = tf
+    res_objs[tf] = pre_res
+    gsea_res = pd.concat([gsea_res, res])
 
-
-# ## 9. heatmap of gene set enrichments
 
 # In[72]:
 
 
-grns = grns_up.merge(grns_down, on="Comparison (pairwise)", suffixes=("_up", "_down"))
+gsea_sig = gsea_res[gsea_res["FDR q-val"] < 0.25][["Term", "NES", "TF ORF", "FDR q-val"]]
+print(gsea_sig.shape)
+print(len(gsea_sig['Term'].unique()))
 
 
 # In[73]:
 
 
-print(len(grns))
-grns = grns.merge(joung_map, left_on="ALTERNATIVE_up", right_on="TF ORF")
-grns["dn_cat"] = grns["dn_cat"].fillna("NA")
-print(len(grns))
+print("# OF ALTERNATIVE TFS WITH L2FCS: %s" % len(ref_degs))
+print("# OF ALTERNATIVE TFS WITH A SIGNIFICANT GSEA COMPARED TO REF: %s" % len(gsea_sig["TF ORF"].unique())) 
 
 
 # In[74]:
 
 
-# one-sided p-val of 0.05 is a z-score of 1.645
-grns_sig = grns[(grns["Oncogene_up"] >= 1.645) |
-                (grns["Oncogene.1_up"] >= 1.645) |
-                (grns["Oncogene_down"] >= 1.645) |
-                (grns["Oncogene.1_down"] >= 1.645) |
-                (grns["Tumor Suppressor_up"] >= 1.645) |
-                (grns["Tumor Suppressor.1_up"] >= 1.645) |
-                (grns["Tumor Suppressor_down"] >= 1.645) |
-                (grns["Tumor Suppressor.1_down"] >= 1.645)]
-len(grns_sig)
+# merge with joung ids
+gsea_sig = gsea_sig.merge(joung_map, on="TF ORF", how="left")
+print(gsea_sig.shape)
 
 
 # In[75]:
 
 
+# merge with pancan analysis
 sig_cancer = pancan[pancan['sig_status_simple'] == 'sig. in ≥1']
-grns_filt = grns_sig[grns_sig['tf1p0_id'].isin(sig_cancer['clone_acc'])]
-grns_filt = grns_filt.merge(pancan[['clone_acc', 'isoform', 'sig_status_simple', 'directionality']],
+gsea_filt = gsea_sig[gsea_sig['tf1p0_id'].isin(sig_cancer['clone_acc'])]
+print(gsea_filt.shape)
+terms = list(gsea_filt["Term"].unique())
+print(len(terms))
+gsea_filt = gsea_filt.merge(pancan[['clone_acc', 'isoform', 'sig_status_simple', 'directionality']],
                             left_on='tf1p0_id', right_on='clone_acc')
-print(len(grns_filt))
+print(gsea_filt.shape)
+gsea_filt = gsea_filt.merge(oncokb_mrg[["gene_name", "cancer_status"]], on="gene_name", how="left")
+print(gsea_filt.shape)
 
 
 # In[76]:
 
 
-elitego_cols = ['Mitotic M-M/G1 phases_up', 'S Phase_up', 'Tumor Suppressor_up',
-                'Mitotic G2-G2/M phases_up', 'Oncogene_up', 'Mitotic M-M/G1 phases.1_up', 'S Phase.1_up',
-                'Tumor Suppressor.1_up', 'Mitotic G2-G2/M phases.1_up', 'Oncogene.1_up',
-                'Mitotic M-M/G1 phases_down', 'S Phase_down', 'Tumor Suppressor_down', 
-                'Mitotic G2-G2/M phases_down', 'Oncogene_down', 'Mitotic M-M/G1 phases.1_down', 'S Phase.1_down',
-                'Tumor Suppressor.1_down', 'Mitotic G2-G2/M phases.1_down',
-                'Oncogene.1_down']
+# fix NaNs before re-indexing
+gsea_filt["dn_cat"].fillna("NA", inplace=True)
+gsea_filt["cancer_status"].fillna("none", inplace=True)
 
 
 # In[77]:
 
 
-grns_filt = grns_filt.merge(oncots_mrg, left_on="gene_name", right_on="gene_name", how="left")
+gsea_filt_pivot = pd.pivot_table(gsea_filt, values="NES", index=["isoform", "dn_cat", "cancer_status"], columns="Term")
+print(gsea_filt_pivot.shape)
 
 
 # In[78]:
@@ -1462,94 +1411,77 @@ dn_pal = {"ref": sns.color_palette("Set2")[0],
 # In[79]:
 
 
-# calculate diffs only when at least 1 of the 2 paired columns is significantly enriched
-grns_filt['Oncogene_up_diff'] = np.where((grns_filt['Oncogene_up'] >= 1.645) | 
-                                         (grns_filt['Oncogene.1_up'] >= 1.645),
-                                          grns_filt['Oncogene_up'] - grns_filt['Oncogene.1_up'],
-                                          np.nan)
-grns_filt['Tumor Suppressor_up_diff'] = np.where((grns_filt['Tumor Suppressor_up'] >= 1.645) | 
-                                         (grns_filt['Tumor Suppressor.1_up'] >= 1.645),
-                                          grns_filt['Tumor Suppressor_up'] - grns_filt['Tumor Suppressor.1_up'],
-                                          np.nan)
-grns_filt['Oncogene_down_diff'] = np.where((grns_filt['Oncogene_down'] >= 1.645) | 
-                                         (grns_filt['Oncogene.1_down'] >= 1.645),
-                                          grns_filt['Oncogene_down'] - grns_filt['Oncogene.1_down'],
-                                          np.nan)
-grns_filt['Tumor Suppressor_down_diff'] = np.where((grns_filt['Tumor Suppressor_down'] >= 1.645) | 
-                                         (grns_filt['Tumor Suppressor.1_down'] >= 1.645),
-                                          grns_filt['Tumor Suppressor_down'] - grns_filt['Tumor Suppressor.1_down'],
-                                          np.nan)
+cancer_pal = {"oncogene": "hotpink",
+              "tumor suppressor": "gold",
+              "cancer-associated": "rosybrown",
+              "none": "ghostwhite"}
 
 
 # In[80]:
 
 
-grns_filt["cancer_status"].fillna("none", inplace=True)
+term_count = gsea_filt.groupby("Term")["isoform"].agg("count").reset_index()
+terms_to_plot = list(term_count[term_count["isoform"] >= 1]["Term"].unique())
+len(terms_to_plot)
 
 
 # In[81]:
 
 
-cancer_pal = {"Oncogene": "hotpink",
-              "Tumor Suppressor": "gold",
-              "Cancer-associated": "rosybrown",
-              "none": "ghostwhite"}
+iso_count = gsea_filt.groupby("isoform")["Term"].agg("count").reset_index()
+print(len(iso_count))
+print(len(iso_count[iso_count["Term"] >= 3]))
 
 
 # In[82]:
 
 
-# filter to those with at least 2-fold enrichment
-to_plot = grns_filt[(grns_filt["Oncogene_up"] >= 1.645) |
-                    (grns_filt["Oncogene.1_up"] >= 1.645) |
-                    (grns_filt["Tumor Suppressor_up"] >= 1.645) |
-                    (grns_filt["Tumor Suppressor.1_up"] >= 1.645) ]
-
-
-row_colors1 = to_plot.set_index("ALTERNATIVE_up").dn_cat.map(dn_pal)
-row_colors2 = to_plot.set_index("ALTERNATIVE_up").cancer_status.map(cancer_pal)
-
-
-to_plot = to_plot[["ALTERNATIVE_up", "Oncogene_up_diff", 
-                   "Oncogene_down_diff", "Tumor Suppressor_up_diff", 
-                   "Tumor Suppressor_down_diff"]].set_index("ALTERNATIVE_up").T
+# create df to plot
+print(gsea_filt_pivot[terms_to_plot].min().min())
+to_plot = gsea_filt_pivot.reset_index()
 to_plot.fillna(-10, inplace=True)
-print(to_plot.shape)
-print(to_plot.min().min())
+
+row_colors1 = to_plot.set_index("isoform").dn_cat.map(dn_pal)
+row_colors2 = to_plot.set_index("isoform").cancer_status.map(cancer_pal)
+
+to_plot.set_index("isoform", inplace=True)
+to_plot = to_plot[terms]
 
 
 # In[83]:
 
 
-cmap = sns.diverging_palette(145, 300, s=60, as_cmap=True)
-cmap.set_under(color='lightgrey')
+cmap = sns.diverging_palette(220, 20, s=60, as_cmap=True)
+cmap.set_under(color='whitesmoke')
 
-g = sns.clustermap(data=to_plot.loc[["Oncogene_up_diff", 
-                                     "Tumor Suppressor_up_diff"]], cmap=cmap, linewidth=0, 
-                   figsize=(4, 2.1), xticklabels=True,
-                   yticklabels=True,
-                   center=0, vmin=-2.5, vmax=2.5, dendrogram_ratio=(0, 0.2),
-                   metric='euclidean', method='complete',
-                   row_cluster=False, row_linkage=None,
-                   cbar_pos=(0.25, 0.25, 0.25, 0.03), 
-                   cbar_kws={"label": "∆ Gene set enrichment Z-score\n (Ref - Alt)",
-                             "orientation": "horizontal",
-                             "ticks": [-2.5, 0, 2.5]},
-                   col_colors=[row_colors1, row_colors2], colors_ratio=0.15)
+g = sns.clustermap(data=to_plot.T, cmap=cmap, linewidth=0, 
+                   figsize=(5, 5), yticklabels=True,
+                   xticklabels=True,
+                   center=0, dendrogram_ratio=(0.1, 0.1),
+                   vmin=-2, vmax=2,
+                   metric='seuclidean', method='average',
+                   cbar_pos=(1, 0.4, 0.02, 0.2), 
+                   cbar_kws={"label": "normalized enrichment score",
+                             "orientation": "vertical",
+                             "ticks": [-2, -1, 0, 1, 2]},
+                   col_colors=[row_colors1, row_colors2], colors_ratio=0.02,
+                   row_cluster=True)
 
-_ = g.cax.set_xticklabels(["≤-2.5", "0", "≥2.5"])
+_ = g.cax.set_yticklabels(["≤-2", "-1", "0", "1", "≥2"])
 g.ax_col_colors.set_yticks([])
 g.ax_col_colors.set_xticks([])
-g.ax_heatmap.set_xlabel('')
-g.ax_heatmap.set_yticklabels(('Oncogenes', 'Tumor Suppressors'))
+g.ax_heatmap.set_ylabel('')
 g.ax_heatmap.tick_params(right=False)
+g.ax_heatmap.set_xlabel("")
 
 # label specific genes
-use_labels = list(grns_filt[(grns_filt['cancer_status'].isin(["Oncogene", "Tumor Suppressor"])) &
-                            (grns_filt['dn_cat'] == 'DN')]["ALTERNATIVE_up"]) + ['TFORF0115-SMAD3']
-reordered_labels = to_plot.columns[g.dendrogram_col.reordered_ind].tolist()
+tmp = gsea_filt_pivot.reset_index()
+use_labels = list(tmp[(tmp['cancer_status'].isin(["oncogene", "tumor suppressor",
+                                                              "cancer-associated"])) &
+                            (tmp['dn_cat'] == 'DN')]["isoform"])
+reordered_labels = to_plot.T.columns[g.dendrogram_col.reordered_ind].tolist()
 use_ticks = [reordered_labels.index(label) + .5 for label in use_labels]
-new_names = [grns_filt[grns_filt['ALTERNATIVE_up'] == x]['isoform'].iloc[0] for x in use_labels]
+new_names = [gsea_filt[gsea_filt['isoform'] == x]['isoform'].iloc[0] for x in use_labels]
 g.ax_heatmap.set(xticks=use_ticks, xticklabels=new_names)
 g.ax_heatmap.set_xticklabels(new_names, rotation=30, va='top', ha='right')
 g.ax_heatmap.xaxis.set_tick_params(width=0.5)
@@ -1557,13 +1489,179 @@ g.ax_heatmap.xaxis.set_tick_params(width=0.5)
 # print the labels to make more clear in illustrator
 idx = np.argsort(use_ticks)
 print(np.asarray(new_names)[idx])
+g.savefig("../../figures/fig7/GSEA_heatmap_full.pdf", dpi="figure", bbox_inches="tight")
 
-g.savefig("../../figures/fig7/EliteGo_Heatmap.Ref_Minus_Alt.filtered.pdf", dpi="figure", bbox_inches="tight")
-
-
-# ## 10. write supplemental files
 
 # In[84]:
+
+
+from itertools import combinations
+
+def jaccard_similarity(set1, set2):
+    """Compute the Jaccard similarity between two sets."""
+    intersection = len(set1.intersection(set2))
+    union = len(set1.union(set2))
+    return intersection / union
+
+
+# In[85]:
+
+
+def filter_redundant_sets(gene_sets_dict, threshold=0.8):
+    """
+    Remove redundant gene sets based on Jaccard similarity.
+
+    :param gene_sets_dict: Dictionary where keys are gene set names and values are sets of genes.
+    :param threshold: Threshold for Jaccard similarity above which sets are considered redundant.
+    :return: Filtered dictionary of non-redundant gene sets.
+    """
+    gene_set_names = list(gene_sets_dict.keys())
+    
+    # Keep track of which gene sets to remove
+    to_remove = set()
+    
+    # Iterate through all combinations of gene sets
+    for i, j in combinations(range(len(gene_set_names)), 2):
+        name_i = gene_set_names[i]
+        name_j = gene_set_names[j]
+        if name_i not in to_remove and name_j not in to_remove:
+            similarity = jaccard_similarity(gene_sets_dict[name_i], gene_sets_dict[name_j])
+            if similarity >= threshold:
+                # Mark one of the sets as redundant (e.g., remove gene set j)
+                to_remove.add(name_j)
+    
+    # Return the filtered dictionary of gene sets
+    filtered_gene_sets_dict = {name: genes for name, genes in gene_sets_dict.items() if name not in to_remove}
+    
+    return filtered_gene_sets_dict
+
+
+# In[86]:
+
+
+# grab genes in each term
+gene_set_dict = {}
+for term in terms:
+    genes = gp.get_library(name=gene_set, organism="Human")[term]
+    gene_set_dict[term] = set(genes)
+
+
+# In[87]:
+
+
+print(len(gene_set_dict))
+
+filtered_gene_set_dict = filter_redundant_sets(gene_set_dict, threshold=0.05)
+len(filtered_gene_set_dict)
+
+
+# In[88]:
+
+
+# create df to plot
+print(gsea_filt_pivot[filtered_gene_set_dict.keys()].min().min())
+to_plot = gsea_filt_pivot.reset_index()
+to_plot.fillna(-10, inplace=True)
+
+# filter to isoforms with at least 1 sig gsea
+to_include = list(to_plot[to_plot[filtered_gene_set_dict.keys()].max(axis=1) > -10]["isoform"])
+to_plot = to_plot[to_plot["isoform"].isin(to_include)]
+
+row_colors1 = to_plot.set_index("isoform").dn_cat.map(dn_pal)
+row_colors2 = to_plot.set_index("isoform").cancer_status.map(cancer_pal)
+
+to_plot.set_index("isoform", inplace=True)
+to_plot = to_plot[filtered_gene_set_dict.keys()]
+print(to_plot.shape)
+
+
+# In[89]:
+
+
+cmap = sns.diverging_palette(220, 20, s=60, as_cmap=True)
+cmap.set_under(color='whitesmoke')
+
+g = sns.clustermap(data=to_plot.T, cmap=cmap, linewidth=0, 
+                   figsize=(4, 3.25), yticklabels=True,
+                   xticklabels=True,
+                   center=0, dendrogram_ratio=(0.1, 0.1),
+                   vmin=-2, vmax=2,
+                   metric='seuclidean', method='average',
+                   cbar_pos=(1.02, 0.4, 0.02, 0.25), 
+                   cbar_kws={"label": "normalized enrichment score",
+                             "orientation": "vertical",
+                             "ticks": [-2, -1, 0, 1, 2]},
+                   col_colors=[row_colors1, row_colors2], colors_ratio=0.03,
+                   row_cluster=True)
+
+_ = g.cax.set_yticklabels(["≤-2", "-1", "0", "1", "≥2"])
+g.ax_col_colors.set_yticks([])
+g.ax_col_colors.set_xticks([])
+g.ax_heatmap.set_ylabel('')
+g.ax_heatmap.tick_params(right=False)
+g.ax_heatmap.set_xlabel("")
+
+# label specific genes
+tmp = gsea_filt_pivot.reset_index()
+use_labels = list(tmp[(tmp['cancer_status'].isin(["oncogene", "tumor suppressor",
+                                                              "cancer-associated"])) &
+                            (tmp['dn_cat'] == 'DN')]["isoform"])
+print(use_labels)
+reordered_labels = to_plot.T.columns[g.dendrogram_col.reordered_ind].tolist()
+use_ticks = [reordered_labels.index(label) + .5 for label in use_labels]
+new_names = [gsea_filt[gsea_filt['isoform'] == x]['isoform'].iloc[0] for x in use_labels]
+g.ax_heatmap.set(xticks=use_ticks, xticklabels=new_names)
+g.ax_heatmap.set_xticklabels(new_names, rotation=30, va='top', ha='right')
+g.ax_heatmap.xaxis.set_tick_params(width=0.5)
+
+# print the labels to make more clear in illustrator
+idx = np.argsort(use_ticks)
+print(np.asarray(new_names)[idx])
+g.savefig("../../figures/fig7/GSEA_heatmap_small.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[90]:
+
+
+smad3_res = res_objs["TFORF0115-SMAD3"]
+print(smad3_res.res2d[['Term', 'NES', 'NOM p-val', 'FDR q-val']].sort_values(by='FDR q-val').head(10))
+
+ax = smad3_res.plot(terms=["Reactive Oxygen Species Pathway"])
+#plt.savefig("GSEA_SMAD3_ROS.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[91]:
+
+
+creb1_res = res_objs["TFORF3026-CREB1"]
+print(creb1_res.res2d[['Term', 'NES', 'NOM p-val', 'FDR q-val']].sort_values(by='FDR q-val').head(10))
+
+ax = creb1_res.plot(terms=["Wnt-beta Catenin Signaling"])
+#plt.savefig("GSEA_CREB1_Wnt.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[92]:
+
+
+sig_cancer_alt_tf1p0 = sig_cancer[(sig_cancer["dn_cat"] != "ref") &
+                                  (sig_cancer["clone_acc"] != "none")]
+
+joung_tf1p0 = joung_map[~pd.isnull(joung_map["TF ORF"])]
+overlap_joung = joung_tf1p0[joung_tf1p0["tf1p0_id"].isin(sig_cancer_alt_tf1p0["clone_acc"])]
+
+called_degs = overlap_joung[overlap_joung["TF ORF"].isin(ref_degs.keys())]
+
+sig_gsea = called_degs[called_degs["tf1p0_id"].isin(gsea_sig["tf1p0_id"])]
+
+print("# sig cancer alt TF1.0 isos: %s" % len(sig_cancer_alt_tf1p0["iso_id"].unique()))
+print("# overlap joung: %s" % len(overlap_joung["tf1p0_id"].unique()))
+print("# called DEGs: %s" % len(called_degs["tf1p0_id"].unique()))
+print("# sig GSEA: %s" % len(sig_gsea["tf1p0_id"].unique()))
+
+
+# ## 9. write supplemental files
+
+# In[93]:
 
 
 # supp table: paired samples used in TCGA analysis
@@ -1577,13 +1675,13 @@ supp_tcgasamps = pd.concat([supp_brcasamps, supp_luadsamps, supp_hnsccsamps])
 supp_tcgasamps.cancer_type.value_counts()
 
 
-# In[85]:
+# In[94]:
 
 
 supp_tcgasamps.to_csv("../../supp/SuppTable_TCGASamps.txt", sep="\t", index=False)
 
 
-# In[86]:
+# In[95]:
 
 
 # supp table: TCGA results for cloned isoforms
@@ -1596,49 +1694,51 @@ supp_tcgares = pancan_lib[["isoform", 'mean_tumor_iso_pct_brca', 'mean_normal_is
 len(supp_tcgares)
 
 
-# In[87]:
+# In[96]:
 
 
 supp_tcgares.to_csv("../../supp/SuppTable_TCGAResults.txt", sep="\t", index=False)
 
 
-# In[88]:
+# In[97]:
 
 
-# supp table: joung et al summary
-supp_joung = grns[['REFERENCE_up', 'ALTERNATIVE_up', 'Oncogene_up',
-                   'Oncogene.1_up', 'Tumor Suppressor_up', 'Tumor Suppressor.1_up',
-                   'Oncogene_down', 'Oncogene.1_down', 'Tumor Suppressor_down',
-                   'Tumor Suppressor.1_down']]
-supp_joung.columns = ['ref_iso_morf_id', 'alt_iso_morf_id', 'oncogene_ref_up',
-                      'oncogene_alt_up', 'ts_ref_up', 'ts_alt_up',
-                      'oncogene_ref_down', 'oncogene_alt_down', 'ts_ref_down',
-                      'ts_alt_down']
-supp_joung = n_degs_df.merge(supp_joung, left_on='index', right_on='alt_iso_morf_id')
-supp_joung = supp_joung.merge(joung_map[['TF ORF', 'tf1p0_id']], left_on='index',
-                              right_on='TF ORF')
+supp_joung = gsea_sig.copy()
+print(len(supp_joung))
 
-def format_id(row):
-    return row['tf1p0_id'].split("|")[0] + '-' + row['tf1p0_id'].split("|")[1].split("/")[0]
+# merge with reference ID
+joung_refs = joung_map[joung_map["dn_cat"] == "ref"]
 
-supp_joung['alt_iso'] = supp_joung.apply(format_id, axis=1)
-supp_joung = supp_joung[['alt_iso', 'ref_iso_morf_id', 'alt_iso_morf_id', 
-                         'n_degs', 'n_tgts', 'n_deg_tgts', 'pct_tgts_deg',
-                         'oncogene_ref_up', 'oncogene_alt_up', 'ts_ref_up', 'ts_alt_up',
-                         'oncogene_ref_down', 'oncogene_alt_down', 'ts_ref_down', 'ts_alt_down']]
-supp_joung[supp_joung['alt_iso'].str.contains('CREB1')]
+supp_joung = supp_joung.merge(joung_refs, on="gene_name", suffixes=("_alt", "_ref"))
+supp_joung = supp_joung[["TF ORF_alt", "tf1p0_id_alt", "TF ORF_ref", "tf1p0_id_ref", "Term", "NES", "FDR q-val"]]
+supp_joung.columns = ["jound_id_alt", "alt_iso", "joung_id_ref", "ref_iso",
+                      "msigdb_term", "gsea_nes", "gsea_qval"]
+
+def format_id(row, col):
+    return row[col].split("|")[0] + '-' + row[col].split("|")[1].split("/")[0]
+
+supp_joung['alt_iso'] = supp_joung.apply(format_id, col='alt_iso', axis=1)
+supp_joung['ref_iso'] = supp_joung.apply(format_id, col='ref_iso', axis=1)
+print(len(supp_joung.alt_iso.unique()))
+supp_joung.sample(5)
 
 
-# In[89]:
+# In[98]:
 
 
 supp_joung.to_csv("../../supp/SuppTable_JoungResults.txt", sep="\t", index=False)
 
 
+# In[99]:
+
+
+supp_joung[supp_joung["alt_iso"].str.contains("PBX1")]
+
+
 # # create TCGA plots for website
 # takes a while so comment out when done
 
-# In[90]:
+# In[100]:
 
 
 def paired_swarmplot(df, iso_id, cancer, padj, l2fc, fig_filename):
@@ -1710,7 +1810,7 @@ def paired_swarmplot(df, iso_id, cancer, padj, l2fc, fig_filename):
     return fig
 
 
-# In[91]:
+# In[101]:
 
 
 def format_number(num):
@@ -1720,7 +1820,7 @@ def format_number(num):
         return f"{num:.3f}"  # Otherwise, return as a float with 2 decimal places
 
 
-# In[92]:
+# In[102]:
 
 
 # for cancer in ['BRCA', 'LUAD', 'HNSCC']:
