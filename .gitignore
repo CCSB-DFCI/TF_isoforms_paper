@@ -8,6 +8,7 @@ output
 website/media
 website/pages
 website
+supp/archive
 
 # ignore gloria's auxiliary analysis folder for now
 analysis2
@@ -23,6 +24,10 @@ gencode.v25.annotation.gtf
 *.csv
 *.tsv
 #.txt
+#
+
+# ignore archive files
+src/negregs_vs_rewirers/archive
 
 .DS_Store
 .vscode/

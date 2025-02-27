@@ -519,11 +519,12 @@ def m1h_activation_per_tf_gene_plot(
     )
 
     if xlim is None:
-        ax.set_xlim(-3, 12)
+        xmin, xmax = ax.get_xlim()
+        ax.set_xlim(min([-3, xmin]), max([3, xmax]))
     else:
         ax.set_xlim(xlim)
     ax.set_ylim(-0.5, len(clones[::n_reps]) - 0.5)
-    ax.set_xlabel("Log2 M1H readout")
+    ax.set_xlabel("log2(activation fold change)")
     ax.axvline(0, linestyle="-", color="black")
     ax.axvline(-1, linestyle="--", color="black")
     ax.axvline(1, linestyle="--", color="black")
@@ -1049,8 +1050,9 @@ def nice_boxplot(
     log_scale,
     ylim,
     title,
+    figsize=(2,2.5),
 ):
-    fig = plt.figure(figsize=(2, 2.5))
+    fig = plt.figure(figsize=figsize)
 
     ax = sns.boxplot(data=df, y=ycat, x=xcat, order=xorder, palette=pal, fliersize=0)
     mimic_r_boxplot(ax)

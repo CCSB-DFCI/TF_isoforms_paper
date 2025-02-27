@@ -2,7 +2,7 @@ isos = cloned_isoform_json_array;
 
 function load_isoform_structure(iso) {
     options = {
-        customData: { url: 'http://18.210.151.165/tf_isoform/data/alphafold/' + iso['name'] + '/ranked_0.pdb', format: 'pdb' },
+        customData: { url: 'http://tfisodb.org/data/alphafold/' + iso['name'] + '/ranked_0.pdb', format: 'pdb' },
         hideControls: "true",
         bgColor: { r: 255, g: 255, b: 255 },
         pdbeLink: false,
@@ -29,7 +29,7 @@ function load_isoform_structure(iso) {
 var viewerInstance = new PDBeMolstarPlugin();
 var viewerContainer = document.getElementById('myViewer');
 options = {
-    customData: { url: 'http://18.210.151.165/tf_isoform/data/alphafold/' + isos[0]['name'] + '/ranked_0.pdb', format: 'pdb' },
+    customData: { url: 'http://tfisodb.org/data/alphafold/' + isos[0]['name'] + '/ranked_0.pdb', format: 'pdb' },
     hideControls: "true",
     bgColor: { r: 255, g: 255, b: 255 },
     pdbeLink: false,
