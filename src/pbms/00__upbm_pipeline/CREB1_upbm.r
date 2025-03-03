@@ -17,15 +17,15 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
     text(0.5, 0.5, txt, cex = cex.cor * r * 10)
 }
 
-# writing the design files for GEO submission
-write.table(pbm_8x60k_v1@design, file=file.path("../../../data/internal/pbms/gpr_geo/pbm_8x60k_v1.txt"), 
-            row.names=FALSE,
-            quote=FALSE, sep="\t")
-write.table(broom::tidy(refcy3_8x60k_v1), file=file.path("../../../data/internal/pbms/gpr_geo/refcy3_8x60k_v1.txt"), 
-            row.names=FALSE,
-            quote=FALSE, sep="\t")
+# # writing the design files for GEO submission
+# write.table(pbm_8x60k_v1@design, file=file.path("../../../data/internal/pbms/gpr_geo/pbm_8x60k_v1.txt"), 
+#             row.names=FALSE,
+#             quote=FALSE, sep="\t")
+# write.table(broom::tidy(refcy3_8x60k_v1), file=file.path("../../../data/internal/pbms/gpr_geo/refcy3_8x60k_v1.txt"), 
+#             row.names=FALSE,
+#             quote=FALSE, sep="\t")
 
-head(refcy3_8x60k_v1)
+# head(refcy3_8x60k_v1)
 
 tf <- "CREB1"
 
@@ -34,8 +34,8 @@ rc_motif <- "TGACG"
 
 ref_condition <- "CREB1-ref"
 
-datdir <- "../../../data/internal/pbms/gpr_geo"
-sampdir <- "../../../data/internal/pbms/gpr_geo"
+datdir <- "../../../data/internal/pbms"
+sampdir <- "../../../data/internal/pbms"
 
 alexa_samples <- read_csv(file.path(sampdir, paste0(tf, "-alexa.csv")), col_types = cols())
 alexa_samples

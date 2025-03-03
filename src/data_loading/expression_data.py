@@ -76,7 +76,7 @@ def load_gtex_remapped():
         DATA_DIR / "processed/gtex_2022/GTEx_SRARunTable.txt", sep="\t"
     )
     df = pd.read_csv(
-        DATA_DIR / "processed/gtex_2022/transcript.BreastCancer.txt", sep="\t"
+        DATA_DIR / "processed/gtex_2022/transcript.GTEx.txt", sep="\t"
     )
     if metadata["Run"].duplicated().any():
         raise UserWarning("Unexpected duplicates")

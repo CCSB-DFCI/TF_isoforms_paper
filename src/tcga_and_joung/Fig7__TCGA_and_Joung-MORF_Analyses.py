@@ -88,6 +88,7 @@ dn_pal = {"ref": sns.color_palette("Set2")[0],
 # In[6]:
 
 
+# note that this is made in the other fig7 notebook in negregs_vs_rewirers dir
 dn_f = "../../supp/SuppTable_NegRegs.txt"
 
 
@@ -1575,7 +1576,7 @@ to_plot = to_plot[filtered_gene_set_dict.keys()]
 print(to_plot.shape)
 
 
-# In[89]:
+# In[93]:
 
 
 cmap = sns.diverging_palette(220, 20, s=60, as_cmap=True)
@@ -1606,7 +1607,8 @@ tmp = gsea_filt_pivot.reset_index()
 use_labels = list(tmp[(tmp['cancer_status'].isin(["oncogene", "tumor suppressor",
                                                               "cancer-associated"])) &
                             (tmp['dn_cat'] == 'DN')]["isoform"])
-print(use_labels)
+use_labels = [x for x in use_labels if x in to_include]
+
 reordered_labels = to_plot.T.columns[g.dendrogram_col.reordered_ind].tolist()
 use_ticks = [reordered_labels.index(label) + .5 for label in use_labels]
 new_names = [gsea_filt[gsea_filt['isoform'] == x]['isoform'].iloc[0] for x in use_labels]
@@ -1620,7 +1622,7 @@ print(np.asarray(new_names)[idx])
 g.savefig("../../figures/fig7/GSEA_heatmap_small.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[90]:
+# In[94]:
 
 
 smad3_res = res_objs["TFORF0115-SMAD3"]
@@ -1630,7 +1632,7 @@ ax = smad3_res.plot(terms=["Reactive Oxygen Species Pathway"])
 #plt.savefig("GSEA_SMAD3_ROS.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[91]:
+# In[95]:
 
 
 creb1_res = res_objs["TFORF3026-CREB1"]
@@ -1640,7 +1642,7 @@ ax = creb1_res.plot(terms=["Wnt-beta Catenin Signaling"])
 #plt.savefig("GSEA_CREB1_Wnt.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[92]:
+# In[96]:
 
 
 sig_cancer_alt_tf1p0 = sig_cancer[(sig_cancer["dn_cat"] != "ref") &
@@ -1661,7 +1663,7 @@ print("# sig GSEA: %s" % len(sig_gsea["tf1p0_id"].unique()))
 
 # ## 9. write supplemental files
 
-# In[93]:
+# In[97]:
 
 
 # supp table: paired samples used in TCGA analysis
@@ -1675,13 +1677,13 @@ supp_tcgasamps = pd.concat([supp_brcasamps, supp_luadsamps, supp_hnsccsamps])
 supp_tcgasamps.cancer_type.value_counts()
 
 
-# In[94]:
+# In[98]:
 
 
 supp_tcgasamps.to_csv("../../supp/SuppTable_TCGASamps.txt", sep="\t", index=False)
 
 
-# In[95]:
+# In[99]:
 
 
 # supp table: TCGA results for cloned isoforms
@@ -1694,13 +1696,13 @@ supp_tcgares = pancan_lib[["isoform", 'mean_tumor_iso_pct_brca', 'mean_normal_is
 len(supp_tcgares)
 
 
-# In[96]:
+# In[100]:
 
 
 supp_tcgares.to_csv("../../supp/SuppTable_TCGAResults.txt", sep="\t", index=False)
 
 
-# In[97]:
+# In[101]:
 
 
 supp_joung = gsea_sig.copy()
@@ -1723,13 +1725,13 @@ print(len(supp_joung.alt_iso.unique()))
 supp_joung.sample(5)
 
 
-# In[98]:
+# In[102]:
 
 
 supp_joung.to_csv("../../supp/SuppTable_JoungResults.txt", sep="\t", index=False)
 
 
-# In[99]:
+# In[103]:
 
 
 supp_joung[supp_joung["alt_iso"].str.contains("PBX1")]
@@ -1738,7 +1740,7 @@ supp_joung[supp_joung["alt_iso"].str.contains("PBX1")]
 # # create TCGA plots for website
 # takes a while so comment out when done
 
-# In[100]:
+# In[104]:
 
 
 def paired_swarmplot(df, iso_id, cancer, padj, l2fc, fig_filename):
@@ -1810,7 +1812,7 @@ def paired_swarmplot(df, iso_id, cancer, padj, l2fc, fig_filename):
     return fig
 
 
-# In[101]:
+# In[105]:
 
 
 def format_number(num):
@@ -1820,7 +1822,7 @@ def format_number(num):
         return f"{num:.3f}"  # Otherwise, return as a float with 2 decimal places
 
 
-# In[102]:
+# In[106]:
 
 
 # for cancer in ['BRCA', 'LUAD', 'HNSCC']:
@@ -1854,4 +1856,10 @@ def format_number(num):
         
 #         fig_filename = "%s/%s.%s.pdf" % (fig_dir, iso_id, cancer)
 #         _ = paired_swarmplot(tcga_melt, iso_id, cancer, padj, l2fc, fig_filename)
+
+
+# In[ ]:
+
+
+
 

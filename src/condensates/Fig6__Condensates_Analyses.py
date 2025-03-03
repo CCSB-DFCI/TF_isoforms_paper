@@ -32,7 +32,7 @@ from data_loading import (load_condensate_data,
                           load_y2h_isoform_data,
                           load_m1h_activation_data)
 
-PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+PAPER_PRESET = {"style": "ticks", "font": ["Helvetica", "DejaVu Sans"], "context": "paper", 
                 "rc": {"font.size":7,"axes.titlesize":7,
                      "pdf.fonttype": 42, 
                        "axes.labelsize":7, 'axes.linewidth':0.5,
@@ -1228,10 +1228,4 @@ supp_conds.loc[supp_conds['localization_U2OS_r2'].isnull(),
 supp_conds.to_csv("../../supp/SuppTable_Condensates.txt", 
                   sep="\t", 
                   index=False)
-
-
-# In[ ]:
-
-
-
 

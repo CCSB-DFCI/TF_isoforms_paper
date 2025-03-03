@@ -29,7 +29,7 @@ from plotting import y1h_pdi_per_tf_gene_plot, m1h_activation_per_tf_gene_plot
 # In[2]:
 
 
-PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+PAPER_PRESET = {"style": "ticks", "font": ["Helvetica", "DejaVu Sans"], "context": "paper", 
                 "rc": {"font.size":7,"axes.titlesize":7,
                      "pdf.fonttype": 42, 
                        "axes.labelsize":7, 'axes.linewidth':0.5,
@@ -822,10 +822,4 @@ last_i
 creb1_dom = tfs["CREB1"].aa_feature_disruption("CREB1-2")
 creb1_dom["ins_rel"] = creb1_dom["start_in_ref_iso"] - last_i
 creb1_dom
-
-
-# In[ ]:
-
-
-
 

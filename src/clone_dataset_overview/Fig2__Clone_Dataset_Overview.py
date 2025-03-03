@@ -58,7 +58,7 @@ from plotting import (mimic_r_boxplot,
 # In[2]:
 
 
-PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+PAPER_PRESET = {"style": "ticks", "font": ["Helvetica", "DejaVu Sans"], "context": "paper", 
                 "rc": {"font.size":7,"axes.titlesize":7,
                      "pdf.fonttype": 42, 
                        "axes.labelsize":7, 'axes.linewidth':0.5,
@@ -1253,7 +1253,7 @@ fig.savefig('../../figures/fig2/at-least-some-assay-result_ref-vs-alt-vs-novel_b
 
 
 fig, ax = plt.subplots(1, 1)
-fig.set_size_inches(w=2.5, h=1.5)
+fig.set_size_inches(w=2.5, h=1.75)
 cats = ['reference', 'alternative', 'novel']
 positives = []
 tested = []
@@ -1380,7 +1380,7 @@ sources = ['PRS - hPRS-v2',
 # bar chart
 df['result'] = df['NLR'] > df.loc[df['source'] == 'RRS - hRRS-v2', 'NLR'].max()
 
-fig, ax = plt.subplots(1, 1, figsize=(1.5, 1.5))
+fig, ax = plt.subplots(1, 1, figsize=(1.4, 1.5))
 validation_plot(data=df,
                 selections=[df['source'] == x for x in sources],
                 labels=[str(x) for x in sources],
@@ -1415,7 +1415,7 @@ fig.savefig('../../figures/fig2/N2H_barplot.pdf', dpi="figure", bbox_inches='tig
 
 
 line_styles = ['-', '-', '-', '-']
-fig, ax = plt.subplots(1, 1, figsize=(1.5, 1.5))
+fig, ax = plt.subplots(1, 1, figsize=(1.3, 1.3))
 validation_titration_plot(data=df, 
                           selections=[df['source'] == x for x in sources],
                           labels=[rename_sources[s] for s in sources],
@@ -1563,7 +1563,7 @@ df.Y1H_positive.value_counts()
 
 # titration plot of positive vs negative
 fig, ax = plt.subplots(1, 1)
-fig.set_size_inches(w=2, h=1.5)
+fig.set_size_inches(w=1.2, h=1.2)
 validation_titration_plot(data=df_nn,
                           selections=[df_nn['updated_y1h_call'], 
                                       ~df_nn['updated_y1h_call']],
@@ -1571,7 +1571,7 @@ validation_titration_plot(data=df_nn,
                           labels=['eY1H +', 'eY1H -'],
                           colors=[COLOR_HURI, 'grey'],
                           ax=ax)
-ax.set_xlabel('Threshold of luciferase mean Log2(FC)')
+ax.set_xlabel('Threshold of luciferase\nmean Log2(FC)')
 plt.legend(loc=2, frameon=False, bbox_to_anchor=(0.6, 1))
 
 for loc in ['top', 'right']:
@@ -1584,6 +1584,7 @@ ax.set_ylim(0, 1)
 ax.set_ylabel('Percentage positive')
 ax.axvline(x=1, color='grey', linestyle='--', lw=1)
 ax.set_xticks(range(-2, 7), minor=True)
+ax.set_title("PDI Validation (Luciferase)")
     
 fig.savefig('../../figures/fig2/PDI-luciferase_validation_titration-plot.pdf',
             bbox_inches='tight')
@@ -1623,7 +1624,7 @@ df.groupby('Interaction?')['positive'].mean()
 
 
 fig, ax = plt.subplots(1, 1)
-fig.set_size_inches(w=1, h=1.5)
+fig.set_size_inches(w=0.75, h=1.5)
 validation_plot(data=df,
                 selections=[df['Y1H_positive'], 
                            ~df['Y1H_positive']],
@@ -1704,36 +1705,36 @@ fig.savefig("../../figures/fig2/M1H_replicate_scatter.pdf",
 # In[120]:
 
 
-# # table of edges
-# #    - clone to (edge + clone_id) + to duplicate
-# # table of nodes
-# #    - clone to gene
-# #    - dna vs isoform vs 
+# table of edges
+#    - clone to (edge + clone_id) + to duplicate
+# table of nodes
+#    - clone to gene
+#    - dna vs isoform vs 
 
-# ppi = load_full_y2h_data_including_controls()
-# ppi = ppi.loc[(ppi['category'] == 'tf_isoform_ppis') &
-#               (ppi['Y2H_result'] == True),
-#               ['ad_clone_acc', 'ad_gene_symbol', 'db_gene_symbol']]
-# ppi = ppi.rename(columns={'ad_clone_acc': 'isoform',
-#                           'db_gene_symbol': 'partner'})
-# ppi['partner'] = ppi['partner'] + '-' + ppi['ad_gene_symbol']
-# pdi = pd.read_csv('../../data/internal/a2_juan_pdi_w_unique_isoacc.tsv', sep='\t')
-# clones = load_valid_isoform_clones()
-# pdi = pdi.loc[pdi['unique_acc'].isin(clones['clone_acc']), :]
-# pdi['partner'] = pdi['bait'] + '-' + pdi['tf']
-# pdi['isoform'] = pdi['unique_acc']
-# edges = pd.concat([ppi.loc[:, ['isoform', 'partner']],
-#                    pdi.loc[:, ['isoform', 'partner']]])
-# edges.to_csv('../../output/edges.tsv', sep='\t', index=False)
+ppi = load_full_y2h_data_including_controls()
+ppi = ppi.loc[(ppi['category'] == 'tf_isoform_ppis') &
+              (ppi['Y2H_result'] == True),
+              ['ad_clone_acc', 'ad_gene_symbol', 'db_gene_symbol']]
+ppi = ppi.rename(columns={'ad_clone_acc': 'isoform',
+                          'db_gene_symbol': 'partner'})
+ppi['partner'] = ppi['partner'] + '-' + ppi['ad_gene_symbol']
+pdi = pd.read_csv('../../data/internal/a2_juan_pdi_w_unique_isoacc.tsv', sep='\t')
+clones = load_valid_isoform_clones()
+pdi = pdi.loc[pdi['unique_acc'].isin(clones['clone_acc']), :]
+pdi['partner'] = pdi['bait'] + '-' + pdi['tf']
+pdi['isoform'] = pdi['unique_acc']
+edges = pd.concat([ppi.loc[:, ['isoform', 'partner']],
+                   pdi.loc[:, ['isoform', 'partner']]])
+edges.to_csv('../../output/edges.tsv', sep='\t', index=False)
 
-# clones = clones.rename(columns={'clone_acc': 'node_id'})
-# clones['type'] = 'isoform'
-# dna = pd.DataFrame(data=pdi['partner'].unique(), columns=['node_id'])
-# dna['type'] = 'DNA'
-# proteins = pd.DataFrame(data=ppi['partner'].unique(), columns=['node_id'])
-# proteins['type'] = 'Protein'
-# nodes = pd.concat([clones, proteins, dna], sort=True)
-# nodes.to_csv('../../output/node_table.tsv', sep='\t', index=False)
+clones = clones.rename(columns={'clone_acc': 'node_id'})
+clones['type'] = 'isoform'
+dna = pd.DataFrame(data=pdi['partner'].unique(), columns=['node_id'])
+dna['type'] = 'DNA'
+proteins = pd.DataFrame(data=ppi['partner'].unique(), columns=['node_id'])
+proteins['type'] = 'Protein'
+nodes = pd.concat([clones, proteins, dna], sort=True)
+nodes.to_csv('../../output/node_table.tsv', sep='\t', index=False)
 
 
 # ## 10. make example expression plot for ZNF414
@@ -1807,73 +1808,73 @@ developmental_tissue_expression_plot("ZNF414", (3, 1.75), (0, 6), means_dev, liv
 # In[124]:
 
 
-# dssp_dir = Path('../../data/processed/dssp_alphafold')
-# dfs = []
-# for dssp_file_path in dssp_dir.iterdir():
-#     dssp = make_dssp_dict(dssp_file_path)
-#     dfs.append(pd.DataFrame(data=[(dssp_file_path.stem, k[1][1], v[0], v[1], v[2]) for k, v in dssp[0].items()],
-#                       columns=['clone_name', 'position', 'aa', 'secondary_structure', 'ASA']))
-# df = pd.concat(dfs, axis=0, ignore_index=True)
-# # NOTE: the Davey analysis uses GGXGG whereas I think this paper is GXG
-# # Wilke: Tien et al. 2013 https://doi.org/10.1371/journal.pone.0080635
-# max_asa = {
-#         "ALA": 129.0,
-#         "ARG": 274.0,
-#         "ASN": 195.0,
-#         "ASP": 193.0,
-#         "CYS": 167.0,
-#         "GLN": 225.0,
-#         "GLU": 223.0,
-#         "GLY": 104.0,
-#         "HIS": 224.0,
-#         "ILE": 197.0,
-#         "LEU": 201.0,
-#         "LYS": 236.0,
-#         "MET": 224.0,
-#         "PHE": 240.0,
-#         "PRO": 159.0,
-#         "SER": 155.0,
-#         "THR": 172.0,
-#         "TRP": 285.0,
-#         "TYR": 263.0,
-#         "VAL": 174.0,
-#     }
-# max_asa = {protein_letters_3to1[k.capitalize()]: v for k, v in max_asa.items()}
-# df['RSA'] = df['ASA'] / df['aa'].map(max_asa)
-# df['RSA'] = df['RSA'].clip(upper=1.)
-# WINDOW_SIZE_RESIDUES = 20
-# DISORDER_WINDOW_RSA_CUTOFF = 0.5
-# rsa_window_col = f'RSA_window_{WINDOW_SIZE_RESIDUES}'
-# df[rsa_window_col] = (
-#          df.groupby('clone_name')['RSA']
-#            .rolling(window=WINDOW_SIZE_RESIDUES * 2 + 1,
-#                   min_periods=WINDOW_SIZE_RESIDUES + 1,
-#                   center=True)
-#              .mean().rename(rsa_window_col).droplevel('clone_name')
-# )
-# df['is_disordered'] = df[rsa_window_col] >= DISORDER_WINDOW_RSA_CUTOFF
+dssp_dir = Path('../../data/processed/dssp_alphafold')
+dfs = []
+for dssp_file_path in dssp_dir.iterdir():
+    dssp = make_dssp_dict(dssp_file_path)
+    dfs.append(pd.DataFrame(data=[(dssp_file_path.stem, k[1][1], v[0], v[1], v[2]) for k, v in dssp[0].items()],
+                      columns=['clone_name', 'position', 'aa', 'secondary_structure', 'ASA']))
+df = pd.concat(dfs, axis=0, ignore_index=True)
+# NOTE: the Davey analysis uses GGXGG whereas I think this paper is GXG
+# Wilke: Tien et al. 2013 https://doi.org/10.1371/journal.pone.0080635
+max_asa = {
+        "ALA": 129.0,
+        "ARG": 274.0,
+        "ASN": 195.0,
+        "ASP": 193.0,
+        "CYS": 167.0,
+        "GLN": 225.0,
+        "GLU": 223.0,
+        "GLY": 104.0,
+        "HIS": 224.0,
+        "ILE": 197.0,
+        "LEU": 201.0,
+        "LYS": 236.0,
+        "MET": 224.0,
+        "PHE": 240.0,
+        "PRO": 159.0,
+        "SER": 155.0,
+        "THR": 172.0,
+        "TRP": 285.0,
+        "TYR": 263.0,
+        "VAL": 174.0,
+    }
+max_asa = {protein_letters_3to1[k.capitalize()]: v for k, v in max_asa.items()}
+df['RSA'] = df['ASA'] / df['aa'].map(max_asa)
+df['RSA'] = df['RSA'].clip(upper=1.)
+WINDOW_SIZE_RESIDUES = 20
+DISORDER_WINDOW_RSA_CUTOFF = 0.5
+rsa_window_col = f'RSA_window_{WINDOW_SIZE_RESIDUES}'
+df[rsa_window_col] = (
+         df.groupby('clone_name')['RSA']
+           .rolling(window=WINDOW_SIZE_RESIDUES * 2 + 1,
+                  min_periods=WINDOW_SIZE_RESIDUES + 1,
+                  center=True)
+             .mean().rename(rsa_window_col).droplevel('clone_name')
+)
+df['is_disordered'] = df[rsa_window_col] >= DISORDER_WINDOW_RSA_CUTOFF
 
-# # correct for long helices which are structured, usually bound to a partner
-# # but have high RSA in the monomer state
-# DISORDER_HELIX_LENGTH_CUTOFF = 20
-# to_change = []
-# for clone_name, df_clone in df.groupby('clone_name'):
-#     helix_count = 0
-#     for _i, row in df_clone.iterrows():
-#         if row['secondary_structure'] == 'H':
-#             helix_count += 1
-#         else:
-#             if helix_count >= DISORDER_HELIX_LENGTH_CUTOFF:
-#                 for i in range(row['position'] - 1, row['position'] - helix_count, -1):
-#                     to_change.append((clone_name, i))
-#             helix_count = 0
-#     if helix_count >= DISORDER_HELIX_LENGTH_CUTOFF:
-#         for i in range(row['position'], row['position'] - helix_count, -1):
-#             to_change.append((clone_name, i))
-# to_change = (df['clone_name'] + '_' + df['position'].astype(str)).isin({a + '_' + str(b) for a, b in to_change})
-# print(f'{to_change.sum()} ({to_change.mean():.0%}) aa in helices of length 20 aa or more')
-# print(f"{df.loc[to_change, 'is_disordered'].mean():.0%} of residues in long helices misclassified as disordered")
-# df.loc[to_change, 'is_disordered'] = False
+# correct for long helices which are structured, usually bound to a partner
+# but have high RSA in the monomer state
+DISORDER_HELIX_LENGTH_CUTOFF = 20
+to_change = []
+for clone_name, df_clone in df.groupby('clone_name'):
+    helix_count = 0
+    for _i, row in df_clone.iterrows():
+        if row['secondary_structure'] == 'H':
+            helix_count += 1
+        else:
+            if helix_count >= DISORDER_HELIX_LENGTH_CUTOFF:
+                for i in range(row['position'] - 1, row['position'] - helix_count, -1):
+                    to_change.append((clone_name, i))
+            helix_count = 0
+    if helix_count >= DISORDER_HELIX_LENGTH_CUTOFF:
+        for i in range(row['position'], row['position'] - helix_count, -1):
+            to_change.append((clone_name, i))
+to_change = (df['clone_name'] + '_' + df['position'].astype(str)).isin({a + '_' + str(b) for a, b in to_change})
+print(f'{to_change.sum()} ({to_change.mean():.0%}) aa in helices of length 20 aa or more')
+print(f"{df.loc[to_change, 'is_disordered'].mean():.0%} of residues in long helices misclassified as disordered")
+df.loc[to_change, 'is_disordered'] = False
 
 
 # In[125]:
@@ -1886,81 +1887,81 @@ len(tfs)
 # In[126]:
 
 
-# df['is_cloned_reference'] = df['clone_name'].map({iso.name: iso.name == tf.cloned_reference_isoform.name
-#                                                   for tf in tfs.values() 
-#                                                   for iso in tf.cloned_isoforms})
+df['is_cloned_reference'] = df['clone_name'].map({iso.name: iso.name == tf.cloned_reference_isoform.name
+                                                  for tf in tfs.values() 
+                                                  for iso in tf.cloned_isoforms})
 
 
 # In[127]:
 
 
-# df_nonan = df.loc[~pd.isnull(df['is_cloned_reference'])]
-# f_dis_ref = df_nonan[df_nonan['is_cloned_reference'] == True].groupby('clone_name')['is_disordered'].mean()
-# f_dis_alt = df_nonan[df_nonan['is_cloned_reference'] == False].groupby('clone_name')['is_disordered'].mean()
+df_nonan = df.loc[~pd.isnull(df['is_cloned_reference'])]
+f_dis_ref = df_nonan[df_nonan['is_cloned_reference'] == True].groupby('clone_name')['is_disordered'].mean()
+f_dis_alt = df_nonan[df_nonan['is_cloned_reference'] == False].groupby('clone_name')['is_disordered'].mean()
 
-# # randomization p-value
-# obs_val = f_dis_alt.median() - f_dis_ref.median()
+# randomization p-value
+obs_val = f_dis_alt.median() - f_dis_ref.median()
 
-# print("MEDIAN NUM OF RESIDUES IN DISORDERED REGIONS IN ALT ISOS: %s" % (f_dis_alt.median()*100))
-# print("MEDIAN NUM OF RESIDUES IN DISORDERED REGIONS IN REF ISOS: %s" % (f_dis_ref.median()*100))
-# rnd_vals = []
-# gene_to_isoforms = {tf.name: [iso.name for iso in tf.cloned_isoforms] for tf in tfs.values()}
-# np.random.seed(34298793)
-# for _i in tqdm.tqdm(range(1, 10000)):
-#     all_vals = df.groupby('clone_name')['is_disordered'].mean()
-#     rnd_refs = set()
-#     for isoforms in gene_to_isoforms.values():
-#         rnd_refs.add(np.random.choice(isoforms))
-#     rnd_vals.append(all_vals.loc[~all_vals.index.isin(rnd_refs)].median()
-#                     -
-#                     all_vals.loc[all_vals.index.isin(rnd_refs)].median())
-# pval = sum(rnd_val >= obs_val for rnd_val in rnd_vals) / len(rnd_vals) * 2
-# print(f'p = {pval}')
+print("MEDIAN NUM OF RESIDUES IN DISORDERED REGIONS IN ALT ISOS: %s" % (f_dis_alt.median()*100))
+print("MEDIAN NUM OF RESIDUES IN DISORDERED REGIONS IN REF ISOS: %s" % (f_dis_ref.median()*100))
+rnd_vals = []
+gene_to_isoforms = {tf.name: [iso.name for iso in tf.cloned_isoforms] for tf in tfs.values()}
+np.random.seed(34298793)
+for _i in tqdm.tqdm(range(1, 10000)):
+    all_vals = df.groupby('clone_name')['is_disordered'].mean()
+    rnd_refs = set()
+    for isoforms in gene_to_isoforms.values():
+        rnd_refs.add(np.random.choice(isoforms))
+    rnd_vals.append(all_vals.loc[~all_vals.index.isin(rnd_refs)].median()
+                    -
+                    all_vals.loc[all_vals.index.isin(rnd_refs)].median())
+pval = sum(rnd_val >= obs_val for rnd_val in rnd_vals) / len(rnd_vals) * 2
+print(f'p = {pval}')
 
 
 # In[128]:
 
 
-# fig, ax = plt.subplots(1, 1)
-# fig.set_size_inches(w=1.1, h=1.8)
-# data = (df.groupby(['clone_name', 'is_cloned_reference'])
-#                             ['is_disordered']
-#                             .mean()
-#                             .reset_index())
-# # need to fix the violinplot_reflected function!
-# violinplot_reflected(data=data,
-#                      x='is_cloned_reference',
-#                      y='is_disordered',
-#                      order=[True, False],
-#                      cut=0,
-#                      color=sns.color_palette("Set2")[0],
-#                      )
-# ax.set_ylim(0, 1)
-# ax.set_xlim(-0.5, 1.5)
-# ax.set_ylabel('Residues in disordered regions')
-# ax.set_yticks(np.linspace(0, 1, 6))
-# ax.set_yticks(np.linspace(0, 1, 11), minor=True)
-# ax.set_yticklabels([f'{y:.0%}' for y in ax.get_yticks()])
-# ax.set_xlabel('')
-# ax.set_xticklabels(['Reference\nisoforms', 'Alternative\nisoforms'])
-# for loc in ['top', 'right', 'bottom']:
-#     ax.spines[loc].set_visible(False)
-# ax.xaxis.set_tick_params(length=0)
+fig, ax = plt.subplots(1, 1)
+fig.set_size_inches(w=1.1, h=1.8)
+data = (df.groupby(['clone_name', 'is_cloned_reference'])
+                            ['is_disordered']
+                            .mean()
+                            .reset_index())
+# need to fix the violinplot_reflected function!
+violinplot_reflected(data=data,
+                     x='is_cloned_reference',
+                     y='is_disordered',
+                     order=[True, False],
+                     cut=0,
+                     color=sns.color_palette("Set2")[0],
+                     )
+ax.set_ylim(0, 1)
+ax.set_xlim(-0.5, 1.5)
+ax.set_ylabel('Residues in disordered regions')
+ax.set_yticks(np.linspace(0, 1, 6))
+ax.set_yticks(np.linspace(0, 1, 11), minor=True)
+ax.set_yticklabels([f'{y:.0%}' for y in ax.get_yticks()])
+ax.set_xlabel('')
+ax.set_xticklabels(['Reference\nisoforms', 'Alternative\nisoforms'])
+for loc in ['top', 'right', 'bottom']:
+    ax.spines[loc].set_visible(False)
+ax.xaxis.set_tick_params(length=0)
 
-# annotate_pval(ax, 0, 1, 1.05, 0, 1.05, pval, PAPER_FONTSIZE - 1)
+annotate_pval(ax, 0, 1, 1.05, 0, 1.05, pval, PAPER_FONTSIZE - 1)
 
-# # manually set left axis so it stops at 1.0
-# ax.set_ylim((-0.1, 1.1))
-# ax.spines['left'].set_visible(False)
-# ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
-# axes_to_data = ax.transAxes + ax.transData.inverted()
-# left_spine_in_data_coords = axes_to_data.transform((0, 0))
-# ax.plot([left_spine_in_data_coords[0], left_spine_in_data_coords[0]], [0, 1],
-#          color=ax.spines['bottom'].get_edgecolor(), linewidth=ax.spines['bottom'].get_linewidth())
-# ax.tick_params(axis='x', which='major', pad=-5)
+# manually set left axis so it stops at 1.0
+ax.set_ylim((-0.1, 1.1))
+ax.spines['left'].set_visible(False)
+ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+axes_to_data = ax.transAxes + ax.transData.inverted()
+left_spine_in_data_coords = axes_to_data.transform((0, 0))
+ax.plot([left_spine_in_data_coords[0], left_spine_in_data_coords[0]], [0, 1],
+         color=ax.spines['bottom'].get_edgecolor(), linewidth=ax.spines['bottom'].get_linewidth())
+ax.tick_params(axis='x', which='major', pad=-5)
 
-# fig.savefig('../../figures/fig2/disordered-residued-pct-per-isoform_TFiso1_violin.pdf',
-#             bbox_inches='tight')
+fig.savefig('../../figures/fig2/disordered-residued-pct-per-isoform_TFiso1_violin.pdf',
+            bbox_inches='tight')
 
 
 # ## 12. additional summary fig -- gain vs. loss of function in each assay
@@ -2142,11 +2143,530 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig2/Assay_Summary.GainLossChange.pdf", dpi="figure", bbox_inches="tight")
 
 
-# ## 13. make supplemental files
+# ## 13. check riboseq overlap
+
+# In[136]:
+
+
+riboseq_f = "../../data/processed/ribo_seq/counts.RiboSeq.txt"
+riboseq = pd.read_table(riboseq_f)
+
+
+# In[137]:
+
+
+riboseq_samps = [x for x in riboseq.columns if x.startswith("SRR")]
+len(riboseq_samps)
+
+
+# In[138]:
+
+
+riboseq["max"] = riboseq[riboseq_samps].max(axis=1)
+riboseq["mean"] = riboseq[riboseq_samps].mean(axis=1)
+riboseq["median"] = riboseq[riboseq_samps].median(axis=1)
+
+
+# In[139]:
+
+
+riboseq["chrom"] = riboseq["AltAnalyze_ID"].str.extract(r'(chr[0-9]{1,2}|X|Y|MT):')
+riboseq["jx_start"] = riboseq["AltAnalyze_ID"].str.extract(r'chr(?:[0-9]{1,2}|X|Y|MT):(\d+)').astype(int)
+riboseq["jx_end"] = riboseq["AltAnalyze_ID"].str.extract(r'-(\d+)$').astype(int)
+
+
+# #### get unique junctions across all isoforms
+
+# In[140]:
+
+
+from itertools import chain
+def flatten_set_list(list_of_sets):
+    return list(chain.from_iterable(list_of_sets))
+
+
+# In[141]:
+
+
+# classify all junctions in tfiso1.0 collection by the number of isoforms they are present in
+junc_dict = {}
+idx = 0
+
+for tf in clone_tfs.keys():
+    
+    ref = clone_tfs[tf].reference_isoform.name
+    iso_juncs_dict = {}
+    
+    for iso in clone_tfs[tf].isoforms:
+        
+        iso_juncs = set()
+        
+        for i in range(len(iso.exons) - 1):
+            
+            if iso.strand == "+":
+                iso_juncs.add((iso.exons[i].end, iso.exons[i+1].start+1))
+            if iso.strand == "-":
+                iso_juncs.add((iso.exons[i].start+1, iso.exons[i+1].end))
+        
+        iso_juncs_dict[iso.name] = iso_juncs
+    
+    # then re-loop
+    for iso in clone_tfs[tf].isoforms:
+        iso_juncs = iso_juncs_dict[iso.name]
+        other_isos = [x for x in iso_juncs_dict.keys() if x != iso.name]
+        other_juncs = [iso_juncs_dict[x] for x in other_isos]
+        other_juncs = set(flatten_set_list(other_juncs))
+        uniq_juncs = iso_juncs.difference(other_juncs)
+        if len(uniq_juncs) > 0:
+            
+            # define iso category
+            if iso.name == ref:
+                iso_category = "ref"
+            elif hasattr(iso, 'is_novel_isoform') and iso.is_novel_isoform():
+                iso_category = "novel"
+            else:
+                iso_category = "alt"
+                
+            # define iso cloned status
+            if hasattr(iso, 'clone_acc'):
+                iso_cloned = "cloned"
+                clone_acc = iso.clone_acc
+            else:
+                iso_cloned = "uncloned"
+                clone_acc = np.nan
+            
+                
+            for junc in uniq_juncs:
+                junc_dict[idx] = {"iso_name": iso.name,
+                                  "iso_category": iso_category,
+                                  "iso_cloned": iso_cloned,
+                                  "clone_acc": clone_acc,
+                                  "chrom": clone_tfs[tf].chrom,
+                                  "jx_start": junc[0],
+                                  "jx_end": junc[1],
+                                  "strand": iso.strand}
+                idx += 1
+            
+                
+        
+        
+uniq_junc_df = pd.DataFrame.from_dict(junc_dict, orient="index")
+uniq_junc_df.iso_category.value_counts()
+
+
+# In[142]:
+
+
+# merge
+riboseq_mrg_uniq = uniq_junc_df.merge(riboseq[riboseq['max'] >= 5], on=['chrom', 'jx_start', 'jx_end'])
+len(riboseq_mrg_uniq)
+
+
+# In[143]:
+
+
+riboseq_mrg_uniq.iso_category.value_counts()
+
+
+# In[144]:
+
+
+uniq_junc_df.head()
+
+
+# In[145]:
+
+
+tots = pd.DataFrame(uniq_junc_df[["iso_name", "iso_category"]].drop_duplicates().iso_category.value_counts())
+present = pd.DataFrame(riboseq_mrg_uniq[["iso_name", "iso_category"]].drop_duplicates().iso_category.value_counts())
+perc = tots.join(present, lsuffix='_tot', rsuffix='_present')
+perc['percent'] = (perc['count_present']/perc['count_tot'])*100
+perc.loc[["ref", "alt", "novel"]]
+
+
+# In[146]:
+
+
+colors = met_brewer.met_brew(name="VanGogh2")
+palette={"ref": colors[2],
+         "novel": colors[7],
+         "alt": colors[4]}
+
+
+# In[147]:
+
+
+perc = perc.reset_index()
+perc
+
+
+# In[148]:
+
+
+fig = plt.figure(figsize=(0.75, 1.75))
+ax = sns.barplot(data=perc, x="iso_category", y="percent",
+                 order=["ref", "alt", "novel"], palette=palette)
+ax.set_xlabel("")
+ax.set_ylabel("Percent of isoforms with unique\njunctions present in RiboSeq data")
+
+perc["iso_category"] = pd.Categorical(perc["iso_category"], categories=["ref", "alt", "novel"], ordered=True)
+sorted_perc = perc.sort_values(by=["iso_category"])
+
+for bar, (_, row) in zip(ax.patches, sorted_perc.iterrows()):
+    # Percentage value along the top of each bar
+    percent = f"{row['percent']:.0f}%"  # Format percentage
+    ax.text(
+        bar.get_x() + bar.get_width() / 2, 
+        bar.get_height() + 0.5,  # Slightly above the bar
+        percent, 
+        ha="center", va="bottom", fontsize=PAPER_FONTSIZE-2
+    )
+    
+    # n value along the bottom of each bar
+    n_value = row["count_tot"]  # Format n-value
+    ax.text(
+        bar.get_x() + bar.get_width() / 2, 
+        0,  # bottom of bar
+        n_value, 
+        color="white",
+        ha="center", va="bottom", fontsize=PAPER_FONTSIZE-2
+    )
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.xaxis.set_tick_params(length=0)
+
+ax.set_yticks((0, 20, 40, 60, 80, 100))
+ax.set_yticklabels(["%s%%" % y for y in ax.get_yticks()])
+
+fig.savefig("../../figures/fig2/RiboSeq_ExpressionQCut_Total.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[149]:
+
+
+fig = plt.figure(figsize=(0.75, 1.75))
+ax = fig.gca()
+
+validation_plot(positives=perc.set_index('iso_category').loc[["ref", "alt", "novel"], 'count_present'].values,
+                n_tested=perc.set_index('iso_category').loc[["ref", "alt", "novel"], 'count_tot'].values,
+                ax=ax,
+                colors=[palette[x] for x in ["ref", "alt", "novel"]],
+                errorbar_capsize=0.2,
+                bar_spacing=0.05,
+                draw_numbers=False,
+                )
+
+ax.set_xlabel("")
+ax.set_ylabel("Percent of isoforms with unique\njunctions present in Ribo-Seq data")
+
+perc["iso_category"] = pd.Categorical(perc["iso_category"], categories=["ref", "alt", "novel"], ordered=True)
+sorted_perc = perc.sort_values(by=["iso_category"])
+
+for bar, (_, row) in zip(ax.patches, sorted_perc.iterrows()):
+    # Percentage value along the top of each bar
+    percent = f"{row['percent']:.0f}%"  # Format percentage
+    ax.text(
+        bar.get_x() + bar.get_width() / 2, 
+        bar.get_height() + 0.05,  # Slightly above the bar
+        percent, 
+        ha="center", va="bottom", fontsize=PAPER_FONTSIZE-2
+    )
+    
+    # n value along the bottom of each bar
+    n_value = row["count_tot"]  # Format n-value
+    ax.text(
+        bar.get_x() + bar.get_width() / 2, 
+        0,  # bottom of bar
+        n_value, 
+        color="white",
+        ha="center", va="bottom", fontsize=PAPER_FONTSIZE-2
+    )
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.xaxis.set_tick_params(length=0)
+
+ax.set_ylim(0, 1)
+ax.set_yticks(np.linspace(0, 1, 6))
+ax.set_yticks(np.linspace(0, 1, 11), minor=True)
+ax.set_yticklabels([f"{y:.0%}" for y in ax.get_yticks()])
+
+fig.savefig("../../figures/fig2/RiboSeq_ExpressionQCut_Total_with-error-bars.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[150]:
+
+
+tots = uniq_junc_df[["iso_name", 
+                     "iso_cloned", 
+                     "iso_category"]].drop_duplicates().groupby(["iso_category", 
+                                                                 "iso_cloned"])["iso_name"].agg("count").reset_index()
+present = riboseq_mrg_uniq[["iso_name", 
+                     "iso_cloned", 
+                     "iso_category"]].drop_duplicates().groupby(["iso_category", "iso_cloned"])["iso_name"].agg("count").reset_index()
+perc_all = tots.merge(present, on=["iso_category", "iso_cloned"], how="left", suffixes=("_tot", "_present"))
+perc_all["percent"] = (perc_all["iso_name_present"]/perc_all["iso_name_tot"])*100
+perc_all.sort_values(by="percent", ascending=False)
+
+
+# In[151]:
+
+
+riboseq_mrg_uniq[riboseq_mrg_uniq['iso_category'] == 'novel'][['iso_name', 'chrom', 'jx_start',
+                                                               'jx_end', 'AltAnalyze_ID']]
+
+
+# In[152]:
+
+
+# try and subset by max expression
+mm["max_dev_qcut"] = pd.qcut(mm["max_dev"], q=4, labels=list(range(1, 5)))
+mm["max_gtex_ds_qcut"] = pd.qcut(mm["max_gtex_ds"], q=4, labels=list(range(1, 5)))
+mm["med_dev_qcut"] = pd.qcut(mm["median_dev"], q=4, labels=list(range(1, 5)))
+mm["med_gtex_ds_qcut"] = pd.qcut(mm["median_gtex_ds"], q=4, labels=list(range(1, 5)))
+
+def extract_name(row, col):
+    if "noclone" in row[col]:
+        iso_name = row[col].split(" ")[1].split("_")[0]
+    else:
+        clone_acc = row[col].split(" ")[0]
+        iso_name = clone_acc.split("|")[0] + "-" + clone_acc.split("|")[1].split("/")[0]
+    return iso_name
+
+mm["iso_name"] = mm.apply(extract_name, axis=1, col="UID_dev")
+
+
+# In[153]:
+
+
+status_map["iso_name"] = status_map.apply(extract_name, axis=1, col="clone_acc")
+
+
+# In[154]:
+
+
+status_map.status.value_counts()
+
+
+# In[155]:
+
+
+mm = mm.merge(status_map[["iso_name", "status"]], on="iso_name")
+len(mm)
+
+
+# In[156]:
+
+
+# now, iterate through the bins and calculate percent of isoforms that show junction-level translation
+qcut_percs = pd.DataFrame()
+
+for col in ["max_dev", "max_gtex_ds", "med_dev", "med_gtex_ds"]:
+    col_qcut = "%s_qcut" % col
+    
+    for qcut in range(1, 5):
+        print("QUARTILE: %s" % (qcut))
+
+        mm_sub = mm[mm[col_qcut] == qcut]
+        print("num isos in qcut: %s" % len(mm_sub))
+
+        mm_sub_w_jx = mm_sub.merge(uniq_junc_df[["iso_name", "chrom", "jx_start", "jx_end"]], 
+                                   on=["iso_name"])
+        print("num unique junctions in qcut: %s" % len(mm_sub_w_jx))
+        
+        # filter for riboseq junctions with at least 5 reads
+        ribo_seq_sub_w_jx = mm_sub_w_jx.merge(riboseq[riboseq['max'] >= 5][["chrom", "jx_start", "jx_end",
+                                                                            "max", "median"]],
+                                              on=["chrom", "jx_start", "jx_end"])
+        print("num junctions in riboseq: %s" % len(ribo_seq_sub_w_jx))
+
+
+        tots = mm_sub_w_jx[["iso_name", "status"]].drop_duplicates().groupby(["status"])["iso_name"].agg("count").reset_index()
+        present = ribo_seq_sub_w_jx[["iso_name", "status"]].drop_duplicates().groupby(["status"])["iso_name"].agg("count").reset_index()
+        perc = tots.merge(present, on=["status"], 
+                          how="left", suffixes=("_tot", "_present"))
+        perc["percent"] = (perc["iso_name_present"]/perc["iso_name_tot"])*100
+        perc["qcut"] = qcut
+        perc["col"] = col
+
+        qcut_percs = pd.concat([qcut_percs, perc])
+        
+qcut_percs.head()
+
+
+# In[157]:
+
+
+fig = plt.figure(figsize=(2.5, 1.75))
+ax = sns.barplot(data=qcut_percs[qcut_percs["col"] == "med_dev"], x="qcut", hue="status", y="percent",
+                 hue_order=["ref", "alt", "novel"], palette=palette)
+ax.set_xlabel("RNA-Seq Expression Quartile\n(1 = lowest, 4 = highest)")
+ax.set_ylabel("Percent of isoforms with unique\njunctions present in RiboSeq data")
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+
+# Make 'qcut' and 'status' columns categorical
+qcut_percs["status"] = pd.Categorical(qcut_percs["status"], categories=["ref", "alt", "novel"], ordered=True)
+sorted_qcuts = qcut_percs.sort_values(by=["status", "qcut"])
+
+for bar, (_, row) in zip(ax.patches, sorted_qcuts[sorted_qcuts["col"] == "med_dev"].iterrows()):
+    # Percentage value along the top of each bar
+    percent = f"{row['percent']:.0f}%"  # Format percentage
+    ax.text(
+        bar.get_x() + bar.get_width() / 2, 
+        bar.get_height() + 0.5,  # Slightly above the bar
+        percent, 
+        ha="center", va="bottom", fontsize=PAPER_FONTSIZE-2
+    )
+    
+    # n value along the bottom of each bar
+    n_value = row["iso_name_tot"]  # Format n-value
+    ax.text(
+        bar.get_x() + bar.get_width() / 2, 
+        0,  # bottom of bar
+        n_value, 
+        color="white",
+        ha="center", va="bottom", fontsize=PAPER_FONTSIZE-2
+    )
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.xaxis.set_tick_params(length=0)
+
+ax.set_yticks((0, 20, 40, 60, 80, 100))
+ax.set_yticklabels(["%s%%" % y for y in ax.get_yticks()])
+
+fig.savefig("../../figures/fig2/RiboSeq_ExpressionQCut_MedDev.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[158]:
+
+
+fig = plt.figure(figsize=(2.5, 1.75))
+ax = fig.gca()
+
+#ax = sns.barplot(data=qcut_percs[qcut_percs["col"] == "med_dev"], x="qcut", hue="status", y="percent",
+#                 hue_order=["ref", "alt", "novel"], palette=palette)
+
+pos = [qcut_percs.loc[(qcut_percs['col'] == 'med_dev') 
+                       & (qcut_percs['status'] == i) 
+                       & (qcut_percs['qcut'] == j), 'iso_name_present'].values[0] 
+                       for j in range(1, 5)
+                       for i in ["ref", "alt", "novel"]
+                       ]
+tot = [qcut_percs.loc[(qcut_percs['col'] == 'med_dev') 
+                       & (qcut_percs['status'] == i) 
+                       & (qcut_percs['qcut'] == j), 'iso_name_tot'].values[0] 
+                       for j in range(1, 5)
+                       for i in ["ref", "alt", "novel"]]
+
+validation_plot(
+    positives=pos,
+    n_tested=tot,
+    ax=ax,
+    bar_spacing=0.05,
+    draw_numbers=False,
+    errorbar_capsize=0.03,
+    colors=[palette[x] for x in ["ref", "alt", "novel"]] * 4,
+)
+
+ax.set_xlabel("RNA-Seq Expression Quartile\n(1 = lowest, 4 = highest)")
+ax.set_ylabel("Percent of isoforms with unique\njunctions present in Ribo-Seq data")
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+
+# Make 'qcut' and 'status' columns categorical
+qcut_percs["status"] = pd.Categorical(qcut_percs["status"], categories=["ref", "alt", "novel"], ordered=True)
+sorted_qcuts = qcut_percs.sort_values(by=["qcut", "status"])
+
+for bar, (_, row) in zip(ax.patches, sorted_qcuts[sorted_qcuts["col"] == "med_dev"].iterrows()):
+    # Percentage value along the top of each bar
+    percent = f"{row['percent']:.0f}%"  # Format percentage
+    ax.text(
+        bar.get_x() + bar.get_width() / 2, 
+        bar.get_height() + 0.1,  # Slightly above the bar
+        percent, 
+        ha="center", va="bottom", fontsize=PAPER_FONTSIZE-2
+    )
+    
+    # n value along the bottom of each bar
+    n_value = row["iso_name_tot"]  # Format n-value
+    ax.text(
+        bar.get_x() + bar.get_width() / 2, 
+        0,  # bottom of bar
+        n_value, 
+        color="white",
+        ha="center", va="bottom", fontsize=PAPER_FONTSIZE-2
+    )
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.xaxis.set_tick_params(length=0)
+ax.set_xticks([1, 4, 7, 10])
+ax.set_xticklabels([1, 2, 3, 4])
+
+
+ax.set_ylim(0, 1)
+ax.set_yticks(np.linspace(0, 1, 6))
+ax.set_yticks(np.linspace(0, 1, 11), minor=True)
+ax.set_yticklabels([f"{y:.0%}" for y in ax.get_yticks()])
+
+fig.savefig("../../figures/fig2/RiboSeq_ExpressionQCut_MedDev_with-error-bars.pdf", dpi="figure", bbox_inches="tight")
+
+
+# In[159]:
+
+
+fig = plt.figure(figsize=(2.5, 1.75))
+ax = sns.barplot(data=qcut_percs[qcut_percs["col"] == "med_gtex_ds"], x="qcut", hue="status", y="percent",
+                 hue_order=["ref", "alt", "novel"], palette=palette)
+ax.set_xlabel("RNA-Seq Expression Quartile\n(1 = lowest, 4 = highest)")
+ax.set_ylabel("% of isoforms with unique\njunctions present in RiboSeq data")
+plt.legend(loc=2, bbox_to_anchor=(1.01, 1), frameon=False)
+
+# Make 'qcut' and 'status' columns categorical
+qcut_percs["status"] = pd.Categorical(qcut_percs["status"], categories=["ref", "alt", "novel"], ordered=True)
+sorted_qcuts = qcut_percs.sort_values(by=["status", "qcut"])
+
+for bar, (_, row) in zip(ax.patches, sorted_qcuts[sorted_qcuts["col"] == "med_gtex_ds"].iterrows()):
+    # Percentage value along the top of each bar
+    percent = f"{row['percent']:.0f}%"  # Format percentage
+    ax.text(
+        bar.get_x() + bar.get_width() / 2, 
+        bar.get_height() + 0.5,  # Slightly above the bar
+        percent, 
+        ha="center", va="bottom", fontsize=PAPER_FONTSIZE-2
+    )
+    
+    # n value along the bottom of each bar
+    n_value = row["iso_name_tot"]  # Format n-value
+    ax.text(
+        bar.get_x() + bar.get_width() / 2, 
+        0,  # bottom of bar
+        n_value, 
+        color="white",
+        ha="center", va="bottom", fontsize=PAPER_FONTSIZE-2
+    )
+
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.xaxis.set_tick_params(length=0)
+
+ax.set_yticks((0, 20, 40, 60, 80, 100))
+ax.set_yticklabels(["%s%%" % y for y in ax.get_yticks()])
+
+fig.savefig("../../figures/fig2/RiboSeq_ExpressionQCut_MedGtexDS.pdf", dpi="figure", bbox_inches="tight")
+
+
+# ## 14. make supplemental files
 
 # ### Clone List
 
-# In[136]:
+# In[160]:
 
 
 supp_clones = {}
@@ -2193,13 +2713,13 @@ print("NUMBER OF GENES IN SUPP FILE: %s" % (len(supp_clones.gene_symbol.unique()
 supp_clones.isoform_status.value_counts()
 
 
-# In[137]:
+# In[161]:
 
 
 supp_clones.to_csv("../../supp/SuppTable_CloneList.txt", index=False, sep="\t")
 
 
-# In[138]:
+# In[162]:
 
 
 supp_clones.head()
@@ -2207,13 +2727,13 @@ supp_clones.head()
 
 # ### DNA baits in Y1H
 
-# In[139]:
+# In[163]:
 
 
 len(baits)
 
 
-# In[140]:
+# In[164]:
 
 
 supp_baits = load_Y1H_DNA_bait_sequences()
@@ -2232,7 +2752,7 @@ supp_baits.to_csv("../../supp/SuppTable_DNABaits.txt", index=False, sep="\t")
 
 # ### Y1H results
 
-# In[141]:
+# In[165]:
 
 
 # map clone_acc to clone_name
@@ -2245,7 +2765,7 @@ for gene in clone_tfs:
         clone_acc_map[clone_acc] = clone_name
 
 
-# In[142]:
+# In[166]:
 
 
 supp_y1h = y1h.copy()
@@ -2258,7 +2778,7 @@ print("NUM BAITS IN SUPP Y1H FILE: %s" % len(baits))
 supp_y1h
 
 
-# In[143]:
+# In[167]:
 
 
 supp_y1h.to_csv("../../supp/SuppTable_eY1HResults.txt", index=False, sep="\t")
@@ -2266,14 +2786,14 @@ supp_y1h.to_csv("../../supp/SuppTable_eY1HResults.txt", index=False, sep="\t")
 
 # ### Y2H results
 
-# In[144]:
+# In[168]:
 
 
 supp_y2h = load_full_y2h_data_including_controls()
 supp_y2h.head()
 
 
-# In[145]:
+# In[169]:
 
 
 # reload y2h since we loaded validation data above
@@ -2298,7 +2818,7 @@ print("NUM PARTNERS IN SUPP Y2H FILE: %s" % len(supp_y2h['db_gene_symbol'].uniqu
 supp_y2h.head()
 
 
-# In[146]:
+# In[170]:
 
 
 # add the categories
@@ -2308,25 +2828,25 @@ supp_y2h = supp_y2h.merge(cats, on="db_gene_symbol", how="left")
 supp_y2h[pd.isnull(supp_y2h["db_gene_category"])]
 
 
-# In[147]:
+# In[171]:
 
 
 supp_y2h.sample(5)
 
 
-# In[148]:
+# In[172]:
 
 
 supp_y2h.db_gene_category.value_counts()
 
 
-# In[149]:
+# In[173]:
 
 
 supp_y2h.db_gene_cofactor_type.value_counts()
 
 
-# In[150]:
+# In[174]:
 
 
 supp_y2h.to_csv("../../supp/SuppTable_PairwiseY2HResults.txt", index=False, sep="\t")
@@ -2334,7 +2854,7 @@ supp_y2h.to_csv("../../supp/SuppTable_PairwiseY2HResults.txt", index=False, sep=
 
 # ### M1H results
 
-# In[151]:
+# In[175]:
 
 
 # reload m1h since we summarized above
@@ -2349,7 +2869,7 @@ print("NUM GENES IN SUPP M1H FILE: %s" % (len(supp_m1h.gene_symbol.unique())))
 supp_m1h.head()
 
 
-# In[152]:
+# In[176]:
 
 
 supp_m1h.to_csv("../../supp/SuppTable_M1HResults.txt", index=False, sep="\t")
@@ -2357,7 +2877,7 @@ supp_m1h.to_csv("../../supp/SuppTable_M1HResults.txt", index=False, sep="\t")
 
 # ### PPI validation
 
-# In[153]:
+# In[177]:
 
 
 supp_n2h = load_n2h_ppi_validation_data()
@@ -2391,7 +2911,7 @@ supp_n2h.to_csv("../../supp/SuppTable_N2HResults.txt",
 
 # ### PDI validation
 
-# In[154]:
+# In[178]:
 
 
 supp_pdi_val = load_PDI_luciferase_validation_experiment()
@@ -2433,7 +2953,7 @@ supp_pdi_val.to_csv("../../supp/SuppTable_PDI_validation.txt",
 
 # ### Pfam domains considered DNA binding
 
-# In[155]:
+# In[179]:
 
 
 supp_dbd = load_DNA_binding_domains()

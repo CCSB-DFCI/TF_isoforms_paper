@@ -15,7 +15,7 @@ COLOR_PURPLE = (155 / 255, 97 / 255, 153 / 255)
 # kaia's added code
 PAPER_PRESET = {
     "style": "ticks",
-    "font": "Helvetica",
+    "font": ["Helvetica", "DejaVu Sans"],
     "context": "paper",
     "rc": {
         "font.size": 7,

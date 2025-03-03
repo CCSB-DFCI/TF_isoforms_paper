@@ -26,8 +26,8 @@ rc_motif <- "ACACCT"
 
 ref_condition <- "TBX5-ref"
 
-datdir <- "../../../data/internal/pbms/gpr_geo"
-sampdir <- "../../../data/internal/pbms/gpr_geo"
+datdir <- "../../../data/internal/pbms"
+sampdir <- "../../../data/internal/pbms"
 
 alexa_samples <- read_csv(file.path(sampdir, paste0(tf, "-alexa.csv")), col_types = cols())
 alexa_samples

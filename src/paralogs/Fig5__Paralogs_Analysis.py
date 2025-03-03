@@ -47,7 +47,7 @@ from data_loading import (load_paralogs_vs_isoforms_comparison_table,
 # In[2]:
 
 
-PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper", 
+PAPER_PRESET = {"style": "ticks", "font": ["Helvetica", "DejaVu Sans"], "context": "paper", 
                 "rc": {"font.size":7,"axes.titlesize":7,
                      "pdf.fonttype": 42, 
                        "axes.labelsize":7, 'axes.linewidth':0.5,

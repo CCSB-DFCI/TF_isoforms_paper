@@ -1819,7 +1819,7 @@ print(len(ref_expr))
 ref_expr.sample(5)
 
 
-# In[89]:
+# In[83]:
 
 
 fig, ax = nice_boxplot(ref_expr, "dev_tau", "gene_cat", dn_pal, ["rewire", "DN", "similar", "combination", "NA"], 
@@ -1850,7 +1850,7 @@ ax.tick_params(axis='x', length=0)
 fig.savefig("../../figures/fig7/DN_DevTau_Gene_Boxplot.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[88]:
+# In[84]:
 
 
 fig, ax = nice_boxplot(ref_expr, "gtex_ds_tau", "gene_cat", dn_pal, ["rewire", "DN", "similar", "combination", "NA"], 

@@ -46,7 +46,7 @@ np.random.seed(SEED)
 # In[3]:
 
 
-PAPER_PRESET = {"style": "ticks", "font": "Helvetica", "context": "paper",
+PAPER_PRESET = {"style": "ticks", "font": ["Helvetica", "DejaVu Sans"], "context": "paper",
                 "rc": {"font.size":7,"axes.titlesize":7,
                      "pdf.fonttype": 42, 
                        "axes.labelsize":7, 'axes.linewidth':0.5,
@@ -1430,12 +1430,18 @@ dbd = load_DNA_binding_domains()
 # In[93]:
 
 
+dbd.to_csv("DBD_Pfam_IDs.txt", sep="\t", index=False)
+
+
+# In[94]:
+
+
 pfam = pd.read_csv('../../data/external/Pfam-A.clans.tsv',
                    sep='\t',
                    names=['pfam_accession', 'clan', 'clan_name', 'short_name', 'name'])
 
 
-# In[94]:
+# In[95]:
 
 
 ref_isos = dict([(tf.name, orf.name)
@@ -1445,7 +1451,7 @@ ref_isos = dict([(tf.name, orf.name)
 ref_isos['TBX5']
 
 
-# In[95]:
+# In[96]:
 
 
 # now every comparison is alt vs annotated reference isoform
@@ -1453,20 +1459,20 @@ df = pd.concat([g.aa_feature_disruption(ref_isos[g.name]) for g in tfs.values() 
 df.head()
 
 
-# In[96]:
+# In[97]:
 
 
 df[df["gene_symbol"] == "HEY2"]
 
 
-# In[97]:
+# In[98]:
 
 
 # NES/NLS are annotated as UniProt motif
 df.category.value_counts()
 
 
-# In[98]:
+# In[99]:
 
 
 # loop through ref/alt pairs and calculate the % change in aas by domain type and mut type (del/ins/fs)
@@ -1540,7 +1546,7 @@ for i, row in df_pairs.iterrows():
     dom_df = pd.concat([dom_df, dom_df_])
 
 
-# In[99]:
+# In[100]:
 
 
 # first plot overall changes
@@ -1549,7 +1555,7 @@ dom_tot_df = pd.melt(dom_tot_df, id_vars=["ref_iso", "alt_iso", "index"])
 dom_tot_df.head()
 
 
-# In[100]:
+# In[101]:
 
 
 fig = plt.figure(figsize=(1, 1))
@@ -1579,25 +1585,25 @@ fig.savefig('../../figures/fig1/seq-change-overall-boxplot.pdf',
             bbox_inches='tight')
 
 
-# In[101]:
+# In[102]:
 
 
 dom_tot_df
 
 
-# In[102]:
+# In[103]:
 
 
 dom_tot_df.groupby(["variable"])["value"].agg("median")
 
 
-# In[103]:
+# In[104]:
 
 
 print("MEDIAN PERCENT OF AMINO ACIDS DELETED COMPARED TO REF: %s" % (dom_tot_df.groupby(["variable"])["value"].agg("median").loc["p_dd"]))
 
 
-# In[104]:
+# In[105]:
 
 
 n_alt_10p_del = len(dom_tot_df[(dom_tot_df["variable"] == "p_dd") & (dom_tot_df["value"] >= 10)].alt_iso.unique())
@@ -1607,7 +1613,7 @@ print("NUM ALT ISOS THAT SHOW >10%% DELETIONS: %s" % n_alt_10p_del)
 print("PERCENT ALT ISOS THAT SHOW >10%% DELETIONS: %s" % p_alt_10p_del)
 
 
-# In[105]:
+# In[106]:
 
 
 n_alt_10p_ins = len(dom_tot_df[(dom_tot_df["variable"] == "p_ins") & (dom_tot_df["value"] >= 10)].alt_iso.unique())
@@ -1617,7 +1623,7 @@ print("NUM ALT ISOS THAT SHOW >10%% INSERTIONS: %s" % n_alt_10p_ins)
 print("PERCENT ALT ISOS THAT SHOW >10%% INSERTIONS: %s" % p_alt_10p_ins)
 
 
-# In[106]:
+# In[107]:
 
 
 n_alt_10p_fs = len(dom_tot_df[(dom_tot_df["variable"] == "p_fs") & (dom_tot_df["value"] >= 10)].alt_iso.unique())
@@ -1627,7 +1633,7 @@ print("NUM ALT ISOS THAT SHOW >10%% FRAMESHIFTS: %s" % n_alt_10p_fs)
 print("PERCENT ALT ISOS THAT SHOW >10%% FRAMESHIFTS: %s" % p_alt_10p_fs)
 
 
-# In[107]:
+# In[108]:
 
 
 for mut_type, mut_name in zip(["p_dd", "p_ins", "p_fs"], ["deletions", "insertions", "frameshifts"]):
@@ -1656,7 +1662,7 @@ for mut_type, mut_name in zip(["p_dd", "p_ins", "p_fs"], ["deletions", "insertio
                 bbox_inches='tight')
 
 
-# In[108]:
+# In[109]:
 
 
 dom_df["p_sum"] = dom_df[["p_ins", "p_dd", "p_fs"]].sum(axis=1, skipna=False)
@@ -1665,19 +1671,19 @@ dom_tot = dom_df[~pd.isnull(dom_df["p_sum"])].groupby(["index"])["alt_iso"].agg(
 dom_grp
 
 
-# In[109]:
+# In[110]:
 
 
 dom_tot
 
 
-# In[110]:
+# In[111]:
 
 
 dom_grp/dom_tot
 
 
-# In[111]:
+# In[112]:
 
 
 dom_any = dom_df[(dom_df["index"] != "total") & (dom_df["p_sum"] > 0)]
@@ -1688,38 +1694,38 @@ print("PERCENT OF ALT ISOS THAT DIFFER IN AN ANNOTATED DOMAIN: %s" % (len(dom_an
 
 # ## 8. calculate domains that are affected compared to null
 
-# In[112]:
+# In[113]:
 
 
 len(df.gene_symbol.unique())
 
 
-# In[113]:
+# In[114]:
 
 
 len(df.ref_iso.unique())
 
 
-# In[114]:
+# In[115]:
 
 
 len(df.alt_iso.unique())
 
 
-# In[115]:
+# In[116]:
 
 
 df['is_DBD'] = df['accession'].isin(dbd['pfam'].values) | df['accession'].str.startswith('C2H2_ZF_array')
 df.head()
 
 
-# In[116]:
+# In[117]:
 
 
 df.head()
 
 
-# In[117]:
+# In[118]:
 
 
 # TODO: move to isolib.py
@@ -1732,14 +1738,20 @@ dbd_acc = set(dbd['pfam'].values).union(
             )
 
 
-# In[118]:
+# In[119]:
+
+
+df[df['gene_symbol'] == 'ATF2']
+
+
+# In[120]:
 
 
 dbd['clan'] = dbd['pfam'].map(clans)
 dbd['num_genes'] = dbd['pfam'].map(df.groupby('accession')['gene_symbol'].size())
 
 
-# In[119]:
+# In[121]:
 
 
 def is_DBD(domain):
@@ -1751,7 +1763,7 @@ n_aa_effector = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform
 n_aa_nls = [len(dom) for tf in tfs.values() for dom in tf.reference_isoform.aa_seq_features if not is_DBD(dom) and dom.category == 'UniProt motif']
 
 
-# In[120]:
+# In[122]:
 
 
 df.loc[df['accession'].str.startswith('C2H2_ZF_array'), 'accession'] = 'C2H2_ZF_array'
@@ -1772,13 +1784,13 @@ for c in [c for c in df.columns if c.startswith('is_affected_')]:
 doms = doms.sort_values('n_alt_iso', ascending=False)
 
 
-# In[121]:
+# In[123]:
 
 
 get_ipython().run_cell_magic('time', '', "# again, explicitly compare ref v alt\ndf_null = pd.concat([g.null_fraction_per_aa_feature(ref_isos[g.name]) for g in tfs.values() if g.has_MANE_select_isoform])\n\ndf = pd.merge(df, df_null, how='left', on=['gene_symbol', 'ref_iso', 'alt_iso', 'length'])")
 
 
-# In[122]:
+# In[124]:
 
 
 def prob_or(probabilities):
@@ -1803,7 +1815,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
     doms[null_col + '_center'] = null_p.groupby('accession').apply(null_quantile, 0.5)
 
 
-# In[123]:
+# In[125]:
 
 
 doms['is_DBD'] = doms.index.isin(dbd['pfam'].values) | (doms.index == 'C2H2_ZF_array')
@@ -1813,7 +1825,7 @@ doms.loc[~doms['is_DBD'], 'domain_name'] = doms[~doms['is_DBD']].index.map(pfam.
 doms.loc[doms.index == 'C2H2_ZF_array', 'domain_name'] = ['C2H2 ZF array']
 
 
-# In[124]:
+# In[126]:
 
 
 dom_affected_levels = [c[5:] for c in doms.columns if c.startswith('f_is_affected_')]
@@ -1824,7 +1836,7 @@ level_desc = {'affected_at_all': 'at least partial domain removal',
  'affected_10pct': '≥ 10% removal'}
 
 
-# In[125]:
+# In[127]:
 
 
 # all domains, all DBD, non-DBD
@@ -1861,7 +1873,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 doms.head()
 
 
-# In[126]:
+# In[128]:
 
 
 df['category_a'] = np.nan
@@ -1871,7 +1883,7 @@ df.loc[(df['category'] == 'effector_domain'), 'category_a'] = 'Effector domain'
 df.loc[(df['category'] == 'UniProt motif'), 'category_a'] = 'NLS/NES'
 
 
-# In[127]:
+# In[129]:
 
 
 # split by domain type
@@ -1908,7 +1920,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
 data = doms.copy()
 
 
-# In[128]:
+# In[130]:
 
 
 for level in dom_affected_levels:
@@ -1952,7 +1964,7 @@ for level in dom_affected_levels:
                 bbox_inches='tight')
 
 
-# In[129]:
+# In[131]:
 
 
 print("total # ref. isoforms w/ annotated NLS/NES: %s" % (len(df[df["category"] == "UniProt motif"].ref_iso.unique())))
@@ -1964,7 +1976,7 @@ print("total # ref. isoforms w/ annotated NES: %s" % (len(df[(df["category"] == 
 
 # ### more granular plots
 
-# In[130]:
+# In[132]:
 
 
 doms = (df.loc[(df['category'] == 'Pfam_domain') | 
@@ -1996,7 +2008,7 @@ for null_col in [c for c in df.columns if c.startswith('null_fraction_')]:
     doms[null_col + '_center'] = null_p.groupby('accession').apply(null_quantile, 0.5)
 
 
-# In[131]:
+# In[133]:
 
 
 doms['is_DBD'] = doms.index.isin(dbd['pfam'].values) | (doms.index == 'C2H2_ZF_array')
@@ -2007,13 +2019,13 @@ doms.loc[doms.index == 'C2H2_ZF_array', 'domain_name'] = ['C2H2 ZF array']
 doms.head()
 
 
-# In[132]:
+# In[134]:
 
 
 cutoff = 30
 
 
-# In[133]:
+# In[135]:
 
 
 for level in dom_affected_levels:
@@ -2062,7 +2074,7 @@ for level in dom_affected_levels:
 
 # ## 9. calculate splicing types for ref/alt pairs
 
-# In[134]:
+# In[136]:
 
 
 alt_isos = {}
@@ -2076,28 +2088,28 @@ for tf in tfs.values():
 alt_isos["TBX5"]
 
 
-# In[135]:
+# In[137]:
 
 
 df = pd.DataFrame([g.splicing_categories(ref_isos[g.name], alt_iso) for g in tfs.values() if g.has_MANE_select_isoform for alt_iso in alt_isos[g.name]])
 df[df["gene_symbol"] == "TBX5"]
 
 
-# In[136]:
+# In[138]:
 
 
 df_m = pd.melt(df, id_vars=["gene_symbol", "reference isoform", "alternative isoform"])
 df_m.head()
 
 
-# In[137]:
+# In[139]:
 
 
 df_m_t = df_m[df_m["value"] == True]
 df_m_t.groupby("variable")["alternative isoform"].agg("count")
 
 
-# In[138]:
+# In[140]:
 
 
 fig = plt.figure(figsize=(2, 1.5))
