@@ -1,15 +1,13 @@
 # TF isoform analysis code
 
-## Setup
+This is the code for the manuscript: Widespread variation in molecular interactions and regulatory properties among transcription factor isoforms, Lambourne, Mattioli, Santoso et al. Molecular Cell, 2025.
 
-Create a symlink to the data directory in Dropbox, e.g.
-```
-ln -s ~/Dropbox/TF_isoforms/data .
-```
-TO ADD:
-- how to load conda env
-- how to load pip env
-- r sessioninfo note
-- zenodo doi
-- update data dir
-- anything else? run notebooks in order?
+You will need to dowload and unzip the data directory from:
+
+https://zenodo.org/records/14968584 (DOI:10.5281/zenodo.14968584)
+
+The dependencies are listed in the conda yaml file or in the `.python-version` and `requirements.txt`.
+
+The data from this study is available to browse at:
+
+[http://tfisodb.org/](http://tfisodb.org/)
