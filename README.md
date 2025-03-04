@@ -1,6 +1,6 @@
 # TF isoform analysis code
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14968821.svg)](https://doi.org/10.5281/zenodo.14968821)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14969075.svg)](https://doi.org/10.5281/zenodo.14969075)
 
 This is the code for the manuscript: Widespread variation in molecular interactions and regulatory properties among transcription factor isoforms, Lambourne, Mattioli, Santoso et al. Molecular Cell, 2025.
 
