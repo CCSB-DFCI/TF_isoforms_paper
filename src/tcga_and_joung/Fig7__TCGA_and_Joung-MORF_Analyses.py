@@ -124,6 +124,8 @@ oncokb_f = "../../data/external/OncoKB_CancerGenes_Downloaded07042024.tsv"
 
 deg_dir = "../../data/processed/Nathans_analysis/Joung_Reanalysis/DEGs-metacell"
 joung_map_f = "../../data/internal/Joung_TF1p0_Map.txt"
+joung_orf_f = "../../data/external/joung_files/Joung_ORF_lib.txt"
+joung_data_f = "../../data/external/joung_files/Joung_ORF_scores.txt"
 tf_tgts_f = "../../data/processed/Nathans_analysis/Joung_Reanalysis/DEGs-metacell/Ensembl-TFTargets.txt"
 joung_tx_preds_f = "../../data/processed/Nathans_analysis/Joung_Reanalysis/DEGs-metacell/Oncogene-TS_Alt-Ref.xlsx"
 
@@ -168,6 +170,12 @@ len(oncokb)
 
 # In[17]:
 
+
+joung_orf = pd.read_table(joung_orf_f)
+joung_orf["Name"] = joung_orf["Name"].str.strip()
+
+joung_data = pd.read_table(joung_data_f)
+joung_data["Name"] = joung_data["TF ORF"].str.split("-", expand=True)[0].str.strip()
 
 joung_map = pd.read_table(joung_map_f)
 
@@ -1153,9 +1161,248 @@ ax.spines['top'].set_visible(False)
 fig.savefig("../../figures/fig7/BRCA_CREB1_gene_diff_hist.pdf", dpi="figure", bbox_inches="tight")
 
 
-# ## 8. import joung et al DEGs + target status
+# ## 8. examine processed joung et al screen data
 
 # In[64]:
+
+
+tfs = load_annotated_TFiso1_collection()
+
+
+# In[65]:
+
+
+def pd_translate(row):
+    s = Seq(row["ORF sequence"])
+    aa = s.translate()
+    return str(aa)
+
+joung_orf["seq_aa"] = joung_orf.apply(pd_translate, axis=1)
+
+
+# In[66]:
+
+
+tf_id_map = {}
+for tf in tfs:
+    isos = tfs[tf]
+    for i, iso in enumerate(isos.isoforms):
+        sub_dict = {}
+        try: 
+            iso_clone_acc = iso.clone_acc
+            iso_name = iso.name
+        except AttributeError:
+            continue
+
+        try:
+            iso_seq_aa = iso.aa_seq_GENCODE
+        except AttributeError:
+            iso_seq_aa = iso.aa_seq
+        iso_ensts = iso.ensembl_transcript_ids
+
+        
+        # first try to match based on aa seq
+        joung_sub = joung_orf[joung_orf["seq_aa"] == iso_seq_aa]
+        
+        if len(joung_sub) > 0:
+            sub_dict["match_type"] = "seq_aa"
+            sub_dict["joung_id"] = joung_sub["Name"].iloc[0]
+        
+        # if not found, then try ensts
+        if len(joung_sub) == 0:
+            if iso_ensts is None:
+                continue
+            
+            for iso_enst in iso_ensts:
+                joung_sub = joung_orf[joung_orf["RefSeq and Gencode ID"].str.contains(iso_enst)]
+                if len(joung_sub) > 0:
+                    continue
+            
+            if len(joung_sub) > 0:
+                sub_dict["match_type"] = "enst"
+                sub_dict["joung_id"] = joung_sub["Name"].iloc[0]
+            else:
+                continue
+        
+        sub_dict["enst"] = iso_ensts
+        sub_dict["seq_aa"] = iso_seq_aa
+        sub_dict["iso_id"] = iso_name
+        sub_dict["is_novel"] = iso.is_novel_isoform()
+        tf_id_map[iso_clone_acc] = sub_dict
+
+
+# In[67]:
+
+
+tf_id_map_df = pd.DataFrame.from_dict(tf_id_map, orient="index").reset_index()
+print(len(tf_id_map_df))
+
+
+# In[68]:
+
+
+joung_orf = joung_orf.merge(tf_id_map_df, left_on="Name", right_on="joung_id", how="left", suffixes=("_joung",
+                                                                                                     "_tf1p0"))
+
+
+# In[69]:
+
+
+joung_data = joung_orf.merge(joung_data, on="Name", how="left")
+
+
+# In[70]:
+
+
+dn_ref = dn[["gene_symbol", "reference_isoform", "alt_iso_classification"]]
+dn_ref.columns = ["gene_symbol", "iso_id", "dn_cat"]
+dn_ref["dn_cat"] = "ref"
+dn_ref["iso_status"] = "ref"
+
+dn_alt = dn[["gene_symbol", "alternative_isoform", "alt_iso_classification"]]
+dn_alt.columns = ["gene_symbol", "iso_id", "dn_cat"]
+dn_alt.fillna("NA", inplace=True)
+dn_alt["iso_status"] = "alt"
+
+dn_cats = pd.concat([dn_ref, dn_alt], ignore_index=True).drop_duplicates()
+len(dn_cats)
+
+
+# In[71]:
+
+
+dn_cats = dn_cats.merge(joung_data, left_on="iso_id", right_on="iso_id", how="left")
+
+
+# In[72]:
+
+
+dn_cats.iso_status.value_counts()
+
+
+# In[73]:
+
+
+dn_cats[~pd.isnull(dn_cats["Name"])].iso_status.value_counts()
+
+
+# In[74]:
+
+
+refs_inc = len(dn_cats[(~pd.isnull(dn_cats["Name"])) & (dn_cats["iso_status"] == "ref")])
+refs_tf1p0 = len(dn_cats[dn_cats["iso_status"] == "ref"])
+print("%% of our ref seqs included in joung: %s" % (refs_inc/refs_tf1p0*100))
+
+
+# In[75]:
+
+
+alts_inc = len(dn_cats[(~pd.isnull(dn_cats["Name"])) & (dn_cats["iso_status"] == "alt")])
+alts_tf1p0 = len(dn_cats[dn_cats["iso_status"] == "alt"])
+print("%% of our alt seqs included in joung: %s" % (alts_inc/alts_tf1p0*100))
+
+
+# In[76]:
+
+
+novels = []
+for tf in tfs:
+    isos = tfs[tf]
+    for i, iso in enumerate(isos.isoforms):
+        try:
+            iso.clone_acc
+        except:
+            continue
+        if iso.is_novel_isoform():
+            novels.append(iso.name)
+len(novels)
+
+
+# In[77]:
+
+
+alts_missing = dn_cats[(pd.isnull(dn_cats["Name"])) & (dn_cats["iso_status"] == "alt")]
+print(len(alts_missing))
+len([x for x in alts_missing['iso_id'] if x in novels])
+
+
+# In[78]:
+
+
+dn_cats_nonan = dn_cats[~pd.isnull(dn_cats["Diffusion P-value"])]
+len(dn_cats_nonan)
+
+
+# In[79]:
+
+
+dn_cats_nonan["neglog_diff_pval"] = -np.log10(dn_cats_nonan["Diffusion P-value"])
+dn_cats_nonan.fillna("NA", inplace=True)
+
+
+# In[80]:
+
+
+dn_cats_nonan.iloc[0]
+
+
+# In[81]:
+
+
+fig = plt.figure(figsize=(2, 2.2))
+
+ax = sns.scatterplot(data=dn_cats_nonan[dn_cats_nonan["dn_cat"].isin(["ref"])], 
+                x="Diffusion difference", y="neglog_diff_pval", 
+                color="white", linewidth=0.5, edgecolor="black", alpha=0.8, zorder=10,
+                **{"s": 9})
+
+sns.scatterplot(data=dn_cats_nonan[dn_cats_nonan["dn_cat"].isin(["similar to ref.", "rewirer", 
+                                                                 "negative regulator"])], 
+                x="Diffusion difference", y="neglog_diff_pval", 
+                hue="dn_cat", palette=dn_pal, linewidth=0.25, edgecolor="black", alpha=0.8, zorder=10,
+                **{"s": 9}, ax=ax)
+
+for annot_clone, ha, va, offset, relpos, cs in zip(["GRHL3|3/7|08G09", "HMBOX1|3/5|03E06", 
+                                                    "KLF7|3/8|10B10", "GRHL3|4/7|08F09", "PBX1|2/2|02C05",
+                                                    "DLX1|2/2|07E09"],
+                                                    ["center", "right", "right", "right", "right", "right"],
+                                                    ["top", "bottom", "top", "center", "bottom", "bottom"],
+                                                    [(0, -7), (3, 8), (-8, 7), (-7, 0), (-20, -15), (-8, -8)],
+                                                    [(0.5, 1), (1, 0.5), (1, 0.5), (1, 0.5), (1, 0.5), (1, 0.5)],
+                                                    ["arc3,rad=0", "arc3,rad=-0.3", "arc3,rad=-0.3", "arc3,rad=0",
+                                                     "arc3,rad=0.3", "arc3,rad=-0.3"]):
+    row = dn_cats_nonan[dn_cats_nonan["index"] == annot_clone].iloc[0]
+    if row["dn_cat"] == "ref":
+        color = "black"
+    else:
+        color = dn_pal[row["dn_cat"]]
+    print("annot clone: %s | ha: %s | va: %s" % (annot_clone, ha, va))
+    
+    shorter_id = annot_clone.split("|")[0] + "-" + annot_clone.split("|")[1].split("/")[0]
+    ax.annotate(shorter_id, xy=(row["Diffusion difference"], row["neglog_diff_pval"]), xytext=offset,
+                color=color, ha=ha, va=va,
+                textcoords='offset points', bbox=dict(boxstyle='square,pad=0', fc='none', ec='none'),
+                arrowprops=dict(arrowstyle="-", color=color, relpos=relpos, connectionstyle=cs))
+
+ax.set_xlabel("Over-expression effect size")
+ax.set_ylabel("-log10(over-expression p-value)")
+ax.set_title("effect of TF isoforms on differentiation\n(Joung et al.)")
+
+ax.set_xlim((-0.04, 0.01))
+ax.set_ylim((-0.01, 7.2))
+ax.axhline(y=-np.log10(0.05), linestyle="dashed", color="black", linewidth=0.5)
+ax.axvline(x=0, linestyle="dashed", color="black", linewidth=0.5)
+
+ax.get_legend().remove()
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+
+fig.savefig("../../figures/fig7/Joung_Volcano.pdf", dpi="figure", bbox_inches="tight")
+
+
+# ## 9. import joung et al DEGs + target status
+
+# In[82]:
 
 
 gfp_degs = {}
@@ -1193,7 +1440,7 @@ for i, item in enumerate(os.listdir(gfp_deg_dir)):
     gfp_degs[comp1] = df
 
 
-# In[65]:
+# In[83]:
 
 
 # load ref vs. alt degs
@@ -1228,7 +1475,7 @@ for i, item in enumerate(os.listdir(ref_deg_dir)):
     ref_degs[comp1] = df
 
 
-# In[66]:
+# In[84]:
 
 
 tgts_dict = {}
@@ -1282,7 +1529,7 @@ for iso in ref_degs:
                       "n_shared_up": n_shared_up, "n_ref_uniq_up": n_ref_uniq_up, "n_alt_uniq_up": n_alt_uniq_up}
 
 
-# In[67]:
+# In[85]:
 
 
 n_degs_df = pd.DataFrame.from_dict(n_degs_df, orient="index").reset_index()
@@ -1291,7 +1538,7 @@ n_degs_df["pct_tgts_deg"].fillna(0, inplace=True)
 n_degs_df[n_degs_df["index"].str.contains("CREB1")]
 
 
-# In[68]:
+# In[86]:
 
 
 print("TOT # REF/ALT PAIRS: %s" % len(n_degs_df))
@@ -1300,7 +1547,7 @@ print("MEDIAN # DEGs: %s" % (n_degs_df.n_degs.median()))
 print("NUM REF/ALT PAIRS WITH ≥100 DEGs: %s" % (len(n_degs_df[n_degs_df["n_degs"] >= 100])))
 
 
-# In[69]:
+# In[87]:
 
 
 print("AVG # UNIQ UP REF: %s" % (n_degs_df.n_ref_uniq_up.mean()))
@@ -1308,15 +1555,15 @@ print("AVG # UNIQ UP ALT: %s" % (n_degs_df.n_alt_uniq_up.median()))
 print("NUM REF/ALT PAIRS WITH ≥100 UNIQUE ALTs: %s" % (len(n_degs_df[n_degs_df["n_alt_uniq_up"] >= 100])))
 
 
-# ## 8. heatmap of gene set enrichments
+# ## 10. heatmap of gene set enrichments
 
-# In[70]:
+# In[88]:
 
 
 gene_set = "MSigDB_Hallmark_2020"
 
 
-# In[71]:
+# In[89]:
 
 
 gsea_res = pd.DataFrame()
@@ -1341,7 +1588,7 @@ for tf in ref_degs:
     gsea_res = pd.concat([gsea_res, res])
 
 
-# In[72]:
+# In[90]:
 
 
 gsea_sig = gsea_res[gsea_res["FDR q-val"] < 0.25][["Term", "NES", "TF ORF", "FDR q-val"]]
@@ -1349,14 +1596,14 @@ print(gsea_sig.shape)
 print(len(gsea_sig['Term'].unique()))
 
 
-# In[73]:
+# In[91]:
 
 
 print("# OF ALTERNATIVE TFS WITH L2FCS: %s" % len(ref_degs))
 print("# OF ALTERNATIVE TFS WITH A SIGNIFICANT GSEA COMPARED TO REF: %s" % len(gsea_sig["TF ORF"].unique())) 
 
 
-# In[74]:
+# In[92]:
 
 
 # merge with joung ids
@@ -1364,7 +1611,7 @@ gsea_sig = gsea_sig.merge(joung_map, on="TF ORF", how="left")
 print(gsea_sig.shape)
 
 
-# In[75]:
+# In[93]:
 
 
 # merge with pancan analysis
@@ -1380,7 +1627,7 @@ gsea_filt = gsea_filt.merge(oncokb_mrg[["gene_name", "cancer_status"]], on="gene
 print(gsea_filt.shape)
 
 
-# In[76]:
+# In[94]:
 
 
 # fix NaNs before re-indexing
@@ -1388,14 +1635,14 @@ gsea_filt["dn_cat"].fillna("NA", inplace=True)
 gsea_filt["cancer_status"].fillna("none", inplace=True)
 
 
-# In[77]:
+# In[95]:
 
 
 gsea_filt_pivot = pd.pivot_table(gsea_filt, values="NES", index=["isoform", "dn_cat", "cancer_status"], columns="Term")
 print(gsea_filt_pivot.shape)
 
 
-# In[78]:
+# In[96]:
 
 
 dn_pal = {"ref": sns.color_palette("Set2")[0],
@@ -1409,7 +1656,7 @@ dn_pal = {"ref": sns.color_palette("Set2")[0],
           "likely non-functional": "darkgray"}
 
 
-# In[79]:
+# In[97]:
 
 
 cancer_pal = {"oncogene": "hotpink",
@@ -1418,7 +1665,7 @@ cancer_pal = {"oncogene": "hotpink",
               "none": "ghostwhite"}
 
 
-# In[80]:
+# In[98]:
 
 
 term_count = gsea_filt.groupby("Term")["isoform"].agg("count").reset_index()
@@ -1426,7 +1673,7 @@ terms_to_plot = list(term_count[term_count["isoform"] >= 1]["Term"].unique())
 len(terms_to_plot)
 
 
-# In[81]:
+# In[99]:
 
 
 iso_count = gsea_filt.groupby("isoform")["Term"].agg("count").reset_index()
@@ -1434,7 +1681,7 @@ print(len(iso_count))
 print(len(iso_count[iso_count["Term"] >= 3]))
 
 
-# In[82]:
+# In[100]:
 
 
 # create df to plot
@@ -1449,7 +1696,7 @@ to_plot.set_index("isoform", inplace=True)
 to_plot = to_plot[terms]
 
 
-# In[83]:
+# In[101]:
 
 
 cmap = sns.diverging_palette(220, 20, s=60, as_cmap=True)
@@ -1493,7 +1740,7 @@ print(np.asarray(new_names)[idx])
 g.savefig("../../figures/fig7/GSEA_heatmap_full.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[84]:
+# In[102]:
 
 
 from itertools import combinations
@@ -1505,7 +1752,7 @@ def jaccard_similarity(set1, set2):
     return intersection / union
 
 
-# In[85]:
+# In[103]:
 
 
 def filter_redundant_sets(gene_sets_dict, threshold=0.8):
@@ -1516,7 +1763,7 @@ def filter_redundant_sets(gene_sets_dict, threshold=0.8):
     :param threshold: Threshold for Jaccard similarity above which sets are considered redundant.
     :return: Filtered dictionary of non-redundant gene sets.
     """
-    gene_set_names = list(gene_sets_dict.keys())
+    gene_set_names = list(sorted(gene_sets_dict.keys(), reverse=True))
     
     # Keep track of which gene sets to remove
     to_remove = set()
@@ -1537,7 +1784,7 @@ def filter_redundant_sets(gene_sets_dict, threshold=0.8):
     return filtered_gene_sets_dict
 
 
-# In[86]:
+# In[104]:
 
 
 # grab genes in each term
@@ -1547,7 +1794,7 @@ for term in terms:
     gene_set_dict[term] = set(genes)
 
 
-# In[87]:
+# In[105]:
 
 
 print(len(gene_set_dict))
@@ -1556,7 +1803,7 @@ filtered_gene_set_dict = filter_redundant_sets(gene_set_dict, threshold=0.05)
 len(filtered_gene_set_dict)
 
 
-# In[88]:
+# In[106]:
 
 
 # create df to plot
@@ -1576,7 +1823,7 @@ to_plot = to_plot[filtered_gene_set_dict.keys()]
 print(to_plot.shape)
 
 
-# In[93]:
+# In[107]:
 
 
 cmap = sns.diverging_palette(220, 20, s=60, as_cmap=True)
@@ -1622,7 +1869,7 @@ print(np.asarray(new_names)[idx])
 g.savefig("../../figures/fig7/GSEA_heatmap_small.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[94]:
+# In[108]:
 
 
 smad3_res = res_objs["TFORF0115-SMAD3"]
@@ -1632,7 +1879,7 @@ ax = smad3_res.plot(terms=["Reactive Oxygen Species Pathway"])
 #plt.savefig("GSEA_SMAD3_ROS.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[95]:
+# In[109]:
 
 
 creb1_res = res_objs["TFORF3026-CREB1"]
@@ -1642,7 +1889,7 @@ ax = creb1_res.plot(terms=["Wnt-beta Catenin Signaling"])
 #plt.savefig("GSEA_CREB1_Wnt.pdf", dpi="figure", bbox_inches="tight")
 
 
-# In[96]:
+# In[110]:
 
 
 sig_cancer_alt_tf1p0 = sig_cancer[(sig_cancer["dn_cat"] != "ref") &
@@ -1663,7 +1910,7 @@ print("# sig GSEA: %s" % len(sig_gsea["tf1p0_id"].unique()))
 
 # ## 9. write supplemental files
 
-# In[97]:
+# In[111]:
 
 
 # supp table: paired samples used in TCGA analysis
@@ -1677,13 +1924,13 @@ supp_tcgasamps = pd.concat([supp_brcasamps, supp_luadsamps, supp_hnsccsamps])
 supp_tcgasamps.cancer_type.value_counts()
 
 
-# In[98]:
+# In[112]:
 
 
 supp_tcgasamps.to_csv("../../supp/SuppTable_TCGASamps.txt", sep="\t", index=False)
 
 
-# In[99]:
+# In[113]:
 
 
 # supp table: TCGA results for cloned isoforms
@@ -1696,13 +1943,13 @@ supp_tcgares = pancan_lib[["isoform", 'mean_tumor_iso_pct_brca', 'mean_normal_is
 len(supp_tcgares)
 
 
-# In[100]:
+# In[114]:
 
 
 supp_tcgares.to_csv("../../supp/SuppTable_TCGAResults.txt", sep="\t", index=False)
 
 
-# In[101]:
+# In[115]:
 
 
 supp_joung = gsea_sig.copy()
@@ -1725,13 +1972,13 @@ print(len(supp_joung.alt_iso.unique()))
 supp_joung.sample(5)
 
 
-# In[102]:
+# In[116]:
 
 
 supp_joung.to_csv("../../supp/SuppTable_JoungResults.txt", sep="\t", index=False)
 
 
-# In[103]:
+# In[117]:
 
 
 supp_joung[supp_joung["alt_iso"].str.contains("PBX1")]
@@ -1740,7 +1987,7 @@ supp_joung[supp_joung["alt_iso"].str.contains("PBX1")]
 # # create TCGA plots for website
 # takes a while so comment out when done
 
-# In[104]:
+# In[118]:
 
 
 def paired_swarmplot(df, iso_id, cancer, padj, l2fc, fig_filename):
@@ -1812,7 +2059,7 @@ def paired_swarmplot(df, iso_id, cancer, padj, l2fc, fig_filename):
     return fig
 
 
-# In[105]:
+# In[119]:
 
 
 def format_number(num):
@@ -1822,7 +2069,7 @@ def format_number(num):
         return f"{num:.3f}"  # Otherwise, return as a float with 2 decimal places
 
 
-# In[106]:
+# In[120]:
 
 
 # for cancer in ['BRCA', 'LUAD', 'HNSCC']:
